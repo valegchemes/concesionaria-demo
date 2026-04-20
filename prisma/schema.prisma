@@ -1,0 +1,486 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==================== ENTIDADES PRINCIPALES ====================
+
+model Company {
+  id                 String   @id @default(cuid())
+  name               String
+  slug               String   @unique
+  customDomain       String?  @unique
+  email              String
+  phone              String?
+  whatsappCentral    String?
+  address            String?
+  city               String?
+  logoUrl            String?
+  currencyPreference String   @default("BOTH") // BOTH | ARS | USD
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relaciones
+  users             User[]
+  units             Unit[]
+  leads             Lead[]
+  deals             Deal[]
+  whatsappTemplates WhatsAppTemplate[]
+  publicClickEvents PublicClickEvent[]
+
+  @@map("Company")
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String
+  name           String
+  password       String
+  role           UserRole @default(SELLER)
+  isActive       Boolean  @default(true)
+  whatsappNumber String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Multi-tenant
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Relaciones CRM
+  assignedLeads Lead[]         @relation("AssignedLeads")
+  createdLeads  Lead[]         @relation("CreatedLeads")
+  tasks         Task[]         @relation("AssignedTasks")
+  activities    LeadActivity[]
+  deals         Deal[]
+
+  @@unique([email, companyId])
+  @@index([companyId])
+  @@map("User")
+}
+
+// ==================== LEADS Y CRM ====================
+
+model Lead {
+  id         String     @id @default(cuid())
+  name       String
+  phone      String
+  email      String?
+  source     LeadSource @default(OTHER)
+  status     LeadStatus @default(NEW)
+  lostReason String?
+  notes      String?
+  quickInfo  String? // Texto pegado para parseo rápido
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  // Multi-tenant
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  assignedToId String?
+  assignedTo   User?   @relation("AssignedLeads", fields: [assignedToId], references: [id])
+
+  createdById String
+  createdBy   User   @relation("CreatedLeads", fields: [createdById], references: [id])
+
+  // Unidad de interés (link directo)
+  interestedUnitId String?
+  interestedUnit   Unit?   @relation("LeadInterestedUnit", fields: [interestedUnitId], references: [id])
+
+  // Relaciones CRM
+  activities LeadActivity[]
+  tasks      Task[]
+  deals      Deal[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, assignedToId])
+  @@map("Lead")
+}
+
+model LeadActivity {
+  id        String       @id @default(cuid())
+  type      ActivityType
+  notes     String?
+  createdAt DateTime     @default(now())
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  companyId String
+
+  @@index([leadId])
+  @@index([companyId])
+  @@map("LeadActivity")
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  assignedToId String
+  assignedTo   User   @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  companyId String
+
+  @@index([leadId])
+  @@index([companyId])
+  @@index([assignedToId, isCompleted])
+  @@map("Task")
+}
+
+// ==================== UNIDADES (INVENTARIO) ====================
+
+model Unit {
+  id          String     @id @default(cuid())
+  type        UnitType
+  title       String
+  description String?
+  status      UnitStatus @default(AVAILABLE)
+  location    String?
+  tags        String[] // Array de tags
+  isActive    Boolean    @default(true)
+
+  // Precios
+  priceArs Decimal? @db.Decimal(12, 2)
+  priceUsd Decimal? @db.Decimal(12, 2)
+
+  // Identificadores únicos por tipo
+  vin                String? // Auto (Vehicle Identification Number)
+  domain             String? // Auto (patente/dominio)
+  engineNumber       String? // Moto
+  frameNumber        String? // Moto
+  hin                String? // Lancha (Hull Identification Number)
+  registrationNumber String? // Lancha
+
+  // Adquisición
+  acquisitionCostArs Decimal?        @db.Decimal(12, 2)
+  acquisitionCostUsd Decimal?        @db.Decimal(12, 2)
+  acquisitionType    AcquisitionType @default(PURCHASE)
+  acquisitionDate    DateTime?
+
+  // Permuta (si esta unidad vino de una permuta)
+  isFromTradeIn Boolean @default(false)
+  tradeInId     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Multi-tenant
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Relaciones
+  photos     UnitPhoto[]
+  attributes UnitAttribute[]
+  costItems  UnitCostItem[]
+  deals      Deal[]
+
+  // Leads interesados en esta unidad
+  interestedLeads Lead[] @relation("LeadInterestedUnit")
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, type])
+  @@map("Unit")
+}
+
+model UnitPhoto {
+  id        String   @id @default(cuid())
+  url       String
+  order     Int      @default(0)
+  caption   String?
+  createdAt DateTime @default(now())
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId])
+  @@map("UnitPhoto")
+}
+
+model UnitAttribute {
+  id    String @id @default(cuid())
+  key   String
+  value String
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([unitId, key])
+  @@index([unitId])
+  @@map("UnitAttribute")
+}
+
+model UnitCostItem {
+  id        String   @id @default(cuid())
+  concept   String
+  amountArs Decimal? @db.Decimal(12, 2)
+  amountUsd Decimal? @db.Decimal(12, 2)
+  date      DateTime @default(now())
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@index([unitId])
+  @@map("UnitCostItem")
+}
+
+// ==================== OPERACIONES (DEALS) ====================
+
+model Deal {
+  id String @id @default(cuid())
+
+  status DealStatus @default(NEGOTIATION)
+
+  // Precio final pactado
+  finalPrice         Decimal  @db.Decimal(12, 2)
+  finalPriceCurrency String   @default("ARS") // ARS | USD
+  exchangeRate       Decimal? @db.Decimal(10, 4) // Tipo de cambio al momento del deal
+
+  // Seña / depósito
+  depositAmount Decimal?       @db.Decimal(12, 2)
+  depositDate   DateTime?
+  depositMethod PaymentMethod?
+
+  // Comisión vendedor
+  commissionType  CommissionType @default(PERCENTAGE)
+  commissionValue Decimal        @default(0) @db.Decimal(10, 2)
+
+  // Pagos recibidos
+  payments DealPayment[]
+
+  // Gastos de cierre
+  closingCosts DealCostItem[]
+
+  // Permuta
+  tradeIn TradeIn?
+
+  notes    String?
+  closedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Multi-tenant
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  sellerId String
+  seller   User   @relation(fields: [sellerId], references: [id])
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([sellerId])
+  @@map("Deal")
+}
+
+model DealPayment {
+  id         String        @id @default(cuid())
+  amount     Decimal       @db.Decimal(12, 2)
+  currency   Currency      @default(ARS)
+  method     PaymentMethod @default(CASH)
+  receivedAt DateTime      @default(now())
+  notes      String?
+  createdAt  DateTime      @default(now())
+
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@map("DealPayment")
+}
+
+model DealCostItem {
+  id        String   @id @default(cuid())
+  concept   String
+  amountArs Decimal? @db.Decimal(12, 2)
+  amountUsd Decimal? @db.Decimal(12, 2)
+
+  dealId String
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@map("DealCostItem")
+}
+
+model TradeIn {
+  id String @id @default(cuid())
+
+  // Lo que entrega el cliente
+  description   String
+  expectedValue Decimal @db.Decimal(12, 2)
+  offeredValue  Decimal @db.Decimal(12, 2)
+  finalValue    Decimal @db.Decimal(12, 2)
+
+  // Si se convirtió en unidad de stock
+  convertedToUnitId String?   @unique
+  isConverted       Boolean   @default(false)
+  convertedAt       DateTime?
+
+  dealId String @unique
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@map("TradeIn")
+}
+
+// ==================== WHATSAPP Y CONFIGURACIÓN ====================
+
+model WhatsAppTemplate {
+  id        String  @id @default(cuid())
+  name      String
+  template  String
+  isDefault Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId])
+  @@map("WhatsAppTemplate")
+}
+
+// ==================== ANALYTICS PÚBLICO ====================
+
+model PublicClickEvent {
+  id        String    @id @default(cuid())
+  type      ClickType
+  unitId    String?
+  metadata  String? // JSON string con info adicional
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, type])
+  @@map("PublicClickEvent")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  SELLER
+}
+
+enum Currency {
+  ARS
+  USD
+}
+
+enum LeadSource {
+  INSTAGRAM
+  FACEBOOK_MARKETPLACE
+  REFERRAL
+  WALK_IN
+  PHONE
+  WEBSITE
+  WHATSAPP
+  OLX
+  AUTOSUSADOS
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  VISIT_SCHEDULED
+  OFFER
+  RESERVED
+  SOLD
+  LOST
+}
+
+enum ActivityType {
+  WHATSAPP_SENT
+  CALL_MADE
+  CALL_RECEIVED
+  VISIT_DONE
+  OFFER_RECEIVED
+  EMAIL_SENT
+  NOTE_ADDED
+  STATUS_CHANGED
+  TASK_COMPLETED
+}
+
+enum UnitType {
+  CAR
+  MOTORCYCLE
+  BOAT
+}
+
+enum UnitStatus {
+  AVAILABLE
+  IN_PREP
+  RESERVED
+  SOLD
+}
+
+enum AcquisitionType {
+  PURCHASE
+  TRADE_IN
+  CONSIGNMENT
+}
+
+enum DealStatus {
+  NEGOTIATION
+  RESERVED
+  APPROVED
+  IN_PAYMENT
+  DELIVERED
+  CANCELED
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHECK
+  CREDIT_CARD
+  FINANCING
+  CRYPTO
+  OTHER
+}
+
+enum ClickType {
+  WHATSAPP_CLICK
+  PHONE_CLICK
+  UNIT_VIEW
+  SHARE_CLICK
+}

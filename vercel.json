@@ -1,0 +1,8 @@
+{
+  "framework": "nextjs",
+  "installCommand": "npm install --legacy-peer-deps && npx prisma generate",
+  "buildCommand": "next build",
+  "env": {
+    "NEXTAUTH_URL": "https://$VERCEL_URL"
+  }
+}

@@ -1,0 +1,39 @@
+import { redirect } from 'next/navigation'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
+import { AppSidebar } from '@/components/app-sidebar'
+import { AppHeader } from '@/components/app-header'
+
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user) {
+    redirect('/login')
+  }
+
+  const user = {
+    id: session.user.id,
+    name: session.user.name ?? '',
+    email: session.user.email ?? '',
+    role: session.user.role ?? 'SELLER',
+    companyId: session.user.companyId ?? '',
+    companyName: session.user.companyName ?? '',
+    companySlug: session.user.companySlug ?? '',
+  }
+
+  return (
+    <div className="min-h-screen flex">
+      <AppSidebar user={user} />
+      <div className="flex-1 flex flex-col">
+        <AppHeader user={user} />
+        <main className="flex-1 p-6 overflow-auto">
+          {children}
+        </main>
+      </div>
+    </div>
+  )
+}
