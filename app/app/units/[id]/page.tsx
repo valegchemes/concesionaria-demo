@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -53,8 +53,11 @@ const statuses: Record<string, string> = {
   SOLD: 'Vendido',
 }
 
-export default function UnitDetailPage({ params }: { params: { id: string } }) {
+export default function UnitDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
+  // Unwrap promise for Next.js 15 params
+  const { id } = use(params)
+  
   const [unit, setUnit] = useState<Unit | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -63,11 +66,11 @@ export default function UnitDetailPage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     fetchUnit()
-  }, [params.id])
+  }, [id])
 
   async function fetchUnit() {
     try {
-      const res = await fetch(`/api/units/${params.id}`)
+      const res = await fetch(`/api/units/${id}`)
       if (res.ok) {
         const data = await res.json()
         setUnit(data)
@@ -85,7 +88,7 @@ export default function UnitDetailPage({ params }: { params: { id: string } }) {
     setSaving(true)
 
     try {
-      const res = await fetch(`/api/units/${params.id}`, {
+      const res = await fetch(`/api/units/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

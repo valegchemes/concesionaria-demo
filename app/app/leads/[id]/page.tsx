@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -98,8 +98,11 @@ const activityLabels: Record<string, string> = {
   TASK_COMPLETED: 'Tarea completada',
 }
 
-export default function LeadDetailPage({ params }: { params: { id: string } }) {
+export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
+  // Unwrap promise for Next.js 15
+  const { id } = use(params)
+  
   const { data: session } = useSession()
   const [lead, setLead] = useState<Lead | null>(null)
   const [loading, setLoading] = useState(true)
@@ -112,11 +115,11 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     fetchLead()
     fetchTemplates()
-  }, [params.id])
+  }, [id])
 
   async function fetchLead() {
     try {
-      const res = await fetch(`/api/leads/${params.id}`)
+      const res = await fetch(`/api/leads/${id}`)
       if (res.ok) {
         const data = await res.json()
         setLead(data)
@@ -146,7 +149,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     if (!newTaskTitle || !newTaskDate) return
 
     try {
-      const res = await fetch(`/api/leads/${params.id}/tasks`, {
+      const res = await fetch(`/api/leads/${id}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -167,7 +170,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
   async function completeTask(taskId: string) {
     try {
-      const res = await fetch(`/api/leads/${params.id}/tasks?taskId=${taskId}`, {
+      const res = await fetch(`/api/leads/${id}/tasks?taskId=${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isCompleted: true }),
@@ -183,7 +186,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
   async function addActivity(type: string, notes?: string) {
     try {
-      const res = await fetch(`/api/leads/${params.id}/activities`, {
+      const res = await fetch(`/api/leads/${id}/activities`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type, notes }),

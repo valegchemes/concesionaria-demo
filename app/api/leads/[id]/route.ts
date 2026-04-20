@@ -18,9 +18,10 @@ const leadUpdateSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -28,7 +29,7 @@ export async function GET(
 
     const lead = await prisma.lead.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: session.user.companyId,
       },
       include: {
@@ -66,9 +67,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -80,7 +82,7 @@ export async function PATCH(
     // Verify lead belongs to company
     const existing = await prisma.lead.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: session.user.companyId,
       },
     })
@@ -90,7 +92,7 @@ export async function PATCH(
     }
 
     const lead = await prisma.lead.update({
-      where: { id: params.id },
+      where: { id },
       data: validated,
       include: {
         assignedTo: true,
@@ -110,9 +112,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -120,7 +123,7 @@ export async function DELETE(
 
     const existing = await prisma.lead.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: session.user.companyId,
       },
     })
@@ -130,7 +133,7 @@ export async function DELETE(
     }
 
     await prisma.lead.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })

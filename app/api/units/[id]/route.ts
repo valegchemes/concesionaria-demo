@@ -30,9 +30,10 @@ const unitUpdateSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -40,7 +41,7 @@ export async function GET(
 
     const unit = await prisma.unit.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: session.user.companyId,
       },
       include: {
@@ -74,9 +75,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -84,7 +86,7 @@ export async function PATCH(
 
     // Verify unit belongs to company
     const existingUnit = await prisma.unit.findFirst({
-      where: { id: params.id, companyId: session.user.companyId }
+      where: { id, companyId: session.user.companyId }
     })
     if (!existingUnit) {
       return NextResponse.json({ error: 'Unit not found' }, { status: 404 })
@@ -96,11 +98,11 @@ export async function PATCH(
     // Update photos if provided
     if (validated.photos) {
       await prisma.unitPhoto.deleteMany({
-        where: { unitId: params.id }
+        where: { unitId: id }
       })
       await prisma.unitPhoto.createMany({
         data: validated.photos.map((p, i) => ({
-          unitId: params.id,
+          unitId: id,
           url: p.url,
           order: i,
         }))
@@ -108,7 +110,7 @@ export async function PATCH(
     }
 
     const unit = await prisma.unit.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title: validated.title,
         description: validated.description,
@@ -145,9 +147,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user?.companyId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -155,14 +158,14 @@ export async function DELETE(
 
     // Verify unit belongs to company
     const existingUnit = await prisma.unit.findFirst({
-      where: { id: params.id, companyId: session.user.companyId }
+      where: { id, companyId: session.user.companyId }
     })
     if (!existingUnit) {
       return NextResponse.json({ error: 'Unit not found' }, { status: 404 })
     }
 
     await prisma.unit.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ success: true })
