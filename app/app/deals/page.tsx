@@ -48,9 +48,11 @@ export default function DealsPage() {
 
   async function fetchDeals() {
     try {
-      const res = await fetch('/api/deals')
+      const res = await fetch('/api/deals', { cache: 'no-store' })
       if (res.ok) {
-        setDeals(await res.json())
+        const data = await res.json()
+        // The API returns a standardized object { success: true, data: [...], ... }
+        setDeals(data.data || [])
       }
     } catch (err) {
       console.error('Error fetching deals:', err)
@@ -59,10 +61,12 @@ export default function DealsPage() {
     }
   }
 
-  const filteredDeals = deals.filter(deal =>
-    deal.lead.name.toLowerCase().includes(search.toLowerCase()) ||
-    deal.unit.title.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredDeals = Array.isArray(deals)
+    ? deals.filter(deal =>
+        deal.lead.name.toLowerCase().includes(search.toLowerCase()) ||
+        deal.unit.title.toLowerCase().includes(search.toLowerCase())
+      )
+    : []
 
   if (loading) {
     return (

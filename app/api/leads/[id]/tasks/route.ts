@@ -12,7 +12,7 @@ const taskSchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -20,10 +20,12 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Verify lead belongs to company
     const lead = await prisma.lead.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: session.user.companyId,
       },
     })
@@ -38,7 +40,7 @@ export async function POST(
     const task = await prisma.task.create({
       data: {
         ...validated,
-        leadId: params.id,
+        leadId: id,
         companyId: session.user.companyId,
         assignedToId: validated.assignedToId || session.user.id,
       },
@@ -61,7 +63,7 @@ export async function POST(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -76,13 +78,15 @@ export async function PATCH(
       return NextResponse.json({ error: 'Task ID required' }, { status: 400 })
     }
 
+    const { id } = await params
+
     const body = await request.json()
     const { isCompleted } = body
 
     const task = await prisma.task.updateMany({
       where: {
         id: taskId,
-        leadId: params.id,
+        leadId: id,
         companyId: session.user.companyId,
       },
       data: {

@@ -9,6 +9,7 @@ import {
   Handshake,
   Settings,
   Store,
+  CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Operaciones', href: '/app/deals', icon: Handshake },
   { name: 'Equipo', href: '/app/team', icon: Users },
   { name: 'Configuración', href: '/app/settings', icon: Settings },
+  { name: 'Suscripción', href: '/app/settings/billing', icon: CreditCard },
 ]
 
 interface AppSidebarProps {
@@ -29,6 +31,8 @@ interface AppSidebarProps {
     role: string
     companyName: string
     companySlug: string
+    avatarUrl?: string
+    logoUrl?: string
   }
 }
 
@@ -39,7 +43,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
     <aside className="w-64 bg-slate-900 text-white flex flex-col">
       <div className="p-4 border-b border-slate-800">
         <div className="flex items-center gap-2">
-          <Store className="h-6 w-6 text-blue-400" />
+          {user.logoUrl ? (
+            <img src={user.logoUrl} alt={user.companyName} className="h-8 w-8 rounded-md object-contain bg-white" />
+          ) : (
+            <Store className="h-6 w-6 text-blue-400" />
+          )}
           <span className="font-bold text-lg truncate">{user.companyName}</span>
         </div>
       </div>
@@ -66,9 +74,18 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </nav>
 
       <div className="p-4 border-t border-slate-800">
-        <div>
-          <p className="text-sm font-medium text-white">{user.name}</p>
-          <p className="text-xs text-slate-400">{user.role === 'ADMIN' ? 'Administrador' : 'Vendedor'}</p>
+        <div className="flex items-center gap-3">
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full object-cover border border-slate-700" />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center">
+              <span className="text-sm font-medium text-slate-300">{user.name.charAt(0).toUpperCase()}</span>
+            </div>
+          )}
+          <div className="overflow-hidden">
+            <p className="text-sm font-medium text-white truncate">{user.name}</p>
+            <p className="text-xs text-slate-400">{user.role === 'ADMIN' ? 'Administrador' : 'Vendedor'}</p>
+          </div>
         </div>
       </div>
     </aside>

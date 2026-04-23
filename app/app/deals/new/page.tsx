@@ -64,9 +64,19 @@ export default function NewDealPage() {
           fetch('/api/users', { cache: 'no-store' }),
         ])
 
-        if (leadsRes.ok) setLeads(await leadsRes.json())
-        if (unitsRes.ok) setUnits(await unitsRes.json())
-        if (sellersRes.ok) setSellers(await sellersRes.json())
+        if (leadsRes.ok) {
+          const data = await leadsRes.json()
+          setLeads(data.data || [])
+        }
+        if (unitsRes.ok) {
+          const data = await unitsRes.json()
+          setUnits(data.data || [])
+        }
+        if (sellersRes.ok) {
+          const data = await sellersRes.json()
+          // Users API still returns an array directly
+          setSellers(Array.isArray(data) ? data : [])
+        }
       } catch (err) {
         console.error('Error cargando datos para operacion:', err)
       } finally {
@@ -165,7 +175,7 @@ export default function NewDealPage() {
                   required
                 >
                   <option value="">Seleccionar cliente...</option>
-                  {leads.map(l => (
+                  {Array.isArray(leads) && leads.map(l => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
                 </select>
@@ -181,7 +191,7 @@ export default function NewDealPage() {
                   required
                 >
                   <option value="">Seleccionar vehículo...</option>
-                  {units.map(u => (
+                  {Array.isArray(units) && units.map(u => (
                     <option key={u.id} value={u.id}>{u.title}</option>
                   ))}
                 </select>
@@ -197,7 +207,7 @@ export default function NewDealPage() {
                   required
                 >
                   <option value="">Seleccionar vendedor...</option>
-                  {sellers.map(s => (
+                  {Array.isArray(sellers) && sellers.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>

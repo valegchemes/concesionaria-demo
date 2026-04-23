@@ -48,7 +48,7 @@ export default function TeamPage() {
 
   async function fetchTeam() {
     try {
-      const res = await fetch('/api/users')
+      const res = await fetch('/api/users', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
         setMembers(data)

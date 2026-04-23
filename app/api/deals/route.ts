@@ -1,106 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { z } from 'zod'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
+import { NextRequest } from 'next/server'
+import { withErrorHandling, successResponse, paginatedResponse } from '@/lib/shared/api-response'
+import { getCurrentUser } from '@/lib/shared/auth-helpers'
+import { parsePagination } from '@/lib/shared/pagination'
+import { CreateDealSchema } from '@/lib/shared/validation'
+import { dealService } from '@/lib/domains/deals/service'
+import { createLogger } from '@/lib/shared/logger'
 
-const dealSchema = z.object({
-  leadId: z.string().min(1),
-  unitId: z.string().min(1),
-  sellerId: z.string().min(1),
-  finalPrice: z.number().min(0),
-  finalPriceCurrency: z.enum(['ARS', 'USD']).default('ARS'),
-  status: z.enum(['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT', 'DELIVERED', 'CANCELED']).default('NEGOTIATION'),
-  depositAmount: z.number().optional(),
-  notes: z.string().optional(),
+const log = createLogger('DealRoutes')
+
+/**
+ * GET /api/deals - List all deals for company
+ * Query params: page, limit, status, soldById
+ */
+export const GET = withErrorHandling(async (request: NextRequest) => {
+  const user = await getCurrentUser()
+
+  const { searchParams } = new URL(request.url)
+  const pagination = parsePagination({
+    page: searchParams.get('page') || undefined,
+    limit: searchParams.get('limit') || undefined,
+  })
+  const status = searchParams.get('status') || undefined
+  const soldById = searchParams.get('soldById') || undefined
+
+  log.info(
+    {
+      page: pagination.page,
+      limit: pagination.limit,
+      status,
+    },
+    'Fetching deals list'
+  )
+
+  const { deals, pagination: paginationMeta } = await dealService.list(
+    user.companyId,
+    {
+      page: pagination.page,
+      limit: pagination.limit,
+      status: status as string | undefined,
+      soldById: soldById as string | undefined,
+    }
+  )
+
+  return paginatedResponse(
+    deals,
+    paginationMeta.total,
+    paginationMeta.page,
+    paginationMeta.limit
+  )
 })
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.companyId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+/**
+ * POST /api/deals - Create new deal
+ */
+export const POST = withErrorHandling(async (request: NextRequest) => {
+  const user = await getCurrentUser()
 
-    const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
+  const json = await request.json()
+  const data = CreateDealSchema.parse(json)
 
-    const where: any = { companyId: session.user.companyId }
-    if (status) where.status = status
+  log.info(
+    { leadId: data.leadId, unitId: data.unitId, amount: data.finalPrice },
+    'Creating new deal'
+  )
 
-    const deals = await prisma.deal.findMany({
-      where,
-      include: {
-        lead: { select: { name: true, phone: true } },
-        unit: { select: { title: true, type: true } },
-        seller: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+  const deal = await dealService.create({
+    ...data,
+    companyId: user.companyId,
+    sellerId: data.sellerId,
+    createdById: user.id,
+  })
 
-    return NextResponse.json(deals)
-  } catch (error) {
-    console.error('Error fetching deals:', error)
-    return NextResponse.json({ error: 'Failed to fetch deals' }, { status: 500 })
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.companyId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await request.json()
-    const validated = dealSchema.parse(body)
-
-    // Inicamos transacción para crear Deal y cambiar estado de Unidad si es necesario
-    const deal = await prisma.$transaction(async (tx) => {
-      const newDeal = await tx.deal.create({
-        data: {
-          ...validated,
-          companyId: session.user.companyId,
-        },
-        include: {
-          lead: true,
-          unit: true,
-        }
-      })
-
-      // Si el deal está en RESERVED o DELIVERED, actualizamos el status de la unidad
-      if (validated.status === 'RESERVED') {
-        await tx.unit.update({
-          where: { id: validated.unitId },
-          data: { status: 'RESERVED' }
-        })
-      } else if (validated.status === 'DELIVERED') {
-        await tx.unit.update({
-          where: { id: validated.unitId },
-          data: { status: 'SOLD' }
-        })
-      }
-
-      // Registrar actividad en el Lead
-      await tx.leadActivity.create({
-        data: {
-          type: 'OFFER_RECEIVED',
-          notes: `Operación creada: ${validated.status} por ${validated.finalPriceCurrency} ${validated.finalPrice}`,
-          leadId: validated.leadId,
-          createdById: session.user.id,
-          companyId: session.user.companyId,
-        }
-      })
-
-      return newDeal
-    })
-
-    return NextResponse.json(deal, { status: 201 })
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues }, { status: 400 })
-    }
-    console.error('Error creating deal:', error)
-    return NextResponse.json({ error: 'Failed to create deal' }, { status: 500 })
-  }
-}
+  return successResponse(deal, 201)
+})

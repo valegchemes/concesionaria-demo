@@ -9,6 +9,7 @@ interface AppHeaderProps {
     name: string
     email: string
     role: string
+    avatarUrl?: string
   }
 }
 
@@ -31,9 +32,18 @@ export function AppHeader({ user }: AppHeaderProps) {
           <Bell className="h-5 w-5" />
           <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
         </button>
-        <div className="text-sm text-right">
-          <p className="font-medium">{user.name}</p>
-          <p className="text-gray-500">{user.email}</p>
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-right">
+            <p className="font-medium">{user.name}</p>
+            <p className="text-gray-500">{user.email}</p>
+          </div>
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full object-cover border" />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          )}
         </div>
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}

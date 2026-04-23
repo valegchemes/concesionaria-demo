@@ -122,7 +122,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       const res = await fetch(`/api/leads/${id}`)
       if (res.ok) {
         const data = await res.json()
-        setLead(data)
+        setLead(data.data)
       }
     } catch (error) {
       console.error('Error fetching lead:', error)
@@ -227,9 +227,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (loading) return <div>Cargando...</div>
   if (!lead) return <div>Lead no encontrado</div>
 
-  const overdueTasks = lead.tasks.filter(t => 
+  const overdueTasks = lead.tasks?.filter(t => 
     !t.isCompleted && new Date(t.dueDate) < new Date()
-  )
+  ) || []
 
   return (
     <div className="space-y-6">

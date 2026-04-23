@@ -12,11 +12,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, email, password } = body
+    const { name, email, password, avatarUrl } = body
 
     const updateData: any = {}
     if (name) updateData.name = name
     if (email) updateData.email = email
+    if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl
     
     // Si envían password, significa que quieren cambiarla
     if (password) {

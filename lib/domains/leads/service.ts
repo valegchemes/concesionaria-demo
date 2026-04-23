@@ -1,0 +1,302 @@
+// lib/domains/leads/service.ts
+/**
+ * Lead Service - Business logic for lead management
+ * 
+ * Handles:
+ * - Creating, reading, updating, deleting leads
+ * - Lead status transitions
+ * - Assignment logic
+ * - Validation and error handling
+ * - Event emission (future: webhooks, notifications)
+ */
+
+import { Prisma } from '@prisma/client'
+import { createLogger } from '@/lib/shared/logger'
+import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
+import { prisma } from '@/lib/shared/prisma'
+import type { CreateLeadCommand, UpdateLeadCommand, LeadWithRelations } from './types'
+
+const log = createLogger('LeadService')
+
+export class LeadService {
+  /**
+   * Create a new lead
+   */
+  async create(command: CreateLeadCommand): Promise<LeadWithRelations> {
+    log.info({ companyId: command.companyId, leadName: command.name }, 'Creating lead')
+
+    // Validate that company exists
+    const company = await prisma.company.findUnique({
+      where: { id: command.companyId },
+    })
+
+    if (!company) {
+      throw new NotFoundError('Company', command.companyId)
+    }
+
+    // Check for duplicate phone in same company
+    const existingLead = await prisma.lead.findFirst({
+      where: { phone: command.phone, companyId: command.companyId, isActive: true },
+    })
+
+    if (existingLead) {
+      throw new ConflictError(
+        `Lead with phone ${command.phone} already exists in this company`
+      )
+    }
+
+    // Create lead
+    const lead = await prisma.lead.create({
+      data: {
+        name: command.name.trim(),
+        phone: command.phone.trim(),
+        email: command.email?.toLowerCase().trim(),
+        source: command.source as any,
+        notes: command.notes?.trim(),
+        companyId: command.companyId,
+        createdById: command.createdById,
+        status: 'NEW' as any,
+      },
+      include: {
+        activities: true,
+        assignedTo: { select: { id: true, name: true, email: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
+    })
+
+    log.info({ leadId: lead.id }, 'Lead created successfully')
+
+    // TODO: Emit event for webhooks/notifications
+    // await eventBus.emit('lead.created', { leadId: lead.id, companyId })
+
+    return lead as any
+  }
+
+  /**
+   * Get lead by ID
+   */
+  async getById(id: string, companyId: string): Promise<LeadWithRelations> {
+    log.debug({ leadId: id, companyId }, 'Fetching lead')
+
+    const lead = await prisma.lead.findFirst({
+      where: { id, companyId, isActive: true },
+      include: {
+        activities: { orderBy: { createdAt: 'desc' }, take: 10 },
+        assignedTo: { select: { id: true, name: true, email: true } },
+        createdBy: { select: { id: true, name: true } },
+        interestedUnit: { select: { id: true, title: true } },
+        deals: { orderBy: { createdAt: 'desc' }, take: 5 },
+        tasks: { where: { isCompleted: false }, orderBy: { dueDate: 'asc' } },
+      },
+    })
+
+    if (!lead) {
+      throw new NotFoundError('Lead', id)
+    }
+
+    return lead
+  }
+
+  /**
+   * Get all leads for company with pagination
+   */
+  async list(
+    companyId: string,
+    {
+      page = 1,
+      limit = 20,
+      status,
+      assignedToId,
+    }: {
+      page?: number
+      limit?: number
+      status?: string
+      assignedToId?: string
+    } = {}
+  ) {
+    log.debug({ companyId, page, limit, status }, 'Listing leads')
+
+    // Validate pagination
+    const pageNum = Math.max(1, page)
+    const limitNum = Math.max(1, Math.min(100, limit))
+    const skip = (pageNum - 1) * limitNum
+
+    // Build filter
+    const where: Prisma.LeadWhereInput = {
+      companyId,
+      isActive: true,
+      ...(status && { status: status as any }),
+      ...(assignedToId && { assignedToId }),
+    }
+
+    // Get total count and paginated results
+    const [total, leads] = await Promise.all([
+      prisma.lead.count({ where }),
+      prisma.lead.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          source: true,
+          status: true,
+          notes: true,
+          createdAt: true,
+          assignedTo: { select: { id: true, name: true } },
+          _count: { select: { activities: true, tasks: true, deals: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limitNum,
+      }),
+    ])
+
+    const totalPages = Math.ceil(total / limitNum)
+
+    log.info({ total, returned: leads.length }, 'Leads fetched')
+
+    return {
+      leads,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+        hasMore: pageNum < totalPages,
+      },
+    }
+  }
+
+  /**
+   * Update lead
+   */
+  async update(
+    id: string,
+    companyId: string,
+    command: UpdateLeadCommand
+  ): Promise<LeadWithRelations> {
+    log.info({ leadId: id, changes: Object.keys(command) }, 'Updating lead')
+
+    // Get current lead
+    const currentLead = await this.getById(id, companyId)
+
+    // Validate status transition if changing status
+    if (command.status && command.status !== currentLead.status) {
+      await this.validateStatusTransition(currentLead.status, command.status)
+    }
+
+    // Validate assignee exists if assigning
+    if (command.assignedToId) {
+      const assignee = await prisma.user.findFirst({
+        where: { id: command.assignedToId, companyId },
+      })
+      if (!assignee) {
+        throw new NotFoundError('User', command.assignedToId)
+      }
+    }
+
+    // Update lead
+    const updated = await prisma.lead.update({
+      where: { id },
+      data: {
+        ...(command.name && { name: command.name.trim() }),
+        ...(command.phone && { phone: command.phone.trim() }),
+        ...(command.email && { email: command.email.toLowerCase().trim() }),
+        ...(command.status && { status: command.status as any }),
+        ...(command.notes !== undefined && { notes: command.notes?.trim() || null }),
+        ...(command.assignedToId !== undefined && {
+          assignedTo: command.assignedToId
+            ? { connect: { id: command.assignedToId } }
+            : { disconnect: true },
+        }),
+        updatedAt: new Date(),
+      },
+      include: {
+        activities: true,
+        assignedTo: { select: { id: true, name: true, email: true } },
+        createdBy: { select: { id: true, name: true } },
+      },
+    })
+
+    log.info({ leadId: id, newStatus: command.status }, 'Lead updated')
+
+    // TODO: Emit event
+    // await eventBus.emit('lead.updated', { leadId: id, changes: command })
+
+    return updated as any
+  }
+
+  /**
+   * Delete lead (soft delete)
+   */
+  async delete(id: string, companyId: string): Promise<void> {
+    log.info({ leadId: id }, 'Deleting lead')
+
+    // Verify lead exists
+    await this.getById(id, companyId)
+
+    // Soft delete
+    await prisma.lead.update({
+      where: { id },
+      data: { isActive: false },
+    })
+
+    log.info({ leadId: id }, 'Lead deleted')
+  }
+
+  /**
+   * Validate status transition
+   */
+  private async validateStatusTransition(
+    currentStatus: string,
+    newStatus: string
+  ): Promise<void> {
+    const validTransitions: Record<string, string[]> = {
+      NEW: ['CONTACTED', 'LOST'],
+      CONTACTED: ['VISIT_SCHEDULED', 'LOST'],
+      VISIT_SCHEDULED: ['OFFER', 'LOST'],
+      OFFER: ['RESERVED', 'LOST'],
+      RESERVED: ['SOLD', 'LOST'],
+      SOLD: [],
+      LOST: ['NEW', 'CONTACTED'], // Can reopen lost leads
+    }
+
+    const allowed = validTransitions[currentStatus] || []
+    if (!allowed.includes(newStatus)) {
+      throw new ValidationError(
+        `Cannot transition from ${currentStatus} to ${newStatus}`
+      )
+    }
+  }
+
+  /**
+   * Search leads by name or phone
+   */
+  async search(
+    companyId: string,
+    query: string,
+    limit: number = 10
+  ): Promise<Array<{ id: string; name: string; phone: string; status: string }>> {
+    log.debug({ companyId, query }, 'Searching leads')
+
+    const leads = await prisma.lead.findMany({
+      where: {
+        companyId,
+        isActive: true,
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { phone: { contains: query.replace(/\D/g, '') } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true, name: true, phone: true, status: true },
+      take: limit,
+    })
+
+    return leads
+  }
+}
+
+// Export singleton
+export const leadService = new LeadService()

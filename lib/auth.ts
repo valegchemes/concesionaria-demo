@@ -45,6 +45,7 @@ export async function verifyCredentials(email: string, password: string, company
     role: user.role,
     companyId: user.companyId,
     company: user.company,
+    avatarUrl: user.avatarUrl,
   }
 }
 

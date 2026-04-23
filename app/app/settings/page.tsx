@@ -18,28 +18,39 @@ export default function SettingsPage() {
   const [companyEmail, setCompanyEmail] = useState('')
   const [whatsappCentral, setWhatsappCentral] = useState('')
   const [currencyPref, setCurrencyPref] = useState('BOTH')
+  const [logoUrl, setLogoUrl] = useState('')
 
   // States for User Settings
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
 
   // Load initial data
   useEffect(() => {
     async function fetchSettings() {
-      // In a real app we'd fetch full details if session doesn't have them all
-      // We will do a generic GET to fetch company details or populate from session
       try {
-        setCompanyName(session?.user?.companyName || '')
         setUserName(session?.user?.name || '')
         setUserEmail(session?.user?.email || '')
         
         // Fetch company data
         if (session?.user?.companyId) {
-          // You might have a specific endpoint to GET company settings, but for now we fallback to session
+          const res = await fetch('/api/settings/company')
+          if (res.ok) {
+            const data = await res.json()
+            setCompanyName(data.name || '')
+            setCompanyPhone(data.phone || '')
+            setCompanyEmail(data.email || '')
+            setWhatsappCentral(data.whatsappCentral || '')
+            setCurrencyPref(data.currencyPreference || 'BOTH')
+            setLogoUrl(data.logoUrl || '')
+          } else {
+            // Fallback to session if API fails
+            setCompanyName(session?.user?.companyName || '')
+          }
         }
       } catch (err) {
-        console.error(err)
+        console.error('Error fetching settings:', err)
       }
     }
     if (session?.user) {
@@ -59,7 +70,8 @@ export default function SettingsPage() {
           phone: companyPhone,
           email: companyEmail,
           whatsappCentral,
-          currencyPreference: currencyPref
+          currencyPreference: currencyPref,
+          logoUrl
         })
       })
       if (res.ok) {
@@ -83,6 +95,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           name: userName,
           email: userEmail,
+          avatarUrl,
           ...(password ? { password } : {})
         })
       })
@@ -119,6 +132,30 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCompanySubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Logo de la Empresa</Label>
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 bg-slate-100 rounded-md overflow-hidden flex items-center justify-center border">
+                    {logoUrl ? (
+                      <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                    ) : (
+                      <Building2 className="h-8 w-8 text-slate-300" />
+                    )}
+                  </div>
+                  <Input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        const reader = new FileReader()
+                        reader.onloadend = () => setLogoUrl(reader.result as string)
+                        reader.readAsDataURL(e.target.files[0])
+                      }
+                    }} 
+                    className="flex-1" 
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="companyName">Nombre Visible</Label>
                 <Input 
@@ -188,6 +225,30 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUserSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Tu Foto de Perfil</Label>
+                  <div className="flex items-center gap-4">
+                    <div className="h-16 w-16 bg-slate-100 rounded-full overflow-hidden flex items-center justify-center border">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="h-8 w-8 text-slate-300" />
+                      )}
+                    </div>
+                    <Input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          const reader = new FileReader()
+                          reader.onloadend = () => setAvatarUrl(reader.result as string)
+                          reader.readAsDataURL(e.target.files[0])
+                        }
+                      }} 
+                      className="flex-1" 
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="userName">Tu Nombre</Label>
                   <Input 

@@ -107,11 +107,22 @@ export default function NewUnitPage() {
       if (res.ok) {
         router.push('/app/units')
       } else {
-        const error = await res.json()
-        alert('Error: ' + JSON.stringify(error))
+        const errorData = await res.json()
+        let errorMessage = 'Error al guardar la unidad.'
+        
+        if (errorData.error === 'Validation failed' && errorData.details) {
+          errorMessage = 'Errores de validación:\n' + Object.entries(errorData.details)
+            .map(([field, errors]) => `- ${field}: ${(errors as string[]).join(', ')}`)
+            .join('\n')
+        } else if (errorData.error) {
+          errorMessage = errorData.error
+        }
+        
+        alert(errorMessage)
       }
     } catch (error) {
       console.error('Error creating unit:', error)
+      alert('Error de conexión al servidor.')
     } finally {
       setLoading(false)
     }

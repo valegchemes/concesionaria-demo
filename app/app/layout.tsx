@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
+import { prisma } from '@/lib/shared/prisma'
 
 export default async function AppLayout({
   children,
@@ -15,6 +16,15 @@ export default async function AppLayout({
     redirect('/login')
   }
 
+  // Fetch avatarUrl and logoUrl fresh from DB (not from JWT to avoid cookie overflow)
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: {
+      avatarUrl: true,
+      company: { select: { logoUrl: true } },
+    },
+  })
+
   const user = {
     id: session.user.id,
     name: session.user.name ?? '',
@@ -23,6 +33,8 @@ export default async function AppLayout({
     companyId: session.user.companyId ?? '',
     companyName: session.user.companyName ?? '',
     companySlug: session.user.companySlug ?? '',
+    avatarUrl: dbUser?.avatarUrl ?? undefined,
+    logoUrl: dbUser?.company?.logoUrl ?? undefined,
   }
 
   return (

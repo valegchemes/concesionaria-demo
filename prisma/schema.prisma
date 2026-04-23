@@ -33,6 +33,13 @@ model Company {
   deals             Deal[]
   whatsappTemplates WhatsAppTemplate[]
   publicClickEvents PublicClickEvent[]
+  
+  // Audit & RBAC
+  auditLogs AuditLog[]
+  roles     Role[]
+
+  // Billing
+  subscription SaasSubscription?
 
   @@map("Company")
 }
@@ -45,6 +52,7 @@ model User {
   role           UserRole @default(SELLER)
   isActive       Boolean  @default(true)
   whatsappNumber String?
+  avatarUrl      String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -58,6 +66,12 @@ model User {
   tasks         Task[]         @relation("AssignedTasks")
   activities    LeadActivity[]
   deals         Deal[]
+  
+  // Audit trail
+  auditLogs AuditLog[]
+  
+  // Custom roles (for advanced RBAC)
+  customRoles Role[] @relation("UserRoles")
 
   @@unique([email, companyId])
   @@index([companyId])
@@ -387,6 +401,107 @@ model PublicClickEvent {
   @@map("PublicClickEvent")
 }
 
+// ==================== AUDIT & RBAC ====================
+
+//
+// Audit Log - Track all changes for compliance and debugging
+///
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   @db.VarChar(50) // CREATE, UPDATE, DELETE, LOGIN, LOGOUT
+  resource  String   @db.VarChar(100) // Lead, Unit, Deal, User, etc.
+  resourceId String?
+  
+  // Before and after state
+  before    Json?    // Previous state (nullable for CREATE)
+  after     Json?    // New state (nullable for DELETE)
+  
+  // Request context
+  ipAddress String?
+  userAgent String?
+  reason    String?  // Why the change was made
+  
+  createdAt DateTime @default(now())
+
+  // Multi-tenant
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, createdAt])
+  @@index([userId, createdAt])
+  @@index([resource, resourceId])
+  @@map("AuditLog")
+}
+
+//
+// Custom Roles for advanced RBAC
+// Allows companies to create custom roles with specific permissions
+///
+model Role {
+  id          String @id @default(cuid())
+  name        String // "Manager", "Sales Lead", "Admin", etc.
+  description String?
+  isDefault   Boolean @default(false) // System roles (ADMIN, MANAGER, SELLER)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Multi-tenant
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Permissions
+  permissions RolePermission[]
+  users       User[] @relation("UserRoles")
+
+  // Unique: system roles have no company, custom roles belong to a company
+  @@unique([name, companyId])
+  @@index([companyId])
+  @@map("Role")
+}
+
+//
+// Permissions - Granular access control
+// Define what actions users can perform
+///
+model Permission {
+  id          String @id @default(cuid())
+  name        String @unique // "leads:view", "deals:approve", "users:delete"
+  description String?
+  resource    String // "leads", "deals", "users"
+  action      String // "view", "create", "edit", "delete", "approve"
+  
+  createdAt   DateTime @default(now())
+
+  // Roles that have this permission
+  roles RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@map("Permission")
+}
+
+//
+// RolePermission - Join table for many-to-many relationship
+///
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  role         Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+  @@map("RolePermission")
+}
+
 // ==================== ENUMS ====================
 
 enum UserRole {
@@ -483,4 +598,80 @@ enum ClickType {
   PHONE_CLICK
   UNIT_VIEW
   SHARE_CLICK
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  PAUSED
+}
+
+// ==================== SAAS BILLING ====================
+
+model SaasPlan {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  stripeProductId  String   @unique
+  stripePriceId    String   @unique
+  price            Decimal  @db.Decimal(10, 2)
+  currency         String   @default("usd")
+  interval         String   @default("month")
+  isActive         Boolean  @default(true)
+  
+  // Features / Quotas
+  maxUsers         Int      @default(0) // 0 = unlimited
+  maxUnits         Int      @default(0)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  subscriptions    SaasSubscription[]
+
+  @@map("SaasPlan")
+}
+
+model SaasSubscription {
+  id                   String   @id @default(cuid())
+  
+  companyId            String   @unique
+  company              Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  planId               String?
+  plan                 SaasPlan? @relation(fields: [planId], references: [id])
+  
+  stripeCustomerId     String   @unique
+  stripeSubscriptionId String?  @unique
+  
+  status               SubscriptionStatus @default(INCOMPLETE)
+  
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean  @default(false)
+  canceledAt           DateTime?
+  trialEndsAt          DateTime?
+  
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+  @@map("SaasSubscription")
+}
+
+model SaasUsageEvent {
+  id              String   @id @default(cuid())
+  companyId       String
+  event           String   // e.g., 'unit_added', 'user_added'
+  quantity        Int      @default(1)
+  createdAt       DateTime @default(now())
+
+  @@index([companyId])
+  @@map("SaasUsageEvent")
 }

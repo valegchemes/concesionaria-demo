@@ -10,7 +10,7 @@ const activitySchema = z.object({
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -18,10 +18,12 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const { id } = await params
+
     // Verify lead exists
     const lead = await prisma.lead.findFirst({
       where: {
-        id: params.id,
+        id,
         companyId: session.user.companyId,
       },
     })
@@ -36,7 +38,7 @@ export async function POST(
     const activity = await prisma.leadActivity.create({
       data: {
         ...validated,
-        leadId: params.id,
+        leadId: id,
         createdById: session.user.id,
         companyId: session.user.companyId,
       },

@@ -10,6 +10,8 @@ declare module 'next-auth' {
       companyId: string
       companyName: string
       companySlug: string
+      avatarUrl?: string
+      logoUrl?: string
     }
   }
 
@@ -19,6 +21,8 @@ declare module 'next-auth' {
     companyId: string
     companyName: string
     companySlug: string
+    avatarUrl?: string | null
+    company: any // Added to allow user.company to pass through
   }
 }
 
@@ -29,5 +33,7 @@ declare module 'next-auth/jwt' {
     companyId: string
     companyName: string
     companySlug: string
+    avatarUrl?: string
+    logoUrl?: string
   }
 }

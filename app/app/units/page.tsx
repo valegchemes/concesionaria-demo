@@ -18,7 +18,7 @@ interface Unit {
   location: string | null
   tags: string[]
   createdAt: string
-  photos: { url: string }[]
+  photoUrl: string | null
   _count: { interestedLeads: number }
 }
 
@@ -53,10 +53,11 @@ export default function UnitsPage() {
 
   async function fetchUnits() {
     try {
-      const res = await fetch('/api/units')
+      const res = await fetch('/api/units', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setUnits(data)
+        // The API returns a standardized object { success: true, data: [...], ... }
+        setUnits(data.data || [])
       }
     } catch (error) {
       console.error('Error fetching units:', error)
@@ -71,17 +72,19 @@ export default function UnitsPage() {
     try {
       const res = await fetch(`/api/units/${id}`, { method: 'DELETE' })
       if (res.ok) {
-        setUnits(units.filter(u => u.id !== id))
+        setUnits(prev => prev.filter(u => u.id !== id))
       }
     } catch (error) {
       console.error('Error deleting unit:', error)
     }
   }
 
-  const filteredUnits = units.filter(unit =>
-    unit.title.toLowerCase().includes(search.toLowerCase()) ||
-    unit.location?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filteredUnits = Array.isArray(units)
+    ? units.filter(unit =>
+        unit.title.toLowerCase().includes(search.toLowerCase()) ||
+        unit.location?.toLowerCase().includes(search.toLowerCase())
+      )
+    : []
 
   if (loading) return <div>Cargando...</div>
 
@@ -117,9 +120,9 @@ export default function UnitsPage() {
           return (
             <Card key={unit.id} className="overflow-hidden">
               <div className="aspect-video bg-gray-100 relative">
-                {unit.photos[0] ? (
+                {unit.photoUrl ? (
                   <img
-                    src={unit.photos[0].url}
+                    src={unit.photoUrl}
                     alt={unit.title}
                     className="w-full h-full object-cover"
                   />

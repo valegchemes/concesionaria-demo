@@ -1,9 +1,10 @@
 import { prisma } from './prisma'
 import { getServerSession } from 'next-auth'
 import { NextRequest } from 'next/server'
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 
 export async function getCurrentCompanyId(): Promise<string> {
-  const session = await getServerSession()
+  const session = await getServerSession(authOptions)
   
   if (!session?.user?.companyId) {
     throw new Error('No companyId in session')

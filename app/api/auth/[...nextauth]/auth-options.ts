@@ -34,18 +34,23 @@ export const authOptions: NextAuthOptions = {
           companyId: user.companyId,
           companyName: user.company.name,
           companySlug: user.company.slug,
-        }
+          avatarUrl: user.avatarUrl,
+          logoUrl: user.company.logoUrl,
+        } as any
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id
         token.role = user.role
         token.companyId = user.companyId
         token.companyName = user.companyName
-        token.companySlug = user.companySlug
+        token.companySlug = (user as any).companySlug
+        // Do NOT store avatarUrl/logoUrl in the JWT — they can be large base64
+        // strings that overflow the cookie size limit (HTTP 431).
+        // They are fetched fresh from the DB in the layout server component.
       }
       return token
     },
@@ -56,6 +61,7 @@ export const authOptions: NextAuthOptions = {
         session.user.companyId = token.companyId as string
         session.user.companyName = token.companyName as string
         session.user.companySlug = token.companySlug as string
+        // avatarUrl and logoUrl are NOT in the token — see layout.tsx
       }
       return session
     },

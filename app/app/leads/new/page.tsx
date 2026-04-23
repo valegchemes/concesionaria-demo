@@ -63,10 +63,10 @@ export default function NewLeadPage() {
 
   async function fetchUsers() {
     try {
-      const res = await fetch('/api/users')
+      const res = await fetch('/api/users', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setUsers(data)
+        setUsers(Array.isArray(data) ? data : [])
       }
     } catch (error) {
       console.error('Error fetching users:', error)
@@ -75,10 +75,10 @@ export default function NewLeadPage() {
 
   async function fetchUnits() {
     try {
-      const res = await fetch('/api/units?status=AVAILABLE')
+      const res = await fetch('/api/units?limit=200', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setUnits(data)
+        setUnits(data.data || [])
       }
     } catch (error) {
       console.error('Error fetching units:', error)
@@ -105,11 +105,22 @@ export default function NewLeadPage() {
       if (res.ok) {
         router.push('/app/leads')
       } else {
-        const error = await res.json()
-        alert('Error: ' + JSON.stringify(error))
+        const errorData = await res.json()
+        let errorMessage = 'Error al guardar el lead.'
+        
+        if (errorData.error === 'Validation failed' && errorData.details) {
+          errorMessage = 'Errores de validación:\n' + Object.entries(errorData.details)
+            .map(([field, errors]) => `- ${field}: ${(errors as string[]).join(', ')}`)
+            .join('\n')
+        } else if (errorData.error) {
+          errorMessage = errorData.error
+        }
+        
+        alert(errorMessage)
       }
     } catch (error) {
       console.error('Error creating lead:', error)
+      alert('Error de conexión al servidor.')
     } finally {
       setLoading(false)
     }

@@ -66,10 +66,11 @@ export default function LeadsPage() {
 
   async function fetchLeads() {
     try {
-      const res = await fetch('/api/leads')
+      const res = await fetch('/api/leads', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        setLeads(data)
+        // The API returns a standardized object { success: true, data: [...], ... }
+        setLeads(data.data || [])
       }
     } catch (error) {
       console.error('Error fetching leads:', error)
@@ -78,18 +79,21 @@ export default function LeadsPage() {
     }
   }
 
-  const filteredLeads = leads.filter(lead =>
-    lead.name.toLowerCase().includes(search.toLowerCase()) ||
-    lead.phone.includes(search)
-  )
+  const filteredLeads = Array.isArray(leads) 
+    ? leads.filter(lead =>
+        lead.name.toLowerCase().includes(search.toLowerCase()) ||
+        lead.phone.includes(search)
+      )
+    : []
 
   function hasOverdueTask(lead: Lead): boolean {
     if (lead.status === 'LOST' || lead.status === 'SOLD') return false
-    if (lead.tasks.length === 0 && 
+    const tasks = lead.tasks || []
+    if (tasks.length === 0 && 
         ['CONTACTED', 'VISIT_SCHEDULED', 'OFFER'].includes(lead.status)) {
       return true
     }
-    if (lead.tasks[0] && new Date(lead.tasks[0].dueDate) < new Date()) {
+    if (tasks[0] && new Date(tasks[0].dueDate) < new Date()) {
       return true
     }
     return false
@@ -175,7 +179,7 @@ export default function LeadsPage() {
                     )}
                   </div>
 
-                  {lead.tasks[0] && (
+                  {lead.tasks?.[0] && (
                     <div className={`mt-2 text-xs flex items-center gap-1 ${
                       new Date(lead.tasks[0].dueDate) < new Date() ? 'text-red-600' : 'text-gray-500'
                     }`}>
