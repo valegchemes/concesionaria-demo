@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { stripe } from '@/lib/domains/billing/stripe'
