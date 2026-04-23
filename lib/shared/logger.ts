@@ -9,22 +9,26 @@ let logger: any
 if (isServer) {
   // Dynamic import for server-side only
   const pino = require('pino')
-  logger = pino({
-    level: process.env.LOG_LEVEL || 'info',
-    base: {
-      env: process.env.NODE_ENV,
-      service: "concesionaria-api",
-    },
-  },
-  pino.transport({
-    target: "pino-pretty",
-    options: {
-      colorize: process.env.NODE_ENV === "development",
-      singleLine: false,
-      translateTime: "HH:MM:ss Z",
-      ignore: "pid,hostname",
-    },
-  }))
+  
+  if (process.env.NODE_ENV === "development") {
+    logger = pino({
+      level: process.env.LOG_LEVEL || 'info',
+      base: { env: process.env.NODE_ENV, service: "concesionaria-api" },
+    }, pino.transport({
+      target: "pino-pretty",
+      options: {
+        colorize: true,
+        singleLine: false,
+        translateTime: "HH:MM:ss Z",
+        ignore: "pid,hostname",
+      },
+    }))
+  } else {
+    logger = pino({
+      level: process.env.LOG_LEVEL || 'info',
+      base: { env: process.env.NODE_ENV, service: "concesionaria-api" },
+    })
+  }
 } else {
   // Browser fallback - simple console logger
   logger = {
