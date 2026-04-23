@@ -8,6 +8,8 @@ import { createLogger } from '@/lib/shared/logger'
 
 const log = createLogger('LeadRoutes')
 
+export const maxDuration = 30
+
 /**
  * GET /api/leads - List all leads for company
  * Query params: page, limit, status, assignedToId

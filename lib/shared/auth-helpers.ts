@@ -5,59 +5,40 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { UnauthorizedError, ForbiddenError } from './errors'
 
-const DEMO_USER_ID = 'demo-user-id'
-const DEMO_COMPANY_ID = 'demo-company-id'
-const DEMO_USER = {
-  id: DEMO_USER_ID,
-  email: 'demo@example.com',
-  companyId: DEMO_COMPANY_ID,
-  role: 'ADMIN',
-  name: 'Demo User',
-}
-
 /**
- * Get current user session
- * Returns demo user if no session (demo mode)
+ * Get current user session.
+ * Throws UnauthorizedError if no valid session exists.
  */
 export async function requireAuth() {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    // If we have a real session with company, use it
-    if (session?.user?.companyId) {
-      return session
-    }
-    
-    // Otherwise return demo user (demo mode)
-    return { user: DEMO_USER }
-  } catch {
-    // If auth fails, return demo user
-    return { user: DEMO_USER }
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.companyId) {
+    throw new UnauthorizedError('No hay sesión activa. Por favor iniciá sesión.')
   }
+
+  return session
 }
 
 /**
- * Get current user with company context
- * Returns demo user if no real session
+ * Get current user with company context.
+ * Throws UnauthorizedError if no valid session.
  */
 export async function getCurrentUser() {
   const session = await requireAuth()
-
-  // Ensure user has company context (should always have it in demo mode)
   const user = session.user
-  
+
   return {
     id: user.id as string,
     email: user.email as string,
-    companyId: user.companyId as string || DEMO_COMPANY_ID,
-    role: user.role as string || 'ADMIN',
-    name: user.name || 'Demo User',
+    companyId: user.companyId as string,
+    role: user.role as string,
+    name: (user.name as string) || user.email as string,
   }
 }
 
 /**
- * Check if user has a specific role
- * Throws ForbiddenError if user doesn't have the required role
+ * Check if user has a specific role.
+ * Throws ForbiddenError if user doesn't have the required role.
  */
 export async function requireRole(requiredRole: string | string[]) {
   const user = await getCurrentUser()
@@ -65,7 +46,7 @@ export async function requireRole(requiredRole: string | string[]) {
 
   if (!requiredRoles.includes(user.role)) {
     throw new ForbiddenError(
-      `This action requires one of the following roles: ${requiredRoles.join(', ')}`
+      `Esta acción requiere uno de los siguientes roles: ${requiredRoles.join(', ')}`
     )
   }
 
@@ -73,22 +54,22 @@ export async function requireRole(requiredRole: string | string[]) {
 }
 
 /**
- * Ensure user has access to the specified company
- * Throws ForbiddenError if user is accessing another company's data
+ * Ensure user has access to the specified company.
+ * Throws ForbiddenError if user is accessing another company's data.
  */
 export async function requireCompanyAccess(companyId: string) {
   const user = await getCurrentUser()
 
   if (user.companyId !== companyId) {
-    throw new ForbiddenError('You do not have access to this company')
+    throw new ForbiddenError('No tenés acceso a esta empresa')
   }
 
   return user
 }
 
 /**
- * Extract tenant ID from session (for multi-tenant safety)
- * Always use this instead of trusting user input for companyId
+ * Extract tenant ID from session (for multi-tenant safety).
+ * Always use this instead of trusting user input for companyId.
  */
 export async function getTenantId(): Promise<string> {
   const user = await getCurrentUser()

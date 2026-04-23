@@ -8,6 +8,9 @@ import { createLogger } from '@/lib/shared/logger'
 
 const log = createLogger('UnitRoutes')
 
+// Vercel: tiempo máximo de ejecución (segundos)
+export const maxDuration = 30
+
 /**
  * GET /api/units - List all units for company
  * Query params: page, limit, type, status, minPrice, maxPrice, query

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/auth-options'
 import { hash } from 'bcryptjs'
 
+export const maxDuration = 30
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

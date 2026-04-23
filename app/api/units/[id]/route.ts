@@ -7,6 +7,8 @@ import { createLogger } from '@/lib/shared/logger'
 
 const log = createLogger('UnitDetailRoutes')
 
+export const maxDuration = 30
+
 /**
  * GET /api/units/[id] - Get single unit with all relations
  */

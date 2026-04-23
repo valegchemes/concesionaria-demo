@@ -7,6 +7,8 @@ import { createLogger } from '@/lib/shared/logger'
 
 const log = createLogger('LeadDetailRoutes')
 
+export const maxDuration = 30
+
 /**
  * GET /api/leads/[id] - Get single lead with all relations
  */

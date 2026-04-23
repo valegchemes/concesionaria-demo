@@ -106,23 +106,39 @@ export default function NewUnitPage() {
 
       if (res.ok) {
         router.push('/app/units')
-      } else {
+        return
+      }
+
+      // Sesión expirada» redirigir a login
+      if (res.status === 401) {
+        router.push('/login')
+        return
+      }
+
+      // Intentar leer el cuerpo del error
+      let errorMessage = `Error del servidor (${res.status})`
+      try {
         const errorData = await res.json()
-        let errorMessage = 'Error al guardar la unidad.'
-        
         if (errorData.error === 'Validation failed' && errorData.details) {
           errorMessage = 'Errores de validación:\n' + Object.entries(errorData.details)
             .map(([field, errors]) => `- ${field}: ${(errors as string[]).join(', ')}`)
             .join('\n')
         } else if (errorData.error) {
           errorMessage = errorData.error
+        } else if (errorData.message) {
+          errorMessage = errorData.message
         }
-        
-        alert(errorMessage)
+      } catch {
+        // No se pudo parsear el JSON» usar texto plano
+        const text = await res.text().catch(() => '')
+        if (text) errorMessage = text.slice(0, 300)
       }
-    } catch (error) {
-      console.error('Error creating unit:', error)
-      alert('Error de conexión al servidor.')
+
+      alert(errorMessage)
+    } catch (err) {
+      // Error de red (sin conexión, timeout, etc.)
+      console.error('Error de red al crear unidad:', err)
+      alert('No se pudo conectar al servidor. Verificá tu conexión a internet.')
     } finally {
       setLoading(false)
     }

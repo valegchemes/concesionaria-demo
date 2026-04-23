@@ -8,6 +8,8 @@ import { createLogger } from '@/lib/shared/logger'
 
 const log = createLogger('DealRoutes')
 
+export const maxDuration = 30
+
 /**
  * GET /api/deals - List all deals for company
  * Query params: page, limit, status, soldById

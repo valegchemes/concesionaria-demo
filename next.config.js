@@ -5,6 +5,10 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
         protocol: 'http',
         hostname: 'localhost',
       },
@@ -14,7 +18,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  allowedDevOrigins: ['192.168.223.61', '127.0.0.1', 'localhost'],
+  // Aumentar límite de body para subida de fotos en base64
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '20mb',
+    },
+  },
 }
 
 module.exports = nextConfig

@@ -6,6 +6,8 @@ import { createLogger } from '@/lib/shared/logger'
 
 const log = createLogger('DealDetailRoutes')
 
+export const maxDuration = 30
+
 /**
  * GET /api/deals/[id] - Get single deal with all relations
  */
