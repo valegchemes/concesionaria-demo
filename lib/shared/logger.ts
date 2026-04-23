@@ -1,43 +1,29 @@
 // lib/shared/logger.ts
 // Structured logging with Pino (Server-side only)
 
-// Check if we're on the server
-const isServer = typeof window === 'undefined'
-
-let logger: any
-
-if (isServer) {
-  // Dynamic import for server-side only
-  const pino = require('pino')
-  
-  if (process.env.NODE_ENV === "development") {
-    logger = pino({
-      level: process.env.LOG_LEVEL || 'info',
-      base: { env: process.env.NODE_ENV, service: "concesionaria-api" },
-    }, pino.transport({
-      target: "pino-pretty",
-      options: {
-        colorize: true,
-        singleLine: false,
-        translateTime: "HH:MM:ss Z",
-        ignore: "pid,hostname",
+// Simple console logger that works perfectly in Vercel Serverless/Edge
+const logger = {
+  info: (...args: any[]) => console.info('[INFO]', ...args),
+  error: (...args: any[]) => console.error('[ERROR]', ...args),
+  warn: (...args: any[]) => console.warn('[WARN]', ...args),
+  debug: (...args: any[]) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.debug('[DEBUG]', ...args)
+    }
+  },
+  child: (options: { module: string }) => {
+    return {
+      info: (...args: any[]) => console.info(`[INFO][${options.module}]`, ...args),
+      error: (...args: any[]) => console.error(`[ERROR][${options.module}]`, ...args),
+      warn: (...args: any[]) => console.warn(`[WARN][${options.module}]`, ...args),
+      debug: (...args: any[]) => {
+        if (process.env.NODE_ENV === 'development') {
+          console.debug(`[DEBUG][${options.module}]`, ...args)
+        }
       },
-    }))
-  } else {
-    logger = pino({
-      level: process.env.LOG_LEVEL || 'info',
-      base: { env: process.env.NODE_ENV, service: "concesionaria-api" },
-    })
-  }
-} else {
-  // Browser fallback - simple console logger
-  logger = {
-    info: (...args: any[]) => console.log('[INFO]', ...args),
-    error: (...args: any[]) => console.error('[ERROR]', ...args),
-    warn: (...args: any[]) => console.warn('[WARN]', ...args),
-    debug: (...args: any[]) => console.debug('[DEBUG]', ...args),
-    child: () => logger,
-  }
+      child: () => logger
+    }
+  },
 }
 
 /**
