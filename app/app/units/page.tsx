@@ -18,7 +18,7 @@ interface Unit {
   location: string | null
   tags: string[]
   createdAt: string
-  photoUrl: string | null
+  photos: Array<{ url: string; order: number }>
   _count: { interestedLeads: number }
 }
 
@@ -120,9 +120,9 @@ export default function UnitsPage() {
           return (
             <Card key={unit.id} className="overflow-hidden">
               <div className="aspect-video bg-gray-100 relative">
-                {unit.photoUrl ? (
+                {unit.photos?.[0]?.url ? (
                   <img
-                    src={unit.photoUrl}
+                    src={unit.photos[0].url}
                     alt={unit.title}
                     className="w-full h-full object-cover"
                   />
