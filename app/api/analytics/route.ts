@@ -328,6 +328,22 @@ async function getSalesVsProfit(
     })
   }
 
+  // Rellenar TODOS los meses del rango con ceros para que el gráfico nunca quede vacío
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1)
+  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
+  while (cursor <= endMonth) {
+    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`
+    if (!byMonth.has(key)) {
+      byMonth.set(key, {
+        sales: 0,
+        costs: 0,
+        count: 0,
+        date: new Date(cursor.getFullYear(), cursor.getMonth(), 1),
+      })
+    }
+    cursor.setMonth(cursor.getMonth() + 1)
+  }
+
   // Ordenar por fecha
   const sortedKeys = Array.from(byMonth.keys()).sort()
 
