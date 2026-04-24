@@ -164,33 +164,49 @@ async function getDashboardSummary(
 ): Promise<DashboardSummary> {
   const { start, end, label } = dateRange
 
-  // Deals completados en el período (filtra por updatedAt, no closedAt)
-  const salesMetrics = await prisma.deal.aggregate({
+  // Query 1: Deals completados con su unidad (para calcular costo de compra real)
+  const dealsWithUnits = await prisma.deal.findMany({
     where: {
       companyId,
       status: { in: ['DELIVERED', 'APPROVED'] },
-      updatedAt: {
-        gte: start,
-        lte: end,
+      updatedAt: { gte: start, lte: end },
+    },
+    select: {
+      id: true,
+      finalPrice: true,
+      finalPriceCurrency: true,
+      unit: {
+        select: {
+          acquisitionCostArs: true,
+          acquisitionCostUsd: true,
+        },
       },
     },
-    _sum: { finalPrice: true },
-    _count: { _all: true },
-    _avg: { finalPrice: true },
   })
 
-  // Costos de deals en el período
-  const dealCosts = await prisma.dealCostItem.aggregate({
-    where: {
-      deal: {
-        companyId,
-        updatedAt: { gte: start, lte: end },
-      },
-    },
-    _sum: { amountArs: true, amountUsd: true },
-  })
+  const totalDealCount = dealsWithUnits.length
 
-  // Costos de unidades en el período
+  // Revenue: sumatoria de finalPrice (precio al cliente)
+  const totalRevenue = dealsWithUnits.reduce((sum, d) => sum + decimalToNumber(d.finalPrice), 0)
+
+  // Costo de compra: acquisitionCost de cada unidad vendida
+  const totalAcquisitionCostArs = dealsWithUnits.reduce(
+    (sum, d) => sum + decimalToNumber(d.unit?.acquisitionCostArs), 0
+  )
+  const totalAcquisitionCostUsd = dealsWithUnits.reduce(
+    (sum, d) => sum + decimalToNumber(d.unit?.acquisitionCostUsd), 0
+  )
+
+  // Query 2: Costos adicionales de deals (comisiones, gastos de cierre)
+  const dealIds = dealsWithUnits.map(d => d.id)
+  const dealCosts = dealIds.length > 0
+    ? await prisma.dealCostItem.aggregate({
+        where: { dealId: { in: dealIds } },
+        _sum: { amountArs: true, amountUsd: true },
+      })
+    : { _sum: { amountArs: null, amountUsd: null } }
+
+  // Query 3: Costos adicionales de unidades (mantenimiento, reparaciones, etc.)
   const unitCosts = await prisma.unitCostItem.aggregate({
     where: {
       unit: {
@@ -201,29 +217,30 @@ async function getDashboardSummary(
     _sum: { amountArs: true, amountUsd: true },
   })
 
-  // Inventario total (sin filtro de fechas — es estado actual)
+  // Query 4: Inventario actual
   const inventoryMetrics = await prisma.unit.groupBy({
     by: ['status'],
     where: { companyId, isActive: true },
     _count: { _all: true },
   })
 
-  const totalRevenue = decimalToNumber(salesMetrics._sum?.finalPrice)
-  const totalDealCount = salesMetrics._count?._all || 0
-
+  // Cálculo correcto de costos totales
   const totalCostsArs =
+    totalAcquisitionCostArs +
     decimalToNumber(dealCosts._sum?.amountArs) +
     decimalToNumber(unitCosts._sum?.amountArs)
+
   const totalCostsUsd =
+    totalAcquisitionCostUsd +
     decimalToNumber(dealCosts._sum?.amountUsd) +
     decimalToNumber(unitCosts._sum?.amountUsd)
 
   const totalCosts = createMoneyAmount(totalCostsArs, totalCostsUsd)
   const revenue = createMoneyAmount(totalRevenue, 0)
-  const netProfit = createMoneyAmount(
-    Math.max(0, revenue.ars - totalCosts.totalConverted),
-    0
-  )
+
+  // Ganancia neta = precio venta - costo compra - costos adicionales
+  const netProfitArs = revenue.ars - totalCosts.totalConverted
+  const netProfit = createMoneyAmount(Math.max(0, netProfitArs), 0)
 
   const inventoryMap = new Map(inventoryMetrics.map(item => [item.status, item._count._all]))
   const totalUnits = Array.from(inventoryMap.values()).reduce((a, b) => a + b, 0)
@@ -264,54 +281,78 @@ async function getSalesVsProfit(
 ): Promise<SalesVsProfitAnalytics> {
   const { start, end } = dateRange
 
-  // Agrupar por mes — usa updatedAt (closedAt puede ser null)
-  const dealsByMonth = await prisma.$queryRaw<Array<{
-    month: string
-    year: number
-    total_sales: Prisma.Decimal
-    deal_count: bigint
-  }>>`
-    SELECT
-      EXTRACT(MONTH FROM "updatedAt") as month,
-      EXTRACT(YEAR FROM "updatedAt") as year,
-      SUM("finalPrice") as total_sales,
-      COUNT(*) as deal_count
-    FROM "Deal"
-    WHERE "companyId" = ${companyId}
-      AND "status" IN ('DELIVERED', 'APPROVED')
-      AND "updatedAt" >= ${start}
-      AND "updatedAt" <= ${end}
-    GROUP BY EXTRACT(YEAR FROM "updatedAt"), EXTRACT(MONTH FROM "updatedAt")
-    ORDER BY year, month
-  `
+  // Traer todos los deals con su costo de adquisición
+  const deals = await prisma.deal.findMany({
+    where: {
+      companyId,
+      status: { in: ['DELIVERED', 'APPROVED'] },
+      updatedAt: { gte: start, lte: end },
+    },
+    select: {
+      finalPrice: true,
+      updatedAt: true,
+      unit: {
+        select: {
+          acquisitionCostArs: true,
+          acquisitionCostUsd: true,
+        },
+      },
+      closingCosts: {
+        select: { amountArs: true, amountUsd: true },
+      },
+    },
+  })
 
-  const timeSeries: TimeSeriesDataPoint[] = dealsByMonth.map(row => {
-    const date = new Date(row.year, Number(row.month) - 1, 1)
-    const sales = decimalToNumber(row.total_sales)
+  // Agrupar por mes manualmente
+  const byMonth = new Map<string, { sales: number; costs: number; count: number; date: Date }>()
+
+  for (const deal of deals) {
+    const d = deal.updatedAt
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    const existing = byMonth.get(key) || { sales: 0, costs: 0, count: 0, date: new Date(d.getFullYear(), d.getMonth(), 1) }
+
+    const saleAmount = decimalToNumber(deal.finalPrice)
+    const acquisitionArs = decimalToNumber(deal.unit?.acquisitionCostArs)
+    const acquisitionUsd = decimalToNumber(deal.unit?.acquisitionCostUsd)
+    const dealExtraCosts = deal.closingCosts.reduce(
+      (sum, c) => sum + decimalToNumber(c.amountArs) + decimalToNumber(c.amountUsd) * EXCHANGE_RATE_ARS_PER_USD,
+      0
+    )
+    const totalCostForDeal = acquisitionArs + (acquisitionUsd * EXCHANGE_RATE_ARS_PER_USD) + dealExtraCosts
+
+    byMonth.set(key, {
+      sales: existing.sales + saleAmount,
+      costs: existing.costs + totalCostForDeal,
+      count: existing.count + 1,
+      date: existing.date,
+    })
+  }
+
+  // Ordenar por fecha
+  const sortedKeys = Array.from(byMonth.keys()).sort()
+
+  const timeSeries: TimeSeriesDataPoint[] = sortedKeys.map(key => {
+    const entry = byMonth.get(key)!
+    const profit = Math.max(0, entry.sales - entry.costs)
 
     return {
-      date: date.toISOString(),
-      label: date.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }),
-      sales: createMoneyAmount(sales, 0),
-      profit: createMoneyAmount(sales * 0.15, 0),
-      costs: createMoneyAmount(sales * 0.85, 0),
-      dealCount: Number(row.deal_count),
+      date: entry.date.toISOString(),
+      label: entry.date.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }),
+      sales: createMoneyAmount(entry.sales, 0),
+      profit: createMoneyAmount(profit, 0),
+      costs: createMoneyAmount(entry.costs, 0),
+      dealCount: entry.count,
     }
   })
 
   const totals = timeSeries.reduce(
     (acc, point) => ({
-      sales: createMoneyAmount(acc.sales.ars + point.sales.ars, acc.sales.usd + point.sales.usd),
-      profit: createMoneyAmount(acc.profit.ars + point.profit.ars, acc.profit.usd + point.profit.usd),
-      costs: createMoneyAmount(acc.costs.ars + point.costs.ars, acc.costs.usd + point.costs.usd),
+      sales: createMoneyAmount(acc.sales.ars + point.sales.ars, 0),
+      profit: createMoneyAmount(acc.profit.ars + point.profit.ars, 0),
+      costs: createMoneyAmount(acc.costs.ars + point.costs.ars, 0),
       dealCount: acc.dealCount + point.dealCount,
     }),
-    {
-      sales: createMoneyAmount(0, 0),
-      profit: createMoneyAmount(0, 0),
-      costs: createMoneyAmount(0, 0),
-      dealCount: 0,
-    }
+    { sales: createMoneyAmount(0, 0), profit: createMoneyAmount(0, 0), costs: createMoneyAmount(0, 0), dealCount: 0 }
   )
 
   return {
