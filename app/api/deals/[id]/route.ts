@@ -66,3 +66,19 @@ export const POST = withErrorHandling(
     return successResponse(payment, 201)
   }
 )
+
+/**
+ * DELETE /api/deals/[id] - Delete a deal permanently
+ */
+export const DELETE = withErrorHandling(
+  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    const user = await getCurrentUser()
+    const { id } = await params
+
+    log.info({ dealId: id }, 'Deleting deal')
+
+    await dealService.delete(id, user.companyId)
+
+    return successResponse({ deleted: true })
+  }
+)

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatDate } from '@/lib/utils'
-import { Plus, Search, Phone, Mail, User, Car, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Plus, Search, Phone, Mail, User, Car, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -76,6 +76,16 @@ export default function LeadsPage() {
       console.error('Error fetching leads:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function deleteLead(id: string) {
+    if (!confirm('¿Eliminar este lead? Esta acción no se puede deshacer.')) return
+    try {
+      const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' })
+      if (res.ok) setLeads(prev => prev.filter(l => l.id !== id))
+    } catch (err) {
+      console.error('Error deleting lead:', err)
     }
   }
 
@@ -193,6 +203,15 @@ export default function LeadsPage() {
                   <Link href={`/app/leads/${lead.id}`}>
                     <Button size="sm">Ver</Button>
                   </Link>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
+                    onClick={() => deleteLead(lead.id)}
+                    title="Eliminar lead"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                   <div className="text-xs text-gray-500 text-center">
                     {lead._count.activities} act.
                   </div>

@@ -493,6 +493,29 @@ export class DealService {
       totalRevenue: Number(totalRevenue._sum?.finalPrice || 0),
     }
   }
+  /**
+   * Delete a deal permanently
+   */
+  async delete(id: string, companyId: string): Promise<void> {
+    log.info({ dealId: id, companyId }, 'Deleting deal')
+
+    const deal = await prisma.deal.findFirst({
+      where: { id, companyId },
+    })
+
+    if (!deal) {
+      throw new NotFoundError('Deal', id)
+    }
+
+    // Delete cascade: payments and cost items first
+    await prisma.$transaction([
+      prisma.dealPayment.deleteMany({ where: { dealId: id } }),
+      prisma.dealCostItem.deleteMany({ where: { dealId: id } }),
+      prisma.deal.delete({ where: { id } }),
+    ])
+
+    log.info({ dealId: id }, 'Deal deleted successfully')
+  }
 }
 
 // Export singleton

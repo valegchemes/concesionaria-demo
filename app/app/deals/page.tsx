@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { formatPrice, formatDate } from '@/lib/utils'
-import { Handshake, Plus, Search, Loader2, User, Car, Calendar } from 'lucide-react'
+import { Handshake, Plus, Search, Loader2, User, Car, Calendar, Trash2 } from 'lucide-react'
 
 interface Deal {
   id: string
@@ -58,6 +58,16 @@ export default function DealsPage() {
       console.error('Error fetching deals:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function deleteDeal(id: string) {
+    if (!confirm('¿Eliminar esta operación? Esta acción no se puede deshacer.')) return
+    try {
+      const res = await fetch(`/api/deals/${id}`, { method: 'DELETE' })
+      if (res.ok) setDeals(prev => prev.filter(d => d.id !== id))
+    } catch (err) {
+      console.error('Error deleting deal:', err)
     }
   }
 
@@ -158,9 +168,20 @@ export default function DealsPage() {
                         {deal.finalPriceCurrency} {formatPrice(deal.finalPrice, '')}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded">
-                       <User className="h-3 w-3" />
-                       {deal.seller.name}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded">
+                        <User className="h-3 w-3" />
+                        {deal.seller.name}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7 p-0"
+                        onClick={() => deleteDeal(deal.id)}
+                        title="Eliminar operación"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </div>
