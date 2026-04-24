@@ -11,7 +11,7 @@
  * - Deal summaries and financial reporting
  */
 
-import { Prisma } from '@prisma/client'
+import { Prisma, type DealStatus, type PaymentMethod, type UnitStatus, type LeadStatus } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
 import { prisma } from '@/lib/shared/prisma'
@@ -95,7 +95,7 @@ export class DealService {
       data: {
         finalPrice: command.finalPrice,
         finalPriceCurrency: command.finalPriceCurrency,
-        status: (command.status || 'NEGOTIATION') as any,
+        status: command.status || 'NEGOTIATION',
         depositAmount: command.depositAmount,
         leadId: command.leadId,
         unitId: command.unitId,
@@ -110,7 +110,7 @@ export class DealService {
         closingCosts: true,
         seller: { select: { id: true, name: true, email: true } },
       },
-    })
+    }) as unknown as DealWithRelations
 
     log.info({ dealId: deal.id }, 'Deal created successfully')
 
@@ -139,7 +139,7 @@ export class DealService {
         tradeIn: true,
         seller: { select: { id: true, name: true, email: true } },
       },
-    })
+    }) as unknown as DealWithRelations
 
     if (!deal) {
       throw new NotFoundError('Deal', id)
@@ -173,7 +173,7 @@ export class DealService {
 
     const where: Prisma.DealWhereInput = {
       companyId,
-      ...(status && { status: status as any }),
+      ...(status && { status: status as DealStatus }),
       ...(soldById && { soldById }),
     }
 
@@ -209,7 +209,7 @@ export class DealService {
       seller: d.seller ?? undefined,
       createdAt: d.createdAt,
       _count: { payments: d._count.payments, costItems: d._count.closingCosts },
-    }))
+    })) as any
 
     const totalPages = Math.ceil(total / limitNum)
 
@@ -262,7 +262,7 @@ export class DealService {
         closingCosts: true,
         seller: { select: { id: true, name: true, email: true } },
       },
-    })
+    }) as unknown as DealWithRelations
 
     log.info({ dealId: id, newStatus: command.status }, 'Deal updated')
 
@@ -300,7 +300,7 @@ export class DealService {
       data: {
         dealId,
         amount: command.amount,
-        method: command.method as any,
+        method: command.method as PaymentMethod,
         notes: command.notes,
       },
     })
@@ -334,13 +334,13 @@ export class DealService {
       throw new ValidationError('Cost amount cannot be negative')
     }
 
-    // Create cost item
+    // Create cost item (concept maps to description in domain)
     const costItem = await prisma.dealCostItem.create({
       data: {
         dealId,
         concept: command.description.trim(),
         amountArs: command.amount,
-      },
+      } as any,
     })
 
     log.info({ costItemId: costItem.id, dealId }, 'Cost item added')
@@ -399,22 +399,22 @@ export class DealService {
       )
     }
 
-    // Update deal status to delivered (CLOSED does not exist in schema)
+    // Update deal status to delivered (DELIVERED is the final state, CLOSED doesn't exist)
     await this.update(dealId, companyId, {
-      status: 'DELIVERED',
+      status: 'DELIVERED' as any,
       ...(completionNotes && { notes: completionNotes }),
     })
 
     // Update unit to sold
     await prisma.unit.update({
       where: { id: deal.unitId },
-      data: { status: 'SOLD' as any },
+      data: { status: 'SOLD' as UnitStatus },
     })
 
     // Update lead to sold
     await prisma.lead.update({
       where: { id: deal.leadId },
-      data: { status: 'SOLD' as any },
+      data: { status: 'SOLD' as LeadStatus },
     })
 
     log.info({ dealId }, 'Deal closed successfully')

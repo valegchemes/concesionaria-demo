@@ -60,4 +60,3 @@ export const DELETE = withErrorHandling(
     return successResponse({ deleted: true })
   }
 )
-// Force Turbopack rebuild 3

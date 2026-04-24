@@ -4,16 +4,26 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { UnauthorizedError, ForbiddenError } from './errors'
+import { prisma } from './prisma'
 
-/**
- * Get current user session.
- * Throws UnauthorizedError if no valid session exists.
- */
 export async function requireAuth() {
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.companyId) {
     throw new UnauthorizedError('No hay sesión activa. Por favor iniciá sesión.')
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isActive: true, company: { select: { isActive: true } } }
+  })
+
+  if (!user?.isActive) {
+    throw new UnauthorizedError('Tu cuenta está desactivada. Contactá al administrador.')
+  }
+
+  if (!user.company?.isActive) {
+    throw new ForbiddenError('Tu empresa está desactivada. Contactá al administrador.')
   }
 
   return session

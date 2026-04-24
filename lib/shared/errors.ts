@@ -20,7 +20,7 @@ export class AppError extends Error {
  * 400 Bad Request - Invalid input/data
  */
 export class ValidationError extends AppError {
-  constructor(message: string, public details?: Record<string, string[]>) {
+  constructor(message: string, public details?: Record<string, string[] | undefined>) {
     super(message, 400, "VALIDATION_ERROR")
     this.name = "ValidationError"
     Object.setPrototypeOf(this, ValidationError.prototype)

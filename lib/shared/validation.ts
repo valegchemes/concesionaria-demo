@@ -58,6 +58,16 @@ export const LoginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 })
 
+export const RegisterCompanySchema = z.object({
+  companyName: NameSchema,
+  slug: SlugSchema,
+  companyPhone: PhoneSchema.optional(),
+  companyEmail: EmailSchema.optional().or(z.literal("")),
+  adminName: NameSchema,
+  adminEmail: EmailSchema,
+  password: PasswordSchema,
+})
+
 export const RegisterSchema = z.object({
   email: EmailSchema,
   password: PasswordSchema,

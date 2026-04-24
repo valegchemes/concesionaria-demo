@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { hash } from 'bcryptjs'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:UserSettings')
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -15,7 +18,7 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json()
     const { name, email, password, avatarUrl } = body
 
-    const updateData: any = {}
+    const updateData: Record<string, string | null | undefined> = {}
     if (name) updateData.name = name
     if (email) updateData.email = email
     if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl
@@ -33,7 +36,7 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json(updatedUser, { status: 200 })
   } catch (error) {
-    console.error('Settings Update Error:', error)
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Settings Update Error')
     return NextResponse.json({ error: 'Failed to update user settings' }, { status: 500 })
   }
 }

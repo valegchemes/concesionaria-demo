@@ -10,7 +10,7 @@
  * - Validation and error handling
  */
 
-import { Prisma } from '@prisma/client'
+import { Prisma, type DealStatus, type UnitType, type UnitStatus } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
 import { prisma } from '@/lib/shared/prisma'
@@ -59,12 +59,12 @@ export class UnitService {
     const unit = await prisma.unit.create({
       data: {
         title: command.title.trim(),
-        type: command.type as any, // casting to avoid Prisma enum type mismatches locally
+        type: command.type,
         priceArs: command.priceArs,
         priceUsd: command.priceUsd,
         description: command.description?.trim(),
         location: command.location?.trim(),
-        status: (command.status || 'AVAILABLE') as any,
+        status: command.status || 'AVAILABLE',
         vin: command.vin?.trim(),
         domain: command.domain?.trim(),
         engineNumber: command.engineNumber?.trim(),
@@ -143,8 +143,8 @@ export class UnitService {
     const where: Prisma.UnitWhereInput = {
       companyId,
       isActive: true,
-      ...(type && { type: type as any }),
-      ...(status && { status: status as any }),
+      ...(type && { type: type as UnitType }),
+      ...(status && { status: status as UnitStatus }),
       ...(minPrice && { priceArs: { gte: minPrice } }),
       ...(maxPrice && { priceArs: { lte: maxPrice } }),
       ...(query && {
@@ -240,9 +240,9 @@ export class UnitService {
         ...(command.acquisitionCostArs !== undefined && { acquisitionCostArs: command.acquisitionCostArs }),
         ...(command.acquisitionCostUsd !== undefined && { acquisitionCostUsd: command.acquisitionCostUsd }),
         ...(command.description !== undefined && { description: command.description?.trim() }),
-        ...(command.status && { status: command.status as any }),
+        ...(command.status && { status: command.status as UnitStatus }),
         updatedAt: new Date(),
-      } as any,
+      },
       include: {
         photos: true,
         attributes: true,
@@ -269,7 +269,7 @@ export class UnitService {
         where: { interestedUnitId: id, isActive: true },
       }),
       prisma.deal.count({
-        where: { unitId: id, status: { not: 'CANCELED' as any } },
+        where: { unitId: id, status: { not: 'CANCELED' as DealStatus } },
       }),
     ])
 
@@ -328,8 +328,8 @@ export class UnitService {
       where: {
         companyId,
         isActive: true,
-        status: 'AVAILABLE' as any,
-        ...(filters.type && { type: filters.type as any }),
+        status: 'AVAILABLE',
+        ...(filters.type && { type: filters.type as UnitType }),
         ...(filters.minPrice && { priceArs: { gte: filters.minPrice } }),
         ...(filters.maxPrice && { priceArs: { lte: filters.maxPrice } }),
       },
@@ -392,10 +392,10 @@ export class UnitService {
       where: {
         companyId,
         isActive: true,
-        leads: {
+        interestedLeads: {
           some: { id: leadId },
         },
-      } as any,
+      },
       select: {
         id: true,
         title: true,

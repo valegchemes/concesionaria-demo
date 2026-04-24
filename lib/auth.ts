@@ -2,7 +2,6 @@ import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 
 export async function verifyCredentials(email: string, password: string, companySlug?: string) {
-  // Buscar usuario por email y company (si se proporciona slug)
   let user
   
   if (companySlug) {
@@ -29,6 +28,14 @@ export async function verifyCredentials(email: string, password: string, company
   }
 
   if (!user) {
+    return null
+  }
+
+  if (!user.isActive) {
+    return null
+  }
+
+  if (!user.company.isActive) {
     return null
   }
 

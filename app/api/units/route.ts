@@ -1,83 +1,356 @@
-export const dynamic = 'force-dynamic'
-import { NextRequest } from 'next/server'
-import { withErrorHandling, successResponse, paginatedResponse } from '@/lib/shared/api-response'
-import { getCurrentUser } from '@/lib/shared/auth-helpers'
-import { parsePagination } from '@/lib/shared/pagination'
-import { CreateUnitSchema, UpdateUnitSchema } from '@/lib/shared/validation'
-import { unitService } from '@/lib/domains/units/service'
-import { createLogger } from '@/lib/shared/logger'
+/**
+ * Enterprise API Route: /api/units
+ * - Runtime: Edge (baja latencia)
+ * - Validación: Zod completa
+ * - Autenticación: Via headers de middleware
+ * - Multi-tenancy: tenantId obligatorio en todas las queries
+ * - Respuestas: Estructura estandarizada
+ */
 
-const log = createLogger('UnitRoutes')
-
-// Vercel: tiempo máximo de ejecución (segundos)
+export const runtime = 'edge'
+export const preferredRegion = 'iad1'
 export const maxDuration = 30
 
+import { NextRequest, NextResponse } from 'next/server'
+import { ZodError } from 'zod'
+import { prismaEdge } from '@/lib/prisma-edge'
+import { CreateUnitSchema, UpdateUnitSchema } from '@/lib/shared/validation'
+import { 
+  successResponse, 
+  errorResponse, 
+  paginatedResponse 
+} from '@/lib/shared/api-response'
+import { 
+  NotFoundError, 
+  ForbiddenError, 
+  ValidationError,
+  isAppError,
+  getErrorResponse,
+  getErrorStatusCode 
+} from '@/lib/shared/errors'
+import { createLogger } from '@/lib/shared/logger'
+import type { Unit, UnitStatus, UnitType, Prisma } from '@prisma/client'
+
+const log = createLogger('API:Units')
+
+// ============================================================================
+// TIPOS ESTRUCTURADOS (sin 'any')
+// ============================================================================
+
+interface AuthenticatedUser {
+  userId: string
+  companyId: string
+  role: string
+}
+
+interface ListUnitsQuery {
+  page: number
+  limit: number
+  type?: UnitType
+  status?: UnitStatus
+  query?: string
+  minPrice?: number
+  maxPrice?: number
+}
+
+interface CreateUnitBody {
+  title: string
+  type: UnitType
+  priceArs?: number | null
+  priceUsd?: number | null
+  description?: string | null
+  location?: string | null
+  status?: UnitStatus
+  vin?: string | null
+  domain?: string | null
+  engineNumber?: string | null
+  frameNumber?: string | null
+  hin?: string | null
+  registrationNumber?: string | null
+  tags?: string[]
+  photos?: Array<{ url: string; order: number }>
+}
+
+// ============================================================================
+// UTILIDADES DE AUTENTICACIÓN
+// ============================================================================
+
 /**
- * GET /api/units - List all units for company
- * Query params: page, limit, type, status, minPrice, maxPrice, query
+ * Extrae el usuario autenticado de los headers inyectados por el middleware
+ * El middleware garantiza que estos headers existen para rutas protegidas
  */
-export const GET = withErrorHandling(async (request: NextRequest) => {
-  const user = await getCurrentUser()
+function getAuthenticatedUser(request: NextRequest): AuthenticatedUser {
+  const userId = request.headers.get('x-user-id')
+  const companyId = request.headers.get('x-company-id')
+  const role = request.headers.get('x-user-role')
 
-  const { searchParams } = new URL(request.url)
-  const pagination = parsePagination({
-    page: searchParams.get('page') || undefined,
-    limit: searchParams.get('limit') || undefined,
-  })
-  const type = searchParams.get('type') || undefined
-  const status = searchParams.get('status') || undefined
-  const minPrice = searchParams.get('minPrice')
-  const maxPrice = searchParams.get('maxPrice')
-  const query = searchParams.get('query') || searchParams.get('q')
+  if (!userId || !companyId || !role) {
+    log.error({}, 'Headers de autenticación faltantes - middleware no está funcionando')
+    throw new ForbiddenError('Autenticación requerida')
+  }
 
-  log.info(
-    {
-      page: pagination.page,
-      limit: pagination.limit,
-      type,
-      status,
-      query,
-    },
-    'Fetching units list'
-  )
+  return { userId, companyId, role }
+}
 
-  const { units, pagination: paginationMeta } = await unitService.list(
-    user.companyId,
-    {
-      page: pagination.page,
-      limit: pagination.limit,
-      type: type as string | undefined,
-      status: status as string | undefined,
-      minPrice: minPrice ? Number(minPrice) : undefined,
-      maxPrice: maxPrice ? Number(maxPrice) : undefined,
-      query: query as string | undefined,
+// ============================================================================
+// PARSEO Y VALIDACIÓN DE QUERY PARAMS
+// ============================================================================
+
+function parseListQuery(searchParams: URLSearchParams): ListUnitsQuery {
+  const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
+  const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') ?? '20', 10)))
+  
+  const type = searchParams.get('type') as UnitType | null
+  const status = searchParams.get('status') as UnitStatus | null
+  const query = searchParams.get('query') ?? undefined
+  
+  const minPrice = searchParams.get('minPrice') 
+    ? parseFloat(searchParams.get('minPrice')!) 
+    : undefined
+  const maxPrice = searchParams.get('maxPrice') 
+    ? parseFloat(searchParams.get('maxPrice')!) 
+    : undefined
+
+  return {
+    page,
+    limit,
+    ...(type && { type }),
+    ...(status && { status }),
+    ...(query && { query }),
+    ...(minPrice !== undefined && { minPrice }),
+    ...(maxPrice !== undefined && { maxPrice }),
+  }
+}
+
+// ============================================================================
+// HANDLER: GET /api/units
+// ============================================================================
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now()
+  
+  try {
+    // 1. Autenticación
+    const user = getAuthenticatedUser(request)
+    log.debug({ userId: user.userId, companyId: user.companyId }, 'GET /api/units - iniciado')
+
+    // 2. Parseo de query params
+    const { searchParams } = new URL(request.url)
+    const filters = parseListQuery(searchParams)
+
+    // 3. Construcción de where clause (SIEMPRE con tenantId)
+    const where: Prisma.UnitWhereInput = {
+      companyId: user.companyId, // 🔒 Multi-tenancy: SIEMPRE filtrar por companyId
+      isActive: true,
+      ...(filters.type && { type: filters.type }),
+      ...(filters.status && { status: filters.status }),
+      ...(filters.query && {
+        OR: [
+          { title: { contains: filters.query, mode: 'insensitive' } },
+          { description: { contains: filters.query, mode: 'insensitive' } },
+          { vin: { contains: filters.query, mode: 'insensitive' } },
+          { domain: { contains: filters.query, mode: 'insensitive' } },
+        ],
+      }),
+      ...(filters.minPrice !== undefined && { priceArs: { gte: filters.minPrice } }),
+      ...(filters.maxPrice !== undefined && { priceArs: { lte: filters.maxPrice } }),
     }
-  )
 
-  return paginatedResponse(
-    units,
-    paginationMeta.total,
-    paginationMeta.page,
-    paginationMeta.limit
-  )
-})
+    // 4. Ejecutar queries en paralelo
+    const skip = (filters.page - 1) * filters.limit
+    
+    const [total, units] = await Promise.all([
+      prismaEdge.unit.count({ where }),
+      prismaEdge.unit.findMany({
+        where,
+        select: {
+          id: true,
+          title: true,
+          type: true,
+          status: true,
+          priceArs: true,
+          priceUsd: true,
+          location: true,
+          vin: true,
+          domain: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: { select: { deals: true, interestedLeads: true } },
+          photos: { orderBy: { order: 'asc' }, take: 1 },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: filters.limit,
+      }),
+    ])
 
-/**
- * POST /api/units - Create new unit
- */
-export const POST = withErrorHandling(async (request: NextRequest) => {
-  const user = await getCurrentUser()
+    const totalPages = Math.ceil(total / filters.limit)
 
-  const json = await request.json()
-  const data = CreateUnitSchema.parse(json)
+    log.info(
+      { 
+        userId: user.userId, 
+        companyId: user.companyId,
+        count: units.length, 
+        total,
+        duration: Date.now() - startTime 
+      },
+      'GET /api/units - completado'
+    )
 
-  log.info({ title: data.title, type: data.type }, 'Creating new unit')
+    return paginatedResponse(units, total, filters.page, filters.limit)
 
-  const unit = await unitService.create({
-    ...data,
-    companyId: user.companyId,
-    createdById: user.id,
-  })
+  } catch (error) {
+    log.error(
+      { 
+        error: error instanceof Error ? error.message : String(error),
+        duration: Date.now() - startTime 
+      },
+      'GET /api/units - error'
+    )
 
-  return successResponse(unit, 201)
-})
+    if (isAppError(error)) {
+      return errorResponse(error, { path: '/api/units', method: 'GET' })
+    }
+
+    return errorResponse(
+      new Error('Error interno del servidor'),
+      { path: '/api/units', method: 'GET' }
+    )
+  }
+}
+
+// ============================================================================
+// HANDLER: POST /api/units
+// ============================================================================
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const startTime = Date.now()
+
+  try {
+    // 1. Autenticación
+    const user = getAuthenticatedUser(request)
+    log.debug({ userId: user.userId, companyId: user.companyId }, 'POST /api/units - iniciado')
+
+    // 2. Validación del body con Zod
+    const body = await request.json()
+    const validationResult = CreateUnitSchema.safeParse(body)
+
+    if (!validationResult.success) {
+      const zodError = validationResult.error
+      log.warn(
+        { 
+          userId: user.userId,
+          errors: zodError.flatten().fieldErrors 
+        },
+        'POST /api/units - validación fallida'
+      )
+      
+      return errorResponse(
+        new ValidationError(
+          'Datos de entrada inválidos',
+          zodError.flatten().fieldErrors
+        ),
+        { path: '/api/units', method: 'POST' }
+      )
+    }
+
+    const data = validationResult.data
+
+    // 3. Validación de negocio: verificar duplicados por VIN o dominio
+    if (data.vin || data.domain) {
+      const duplicateWhere: Prisma.UnitWhereInput = {
+        companyId: user.companyId, // 🔒 Multi-tenancy
+        isActive: true,
+        OR: [
+          ...(data.vin ? [{ vin: data.vin }] : []),
+          ...(data.domain ? [{ domain: data.domain }] : []),
+        ],
+      }
+
+      const existing = await prismaEdge.unit.findFirst({
+        where: duplicateWhere,
+        select: { id: true, vin: true, domain: true },
+      })
+
+      if (existing) {
+        throw new ValidationError(
+          `Ya existe una unidad con ${existing.vin === data.vin ? 'VIN' : 'dominio'} duplicado`
+        )
+      }
+    }
+
+    // 4. Crear unidad con fotos en transacción
+    const unit = await prismaEdge.$transaction(async (tx) => {
+      // Crear unidad
+      const newUnit = await tx.unit.create({
+        data: {
+          title: data.title,
+          type: data.type,
+          priceArs: data.priceArs ?? null,
+          priceUsd: data.priceUsd ?? null,
+          description: data.description ?? null,
+          location: data.location ?? null,
+          status: data.status ?? 'AVAILABLE',
+          vin: data.vin ?? null,
+          domain: data.domain ?? null,
+          engineNumber: data.engineNumber ?? null,
+          frameNumber: data.frameNumber ?? null,
+          hin: data.hin ?? null,
+          registrationNumber: data.registrationNumber ?? null,
+          tags: data.tags ?? [],
+          companyId: user.companyId, // 🔒 Multi-tenancy
+        },
+      })
+
+      // Crear fotos si existen
+      if (data.photos && data.photos.length > 0) {
+        await tx.unitPhoto.createMany({
+          data: data.photos.map((photo, index) => ({
+            url: photo.url,
+            order: photo.order ?? index,
+            unitId: newUnit.id,
+          })),
+        })
+      }
+
+      return newUnit
+    })
+
+    log.info(
+      { 
+        userId: user.userId,
+        companyId: user.companyId,
+        unitId: unit.id,
+        duration: Date.now() - startTime 
+      },
+      'POST /api/units - unidad creada'
+    )
+
+    return successResponse(unit, 201)
+
+  } catch (error) {
+    log.error(
+      { 
+        error: error instanceof Error ? error.message : String(error),
+        duration: Date.now() - startTime 
+      },
+      'POST /api/units - error'
+    )
+
+    if (isAppError(error)) {
+      return errorResponse(error, { path: '/api/units', method: 'POST' })
+    }
+
+    if (error instanceof ZodError) {
+      return errorResponse(
+        new ValidationError('Error de validación', error.flatten().fieldErrors),
+        { path: '/api/units', method: 'POST' }
+      )
+    }
+
+    return errorResponse(
+      new Error('Error interno del servidor'),
+      { path: '/api/units', method: 'POST' }
+    )
+  }
+}

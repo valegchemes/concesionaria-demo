@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import NextAuth from 'next-auth'
 import { authOptions } from './auth-options'
+import { checkRateLimit, rateLimitStore } from '@/lib/rate-limit'
 
 const handler = NextAuth(authOptions)
 

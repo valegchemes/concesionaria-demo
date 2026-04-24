@@ -1,8 +1,13 @@
 import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { Button } from '@/components/ui/button'
 import { Car, Users, BarChart3, Globe, ArrowRight, CheckCircle } from 'lucide-react'
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const session = await getServerSession(authOptions)
+  const dashboardUrl = session?.user ? '/app/dashboard' : '/login'
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white">
       {/* Header */}
@@ -12,7 +17,7 @@ export default function LandingPage() {
           <span className="text-xl font-bold">AutoManager Pro</span>
         </div>
         <div className="flex gap-4">
-          <Link href="/app/dashboard">
+          <Link href={dashboardUrl}>
             <Button className="bg-blue-500 hover:bg-blue-600">Entrar al Sistema</Button>
           </Link>
         </div>
@@ -29,7 +34,7 @@ export default function LandingPage() {
           Diseñado para concesionarias de autos, motos y náutica en Argentina.
         </p>
         <div className="flex gap-4 justify-center">
-          <Link href="/app/dashboard">
+          <Link href={dashboardUrl}>
             <Button size="lg" className="bg-blue-500 hover:bg-blue-600">
               Comenzar Ahora
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -105,7 +110,7 @@ export default function LandingPage() {
               <span>Exportación a Excel</span>
             </li>
           </ul>
-          <Link href="/app/dashboard">
+          <Link href={dashboardUrl}>
             <Button className="w-full bg-blue-500 hover:bg-blue-600">
               Usar Ahora
             </Button>

@@ -10,7 +10,7 @@
  * - Event emission (future: webhooks, notifications)
  */
 
-import { Prisma } from '@prisma/client'
+import { Prisma, type LeadSource, type LeadStatus } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
 import { prisma } from '@/lib/shared/prisma'
@@ -51,11 +51,11 @@ export class LeadService {
         name: command.name.trim(),
         phone: command.phone.trim(),
         email: command.email?.toLowerCase().trim(),
-        source: command.source as any,
+        source: command.source as LeadSource,
         notes: command.notes?.trim(),
         companyId: command.companyId,
         createdById: command.createdById,
-        status: 'NEW' as any,
+        status: 'NEW' as LeadStatus,
       },
       include: {
         activities: true,

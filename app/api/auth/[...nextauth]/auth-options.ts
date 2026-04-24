@@ -11,7 +11,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
         companySlug: { label: 'Company', type: 'text' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null
         }
@@ -26,6 +26,8 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Return a plain object that matches the User type expected by NextAuth
+        // The 'company' field is required by NextAuth's User type, so we include it
         return {
           id: user.id,
           email: user.email,
@@ -35,7 +37,7 @@ export const authOptions: NextAuthOptions = {
           companyName: user.company.name,
           companySlug: user.company.slug,
           avatarUrl: user.avatarUrl,
-          logoUrl: user.company.logoUrl,
+          company: user.company, // Required by NextAuth User type
         } as any
       },
     }),

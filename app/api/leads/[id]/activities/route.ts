@@ -4,6 +4,10 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:LeadActivities')
+
 const activitySchema = z.object({
   type: z.enum(['WHATSAPP_SENT', 'CALL_MADE', 'CALL_RECEIVED', 'VISIT_DONE', 'OFFER_RECEIVED', 'EMAIL_SENT', 'NOTE_ADDED', 'STATUS_CHANGED', 'TASK_COMPLETED']),
   notes: z.string().optional(),
@@ -55,7 +59,7 @@ export async function POST(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
-    console.error('Error creating activity:', error)
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error creating activity')
     return NextResponse.json({ error: 'Failed to create activity' }, { status: 500 })
   }
 }

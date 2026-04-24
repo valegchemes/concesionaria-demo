@@ -4,6 +4,9 @@ import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../../../auth/[...nextauth]/auth-options'
 import { z } from 'zod'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:Tasks')
 
 const taskSchema = z.object({
   title: z.string().min(1),
@@ -57,7 +60,7 @@ export async function POST(
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.issues }, { status: 400 })
     }
-    console.error('Error creating task:', error)
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error creating task')
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
   }
 }
@@ -98,7 +101,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, count: task.count })
   } catch (error) {
-    console.error('Error updating task:', error)
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating task')
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
   }
 }
