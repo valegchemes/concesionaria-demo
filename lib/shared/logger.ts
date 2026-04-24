@@ -1,16 +1,9 @@
 /**
- * Enterprise Logger con Pino
- * - Logging estructurado JSON para Vercel
- * - Niveles de log configurables
- * - Contexto de módulo enriquecido
- * - Compatible con Edge Runtime
+ * Universal Logger
+ * - En browser: usa console (sin dependencias)
+ * - En server/edge: usa pino para logs estructurados
+ * - Seguro para importar en cualquier contexto (client, server, edge)
  */
-
-import pino from 'pino'
-
-// ============================================================================
-// TIPOS ESTRUCTURADOS (sin 'any')
-// ============================================================================
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'trace'
 
@@ -25,278 +18,104 @@ interface LoggerOptions {
   requestId?: string
 }
 
-interface LogEntry {
-  level: LogLevel
-  time: string
-  msg: string
-  module: string
-  pid: number
-  hostname: string
-  context?: LogContext
-  error?: Error
+// Detectar entorno de manera segura
+const isBrowser = typeof window !== 'undefined'
+const isEdge = !isBrowser && typeof process === 'undefined'
+const isServer = !isBrowser
+
+// ============================================================================
+// LOGGER UNIVERSAL
+// ============================================================================
+
+type ModuleLogger = {
+  debug: (ctx: LogContext, msg: string) => void
+  info: (ctx: LogContext, msg: string) => void
+  warn: (ctx: LogContext, msg: string) => void
+  error: (ctx: LogContext, msg: string) => void
+  fatal: (ctx: LogContext, msg: string) => void
+  trace: (ctx: LogContext, msg: string) => void
+  child: (ctx: LogContext) => ModuleLogger
 }
-
-// ============================================================================
-// CONFIGURACIÓN DE PINO
-// ============================================================================
-
-const getEnvVar = (name: string): any => {
-  try {
-    if (typeof process !== 'undefined' && process['env']) {
-      return process['env'][name];
-    }
-  } catch (e) {
-    return undefined;
-  }
-  return undefined;
-};
-
-const getProcessProp = (name: string): any => {
-  try {
-    if (typeof process !== 'undefined') {
-      return (process as any)[name];
-    }
-  } catch (e) {
-    return undefined;
-  }
-  return undefined;
-};
-
-const LOG_LEVEL = (getEnvVar('LOG_LEVEL') as LogLevel) || 
-                  (process.env.NODE_ENV === 'development' ? 'debug' : 'info')
-
-const IS_EDGE_RUNTIME = typeof process === 'undefined' || getProcessProp('version') === undefined
 
 /**
- * Crea la configuración base de Pino según el entorno
+ * Logger que usa console en browser y pino en server
  */
-function createPinoConfig(): pino.LoggerOptions {
-  // Configuración base
-  const baseConfig: pino.LoggerOptions = {
-    level: LOG_LEVEL,
-    base: {
-      pid: getProcessProp('pid') ? getProcessProp('pid') : 0,
-      hostname: typeof process !== 'undefined' && process['env'] ? (getEnvVar('VERCEL_REGION') || 'unknown') : 'browser',
-      env: process.env.NODE_ENV || 'unknown',
-      vercel: typeof process !== 'undefined' && process['env'] ? (getEnvVar('VERCEL_ENV') || false) : false,
-    },
-    timestamp: pino.stdTimeFunctions ? pino.stdTimeFunctions.isoTime : () => `,"time":"${new Date().toISOString()}"`,
-    formatters: {
-      level: (label: string) => ({ level: label.toUpperCase() }),
-      bindings: (bindings: pino.Bindings) => ({
-        pid: bindings.pid,
-        hostname: bindings.hostname,
-      }),
-      log: (obj: Record<string, unknown>) => {
-        // Formatear errores para mejor legibilidad
-        if (obj.err instanceof Error) {
-          return {
-            ...obj,
-            error: {
-              message: obj.err.message,
-              stack: process.env.NODE_ENV === 'development' ? obj.err.stack : undefined,
-              name: obj.err.name,
-            },
-          }
-        }
-        return obj
-      },
-    },
-  }
+function createBrowserLogger(options: LoggerOptions): ModuleLogger {
+  const prefix = `[${options.module}]`
 
-  // En desarrollo, usar pretty print
-  if (process.env.NODE_ENV === 'development' && !IS_EDGE_RUNTIME) {
-    return {
-      ...baseConfig,
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:MM:ss Z',
-          ignore: 'pid,hostname',
-          messageFormat: '[{module}] {msg}',
-        },
-      },
+  const make = (level: LogLevel, consoleFn: (...args: unknown[]) => void) =>
+    (ctx: LogContext, msg: string) => {
+      consoleFn(prefix, msg, ctx)
     }
+
+  const logger: ModuleLogger = {
+    trace: make('trace', console.debug),
+    debug: make('debug', console.debug),
+    info:  make('info',  console.info),
+    warn:  make('warn',  console.warn),
+    error: make('error', console.error),
+    fatal: make('fatal', console.error),
+    child: (_ctx: LogContext) => logger,
   }
 
-  return baseConfig
+  return logger
 }
 
-// ============================================================================
-// LOGGER GLOBAL
-// ============================================================================
+// Cache de loggers server-side (pino es pesado, no reinstanciar)
+let pinoInstance: unknown = null
 
-const rootLogger = pino(createPinoConfig())
+function getPinoLogger(options: LoggerOptions): ModuleLogger {
+  try {
+    // Importación dinámica para que no se incluya en el bundle del cliente
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pino = require('pino')
 
-// ============================================================================
-// LOGGER CON CONTEXTO DE MÓDULO
-// ============================================================================
+    const logLevel = (() => {
+      try {
+        return process?.env?.LOG_LEVEL ?? 'info'
+      } catch {
+        return 'info'
+      }
+    })()
 
-export class ModuleLogger {
-  private logger: pino.Logger
-  private module: string
+    const base = pino({
+      level: logLevel,
+      base: { module: options.module },
+      timestamp: pino.stdTimeFunctions.isoTime,
+    })
 
-  constructor(options: LoggerOptions) {
-    this.module = options.module
-    this.logger = rootLogger.child({
+    const child = base.child({
       module: options.module,
-      companyId: options.companyId,
-      userId: options.userId,
-      requestId: options.requestId,
+      ...(options.companyId && { companyId: options.companyId }),
+      ...(options.userId && { userId: options.userId }),
+      ...(options.requestId && { requestId: options.requestId }),
     })
-  }
 
-  /**
-   * Log de nivel trace (muy detallado)
-   */
-  trace(context: LogContext, message: string): void {
-    this.logger.trace({ ...context, module: this.module }, message)
-  }
-
-  /**
-   * Log de nivel debug (diagnóstico)
-   */
-  debug(context: LogContext, message: string): void {
-    this.logger.debug({ ...context, module: this.module }, message)
-  }
-
-  /**
-   * Log de nivel info (informativo)
-   */
-  info(context: LogContext, message: string): void {
-    this.logger.info({ ...context, module: this.module }, message)
-  }
-
-  /**
-   * Log de nivel warn (advertencia)
-   */
-  warn(context: LogContext, message: string): void {
-    this.logger.warn({ ...context, module: this.module }, message)
-  }
-
-  /**
-   * Log de nivel error (error)
-   */
-  error(context: LogContext, message: string): void {
-    this.logger.error({ ...context, module: this.module }, message)
-  }
-
-  /**
-   * Log de nivel fatal (crítico)
-   */
-  fatal(context: LogContext, message: string): void {
-    this.logger.fatal({ ...context, module: this.module }, message)
-  }
-
-  /**
-   * Crea un child logger con contexto adicional
-   */
-  child(additionalContext: LogContext): ModuleLogger {
-    return new ModuleLogger({
-      module: this.module,
-      ...additionalContext,
-    })
+    return child as unknown as ModuleLogger
+  } catch {
+    // Si pino no está disponible (edge, etc), fallback a console
+    return createBrowserLogger(options)
   }
 }
 
 // ============================================================================
-// FACTORY FUNCTION
+// EXPORT PRINCIPAL
 // ============================================================================
 
-/**
- * Crea un logger con contexto de módulo
- * @param moduleName - Nombre del módulo (ej: 'LeadService', 'AuthMiddleware')
- * @returns ModuleLogger instance
- * 
- * @example
- * const log = createLogger('LeadService')
- * log.info({ leadId: '123' }, 'Lead created')
- */
-export function createLogger(moduleName: string): ModuleLogger {
-  return new ModuleLogger({ module: moduleName })
-}
+export function createLogger(
+  module: string,
+  options?: Partial<Omit<LoggerOptions, 'module'>>
+): ModuleLogger {
+  const opts: LoggerOptions = { module, ...options }
 
-// ============================================================================
-// UTILIDADES DE LOGGING
-// ============================================================================
-
-/**
- * Mide el tiempo de ejecución de una función y loguea el resultado
- */
-export async function logPerformance<T>(
-  logger: ModuleLogger,
-  operationName: string,
-  operation: () => Promise<T>
-): Promise<T> {
-  const start = Date.now()
-  try {
-    const result = await operation()
-    logger.debug(
-      { operation: operationName, duration: Date.now() - start },
-      `${operationName} completed`
-    )
-    return result
-  } catch (error) {
-    logger.error(
-      { 
-        operation: operationName, 
-        duration: Date.now() - start,
-        error: error instanceof Error ? error.message : String(error),
-      },
-      `${operationName} failed`
-    )
-    throw error
+  // En browser: siempre usar console
+  if (isBrowser) {
+    return createBrowserLogger(opts)
   }
+
+  // En servidor: usar pino con require() para evitar que bundler lo incluya en cliente
+  return getPinoLogger(opts)
 }
 
-/**
- * Crea un middleware de logging para API routes
- */
-export function createRequestLogger(moduleName: string) {
-  return {
-    start: (requestId: string, path: string, method: string) => {
-      const logger = createLogger(moduleName)
-      logger.debug({ requestId, path, method }, 'Request started')
-      return { logger, startTime: Date.now() }
-    },
-    end: (
-      ctx: { logger: ModuleLogger; startTime: number },
-      requestId: string,
-      statusCode: number
-    ) => {
-      ctx.logger.debug(
-        { 
-          requestId, 
-          statusCode, 
-          duration: Date.now() - ctx.startTime 
-        },
-        'Request completed'
-      )
-    },
-    error: (
-      ctx: { logger: ModuleLogger; startTime: number },
-      requestId: string,
-      error: Error
-    ) => {
-      ctx.logger.error(
-        { 
-          requestId, 
-          error: error.message,
-          duration: Date.now() - ctx.startTime 
-        },
-        'Request failed'
-      )
-    },
-  }
-}
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
-
-export { rootLogger as logger }
-export default createLogger
-
-// Re-exports de tipos
-export type { LogLevel, LogContext, LoggerOptions, LogEntry }
+// Export de tipo para uso externo
+export type { ModuleLogger, LogContext, LoggerOptions }
