@@ -13,6 +13,8 @@ type UnitFormData = {
   brand: string
   model: string
   year: number
+  acquisitionCostArs: string
+  acquisitionCostUsd: string
   priceUsd: string
   priceArs: string
   description: string
@@ -23,6 +25,8 @@ const initialFormData: UnitFormData = {
   brand: '',
   model: '',
   year: new Date().getFullYear(),
+  acquisitionCostArs: '',
+  acquisitionCostUsd: '',
   priceUsd: '',
   priceArs: '',
   description: '',
@@ -57,6 +61,8 @@ export function UnitForm() {
       const payload = {
         title,
         type: formData.type,
+        acquisitionCostArs: formData.acquisitionCostArs ? parseFloat(formData.acquisitionCostArs) : null,
+        acquisitionCostUsd: formData.acquisitionCostUsd ? parseFloat(formData.acquisitionCostUsd) : null,
         priceUsd: formData.priceUsd ? parseFloat(formData.priceUsd) : null,
         priceArs: formData.priceArs ? parseFloat(formData.priceArs) : null,
         description: formData.description,
@@ -134,47 +140,61 @@ export function UnitForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <Label htmlFor="brand">Marca *</Label>
-          <Input
-            id="brand"
-            name="brand"
-            placeholder="ej: Toyota"
-            value={formData.brand}
-            onChange={handleInputChange}
-            required
-          />
+          <Input id="brand" name="brand" placeholder="ej: Toyota" value={formData.brand} onChange={handleInputChange} required />
         </div>
-
         <div>
           <Label htmlFor="model">Modelo *</Label>
-          <Input
-            id="model"
-            name="model"
-            placeholder="ej: Corolla"
-            value={formData.model}
-            onChange={handleInputChange}
-            required
-          />
+          <Input id="model" name="model" placeholder="ej: Corolla" value={formData.model} onChange={handleInputChange} required />
         </div>
-
         <div>
           <Label htmlFor="year">Año</Label>
-          <Input
-            id="year"
-            name="year"
-            type="number"
-            value={formData.year}
-            onChange={handleInputChange}
-          />
+          <Input id="year" name="year" type="number" value={formData.year} onChange={handleInputChange} />
         </div>
+      </div>
 
+      {/* Costos de la concesionaria — clave para calcular ganancia real */}
+      <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
         <div>
-          <Label htmlFor="priceUsd">Precio (USD) *</Label>
+          <h3 className="text-sm font-semibold text-amber-800">💰 Costos de la Concesionaria</h3>
+          <p className="text-xs text-amber-700 mt-0.5">Precio al que compraste la unidad (no visible al cliente)</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="acquisitionCostArs">Costo de Compra (ARS)</Label>
+            <Input
+              id="acquisitionCostArs"
+              name="acquisitionCostArs"
+              type="number"
+              step="0.01"
+              placeholder="ej: 90000000"
+              value={formData.acquisitionCostArs}
+              onChange={handleInputChange}
+            />
+          </div>
+          <div>
+            <Label htmlFor="acquisitionCostUsd">Costo de Compra (USD)</Label>
+            <Input
+              id="acquisitionCostUsd"
+              name="acquisitionCostUsd"
+              type="number"
+              step="0.01"
+              placeholder="ej: 90000"
+              value={formData.acquisitionCostUsd}
+              onChange={handleInputChange}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <Label htmlFor="priceUsd">Precio de Venta (USD) *</Label>
           <Input
             id="priceUsd"
             name="priceUsd"
             type="number"
             step="0.01"
-            placeholder="ej: 25000"
+            placeholder="ej: 95000"
             value={formData.priceUsd}
             onChange={handleInputChange}
             required
@@ -182,13 +202,13 @@ export function UnitForm() {
         </div>
 
         <div>
-          <Label htmlFor="priceArs">Precio (ARS)</Label>
+          <Label htmlFor="priceArs">Precio de Venta (ARS)</Label>
           <Input
             id="priceArs"
             name="priceArs"
             type="number"
             step="0.01"
-            placeholder="ej: 25000000"
+            placeholder="ej: 95000000"
             value={formData.priceArs}
             onChange={handleInputChange}
           />
