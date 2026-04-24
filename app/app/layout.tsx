@@ -17,13 +17,18 @@ export default async function AppLayout({
   }
 
   // Fetch avatarUrl and logoUrl fresh from DB (not from JWT to avoid cookie overflow)
-  const dbUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      avatarUrl: true,
-      company: { select: { logoUrl: true } },
-    },
-  })
+  let dbUser: { avatarUrl: string | null; company: { logoUrl: string | null } | null } | null = null
+  try {
+    dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        avatarUrl: true,
+        company: { select: { logoUrl: true } },
+      },
+    })
+  } catch (e) {
+    console.error('[AppLayout] Failed to fetch user from DB:', e)
+  }
 
   const user = {
     id: session.user.id,

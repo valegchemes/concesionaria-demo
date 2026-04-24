@@ -10,9 +10,14 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
-import { createLogger } from '@/lib/shared/logger'
 
-const log = createLogger('Middleware')
+// Inline logger — safe for Edge Runtime (no pino/require)
+const log = {
+  debug: (meta: object, msg: string) => console.debug('[Middleware]', msg, meta),
+  info:  (meta: object, msg: string) => console.info('[Middleware]', msg, meta),
+  warn:  (meta: object, msg: string) => console.warn('[Middleware]', msg, meta),
+  error: (meta: object, msg: string) => console.error('[Middleware]', msg, meta),
+}
 
 // ============================================================================
 // CONFIGURACIÓN
