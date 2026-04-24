@@ -245,9 +245,9 @@ export default function UnitsPage() {
                     )}
                   </div>
 
-                  {unit.tags.length > 0 && (
+                  {(unit.tags?.length ?? 0) > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {unit.tags.slice(0, 3).map((tag) => (
+                      {(unit.tags ?? []).slice(0, 3).map((tag) => (
                         <span
                           key={tag}
                           className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded"
@@ -255,8 +255,8 @@ export default function UnitsPage() {
                           {tag}
                         </span>
                       ))}
-                      {unit.tags.length > 3 && (
-                        <span className="text-xs text-gray-500">+{unit.tags.length - 3}</span>
+                      {(unit.tags?.length ?? 0) > 3 && (
+                        <span className="text-xs text-gray-500">+{(unit.tags?.length ?? 0) - 3}</span>
                       )}
                     </div>
                   )}
