@@ -6,8 +6,8 @@ import { Providers } from '@/components/providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Concesionaria SaaS',
-  description: 'CRM + Inventario para concesionarias de vehículos usados',
+  title: 'AutoManager CRM',
+  description: 'Sistema interno de gestión para la concesionaria',
 }
 
 export default function RootLayout({
