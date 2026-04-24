@@ -17,13 +17,14 @@ export default async function AppLayout({
   }
 
   // Fetch avatarUrl and logoUrl fresh from DB (not from JWT to avoid cookie overflow)
-  let dbUser: { avatarUrl: string | null; company: { logoUrl: string | null } | null } | null = null
+  // Also fetch company name to avoid staleness if user changed it in settings
+  let dbUser: { avatarUrl: string | null; company: { name: string; logoUrl: string | null } | null } | null = null
   try {
     dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         avatarUrl: true,
-        company: { select: { logoUrl: true } },
+        company: { select: { name: true, logoUrl: true } },
       },
     })
   } catch (e) {
@@ -36,7 +37,7 @@ export default async function AppLayout({
     email: session.user.email ?? '',
     role: session.user.role ?? 'SELLER',
     companyId: session.user.companyId ?? '',
-    companyName: session.user.companyName ?? '',
+    companyName: dbUser?.company?.name ?? session.user.companyName ?? '',
     companySlug: session.user.companySlug ?? '',
     avatarUrl: dbUser?.avatarUrl ?? undefined,
     logoUrl: dbUser?.company?.logoUrl ?? undefined,
