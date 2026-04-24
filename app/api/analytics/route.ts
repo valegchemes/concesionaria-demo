@@ -7,13 +7,12 @@
  * - Caché implícita vía SWR en frontend
  */
 
-export const runtime = 'edge'
-export const preferredRegion = 'iad1'
+export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { prismaEdge } from '@/lib/prisma-edge'
+import { prisma } from '@/lib/shared/prisma'
 import { AnalyticsQuerySchema, TimeRangeEnum, getDateRangeFromTimeRange } from '@/lib/domains/analytics/types'
 import { successResponse, errorResponse } from '@/lib/shared/api-response'
 import { ValidationError, ForbiddenError, isAppError } from '@/lib/shared/errors'
@@ -197,7 +196,7 @@ async function getDashboardSummary(
   const { start, end, label } = dateRange
 
   // Query 1: Métricas de ventas (AGREGACIÓN SQL DIRECTA)
-  const salesMetrics = await prismaEdge.deal.aggregate({
+  const salesMetrics = await prisma.deal.aggregate({
     where: {
       companyId, // 🔒 Tenant isolation
       status: { in: ['DELIVERED', 'APPROVED'] },
@@ -219,7 +218,7 @@ async function getDashboardSummary(
 
   // Query 2: Costos totales (AGREGACIÓN SQL)
   const [dealCosts, unitCosts] = await Promise.all([
-    prismaEdge.dealCostItem.aggregate({
+    prisma.dealCostItem.aggregate({
       where: {
         deal: {
           companyId, // 🔒 Tenant isolation
@@ -234,7 +233,7 @@ async function getDashboardSummary(
         amountUsd: true,
       },
     }),
-    prismaEdge.unitCostItem.aggregate({
+    prisma.unitCostItem.aggregate({
       where: {
         unit: {
           companyId, // 🔒 Tenant isolation
@@ -252,7 +251,7 @@ async function getDashboardSummary(
   ])
 
   // Query 3: Métricas de inventario
-  const inventoryMetrics = await prismaEdge.unit.groupBy({
+  const inventoryMetrics = await prisma.unit.groupBy({
     by: ['status'],
     where: {
       companyId, // 🔒 Tenant isolation
@@ -322,7 +321,7 @@ async function getSalesVsProfit(
   const { start, end } = dateRange
 
   // Agrupar por mes usando raw query para mejor performance
-  const dealsByMonth = await prismaEdge.$queryRaw<Array<{
+  const dealsByMonth = await prisma.$queryRaw<Array<{
     month: string
     year: number
     total_sales: Prisma.Decimal
@@ -405,7 +404,7 @@ async function getTopSellers(
   const { start, end } = dateRange
 
   // Agregación por vendedor (SQL GROUP BY)
-  const sellerStats = await prismaEdge.deal.groupBy({
+  const sellerStats = await prisma.deal.groupBy({
     by: ['sellerId'],
     where: {
       companyId, // 🔒 Tenant isolation
@@ -425,7 +424,7 @@ async function getTopSellers(
 
   // Obtener nombres de vendedores
   const sellerIds = sellerStats.map(s => s.sellerId)
-  const sellers = await prismaEdge.user.findMany({
+  const sellers = await prisma.user.findMany({
     where: {
       id: { in: sellerIds },
       companyId, // 🔒 Tenant isolation
@@ -480,7 +479,7 @@ async function getCostAnalysis(
   const { start, end } = dateRange
 
   // Costos de deals
-  const dealCosts = await prismaEdge.dealCostItem.findMany({
+  const dealCosts = await prisma.dealCostItem.findMany({
     where: {
       deal: {
         companyId, // 🔒 Tenant isolation
@@ -498,7 +497,7 @@ async function getCostAnalysis(
   })
 
   // Costos de unidades
-  const unitCosts = await prismaEdge.unitCostItem.findMany({
+  const unitCosts = await prisma.unitCostItem.findMany({
     where: {
       unit: {
         companyId, // 🔒 Tenant isolation

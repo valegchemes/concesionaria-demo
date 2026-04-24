@@ -7,13 +7,12 @@
  * - Respuestas: Estructura estandarizada
  */
 
-export const runtime = 'edge'
-export const preferredRegion = 'iad1'
+export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { prismaEdge } from '@/lib/prisma-edge'
+import { prisma } from '@/lib/shared/prisma'
 import { CreateUnitSchema, UpdateUnitSchema } from '@/lib/shared/validation'
 import { 
   successResponse, 
@@ -160,8 +159,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const skip = (filters.page - 1) * filters.limit
     
     const [total, units] = await Promise.all([
-      prismaEdge.unit.count({ where }),
-      prismaEdge.unit.findMany({
+      prisma.unit.count({ where }),
+      prisma.unit.findMany({
         where,
         select: {
           id: true,
@@ -267,7 +266,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ],
       }
 
-      const existing = await prismaEdge.unit.findFirst({
+      const existing = await prisma.unit.findFirst({
         where: duplicateWhere,
         select: { id: true, vin: true, domain: true },
       })
@@ -280,7 +279,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // 4. Crear unidad con fotos en transacción
-    const unit = await prismaEdge.$transaction(async (tx) => {
+    const unit = await prisma.$transaction(async (tx) => {
       // Crear unidad
       const newUnit = await tx.unit.create({
         data: {
