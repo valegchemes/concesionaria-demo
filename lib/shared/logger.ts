@@ -40,10 +40,32 @@ interface LogEntry {
 // CONFIGURACIÓN DE PINO
 // ============================================================================
 
-const LOG_LEVEL = (process.env.LOG_LEVEL as LogLevel) || 
+const getEnvVar = (name: string): any => {
+  try {
+    if (typeof process !== 'undefined' && process['env']) {
+      return process['env'][name];
+    }
+  } catch (e) {
+    return undefined;
+  }
+  return undefined;
+};
+
+const getProcessProp = (name: string): any => {
+  try {
+    if (typeof process !== 'undefined') {
+      return (process as any)[name];
+    }
+  } catch (e) {
+    return undefined;
+  }
+  return undefined;
+};
+
+const LOG_LEVEL = (getEnvVar('LOG_LEVEL') as LogLevel) || 
                   (process.env.NODE_ENV === 'development' ? 'debug' : 'info')
 
-const IS_EDGE_RUNTIME = typeof process === 'undefined' || process.version === undefined
+const IS_EDGE_RUNTIME = typeof process === 'undefined' || getProcessProp('version') === undefined
 
 /**
  * Crea la configuración base de Pino según el entorno
@@ -53,12 +75,12 @@ function createPinoConfig(): pino.LoggerOptions {
   const baseConfig: pino.LoggerOptions = {
     level: LOG_LEVEL,
     base: {
-      pid: IS_EDGE_RUNTIME ? 0 : process.pid,
-      hostname: IS_EDGE_RUNTIME ? 'edge' : (process.env.VERCEL_REGION || 'unknown'),
+      pid: getProcessProp('pid') ? getProcessProp('pid') : 0,
+      hostname: typeof process !== 'undefined' && process['env'] ? (getEnvVar('VERCEL_REGION') || 'unknown') : 'browser',
       env: process.env.NODE_ENV || 'unknown',
-      vercel: process.env.VERCEL_ENV || false,
+      vercel: typeof process !== 'undefined' && process['env'] ? (getEnvVar('VERCEL_ENV') || false) : false,
     },
-    timestamp: pino.stdTimeFunctions.isoTime,
+    timestamp: pino.stdTimeFunctions ? pino.stdTimeFunctions.isoTime : () => `,"time":"${new Date().toISOString()}"`,
     formatters: {
       level: (label: string) => ({ level: label.toUpperCase() }),
       bindings: (bindings: pino.Bindings) => ({
