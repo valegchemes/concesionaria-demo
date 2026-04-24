@@ -62,6 +62,8 @@ export class UnitService {
         type: command.type,
         priceArs: command.priceArs,
         priceUsd: command.priceUsd,
+        acquisitionCostArs: command.acquisitionCostArs,
+        acquisitionCostUsd: command.acquisitionCostUsd,
         description: command.description?.trim(),
         location: command.location?.trim(),
         status: command.status || 'AVAILABLE',

@@ -57,6 +57,8 @@ interface CreateUnitBody {
   type: UnitType
   priceArs?: number | null
   priceUsd?: number | null
+  acquisitionCostArs?: number | null
+  acquisitionCostUsd?: number | null
   description?: string | null
   location?: string | null
   status?: UnitStatus
@@ -287,6 +289,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           type: data.type,
           priceArs: data.priceArs ?? null,
           priceUsd: data.priceUsd ?? null,
+          acquisitionCostArs: data.acquisitionCostArs ?? null,
+          acquisitionCostUsd: data.acquisitionCostUsd ?? null,
           description: data.description ?? null,
           location: data.location ?? null,
           status: data.status ?? 'AVAILABLE',

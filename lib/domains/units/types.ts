@@ -20,6 +20,8 @@ export interface CreateUnitCommand {
   type: 'CAR' | 'MOTORCYCLE' | 'BOAT'
   priceArs?: number | null
   priceUsd?: number | null
+  acquisitionCostArs?: number | null
+  acquisitionCostUsd?: number | null
   description?: string
   location?: string
   status?: 'AVAILABLE' | 'IN_PREP' | 'RESERVED' | 'SOLD'
