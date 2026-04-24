@@ -30,13 +30,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 interface AnalyticsDashboardProps {
   companyId: string | undefined
   companyName?: string
+  hideHeader?: boolean
 }
 
 // ============================================================================
 // Componente Principal
 // ============================================================================
 
-export function AnalyticsDashboard({ companyId, companyName }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ companyId, companyName, hideHeader = false }: AnalyticsDashboardProps) {
   const { timeRange, setTimeRange, options } = useTimeRange('30d')
   const { dashboard, salesProfit, topSellers, costs, isLoadingAny, hasError } = useAllAnalytics(timeRange, companyId)
 
@@ -58,21 +59,37 @@ export function AnalyticsDashboard({ companyId, companyName }: AnalyticsDashboar
     return <DashboardSkeleton />
   }
 
-  // Estado sin datos
-  const hasNoData = !isLoadingAny && 
-    (!dashboard.summary || dashboard.summary.kpis.totalDeals === 0)
-
   return (
-    <div className="space-y-6 p-6">
-      {/* Header con selector de tiempo */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard de Analíticas</h1>
-          {companyName && (
-            <p className="text-muted-foreground">{companyName}</p>
-          )}
+    <div className="space-y-6">
+      {/* Header con selector de tiempo — ocultable cuando se embebe */}
+      {!hideHeader && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard de Analíticas</h1>
+            {companyName && (
+              <p className="text-muted-foreground">{companyName}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Período:</span>
+            <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        
+      )}
+
+      {/* Selector de tiempo standalone cuando el header está oculto */}
+      {hideHeader && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Período:</span>
           <Select value={timeRange} onValueChange={(value) => setTimeRange(value as TimeRange)}>
@@ -88,7 +105,7 @@ export function AnalyticsDashboard({ companyId, companyName }: AnalyticsDashboar
             </SelectContent>
           </Select>
         </div>
-      </div>
+      )}
 
       {/* Error global */}
       {hasError && (
@@ -101,16 +118,8 @@ export function AnalyticsDashboard({ companyId, companyName }: AnalyticsDashboar
         </Alert>
       )}
 
-      {/* Estado vacío */}
-      {hasNoData ? (
-        <EmptyState 
-          title="Sin datos de ventas"
-          description="No se encontraron operaciones en el período seleccionado. Comienza registrando tu primera venta."
-          icon={TrendingUp}
-        />
-      ) : (
-        <>
-          {/* KPIs */}
+      {/* KPIs — siempre visibles (muestran 0 si no hay datos) */}
+      <>
           <DashboardKPIs data={dashboard.summary} isLoading={dashboard.isLoading} />
 
           {/* Tabs con gráficos */}
@@ -255,7 +264,6 @@ export function AnalyticsDashboard({ companyId, companyName }: AnalyticsDashboar
             </TabsContent>
           </Tabs>
         </>
-      )}
     </div>
   )
 }
