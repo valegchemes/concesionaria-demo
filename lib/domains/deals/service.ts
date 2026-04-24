@@ -268,6 +268,21 @@ export class DealService {
 
     log.info({ dealId: id, newStatus: command.status }, 'Deal updated')
 
+    // Sincronizar estado de unidad y lead cuando el deal se marca como DELIVERED o APPROVED
+    if (command.status === 'DELIVERED' || command.status === 'APPROVED') {
+      await Promise.all([
+        prisma.unit.update({
+          where: { id: currentDeal.unitId },
+          data: { status: 'SOLD' as UnitStatus },
+        }),
+        prisma.lead.update({
+          where: { id: currentDeal.leadId },
+          data: { status: 'SOLD' as LeadStatus },
+        }),
+      ])
+      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit and lead marked as SOLD')
+    }
+
     return updated
   }
 
