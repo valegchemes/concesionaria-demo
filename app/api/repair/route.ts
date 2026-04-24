@@ -1,8 +1,9 @@
 /**
  * Ruta de reparación única: sincroniza el estado de unidades y leads
- * con el estado real de sus deals completados (DELIVERED / APPROVED).
+ * SOLO con deals en estado DELIVERED.
  *
- * SEGURIDAD: Solo accesible por ADMIN. Borrar este archivo luego de usarlo.
+ * También revierte a AVAILABLE las unidades cuyo deal NO es DELIVERED.
+ * SEGURIDAD: Solo accesible por ADMIN.
  */
 
 export const dynamic = 'force-dynamic'
@@ -21,37 +22,53 @@ export async function POST(req: NextRequest) {
 
   const companyId = session.user.companyId
 
-  // Buscar todos los deals DELIVERED o APPROVED de esta empresa
-  const closedDeals = await prisma.deal.findMany({
-    where: {
-      companyId,
-      status: { in: ['DELIVERED', 'APPROVED'] },
-    },
+  // 1. Deals DELIVERED → unidad y lead deben ser SOLD
+  const deliveredDeals = await prisma.deal.findMany({
+    where: { companyId, status: 'DELIVERED' },
     select: { unitId: true, leadId: true },
   })
 
-  if (closedDeals.length === 0) {
-    return NextResponse.json({ message: 'No hay deals cerrados para sincronizar.', updated: 0 })
-  }
+  const deliveredUnitIds = [...new Set(deliveredDeals.map(d => d.unitId))]
+  const deliveredLeadIds = [...new Set(deliveredDeals.map(d => d.leadId))]
 
-  const unitIds = [...new Set(closedDeals.map(d => d.unitId))]
-  const leadIds = [...new Set(closedDeals.map(d => d.leadId))]
+  const soldUnits = deliveredUnitIds.length > 0
+    ? await prisma.unit.updateMany({
+        where: { id: { in: deliveredUnitIds }, companyId },
+        data: { status: 'SOLD' },
+      })
+    : { count: 0 }
 
-  // Actualizar unidades → SOLD
-  const unitsResult = await prisma.unit.updateMany({
-    where: { id: { in: unitIds }, companyId },
-    data: { status: 'SOLD' },
+  const soldLeads = deliveredLeadIds.length > 0
+    ? await prisma.lead.updateMany({
+        where: { id: { in: deliveredLeadIds }, companyId },
+        data: { status: 'SOLD' },
+      })
+    : { count: 0 }
+
+  // 2. Deals NO-DELIVERED (activos) → revertir unidad a AVAILABLE si fue marcada como SOLD por error
+  const activeDeals = await prisma.deal.findMany({
+    where: {
+      companyId,
+      status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] },
+    },
+    select: { unitId: true },
   })
 
-  // Actualizar leads → SOLD
-  const leadsResult = await prisma.lead.updateMany({
-    where: { id: { in: leadIds }, companyId },
-    data: { status: 'SOLD' },
-  })
+  const activeUnitIds = [...new Set(activeDeals.map(d => d.unitId))]
+  // Solo revertir las que NO están en la lista de delivered
+  const toRevert = activeUnitIds.filter(id => !deliveredUnitIds.includes(id))
+
+  const revertedUnits = toRevert.length > 0
+    ? await prisma.unit.updateMany({
+        where: { id: { in: toRevert }, companyId, status: 'SOLD' },
+        data: { status: 'AVAILABLE' },
+      })
+    : { count: 0 }
 
   return NextResponse.json({
     message: 'Sincronización completada.',
-    unitsUpdated: unitsResult.count,
-    leadsUpdated: leadsResult.count,
+    unitsMarkedSold: soldUnits.count,
+    leadsMarkedSold: soldLeads.count,
+    unitsReverted: revertedUnits.count,
   })
 }
