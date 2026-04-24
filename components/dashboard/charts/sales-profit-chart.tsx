@@ -80,8 +80,10 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false }: Sale
     )
   }
 
-  // Análisis detallado → BarChart agrupado (más legible con pocos datos)
-  if (showDetailed) {
+  const isSingleDataPoint = data.length === 1;
+
+  // Análisis detallado o punto único → BarChart agrupado (más legible con pocos datos y evita que AreaChart desaparezca con un solo punto)
+  if (showDetailed || isSingleDataPoint) {
     return (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
