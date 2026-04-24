@@ -253,6 +253,8 @@ export class DealService {
         ...(command.notes !== undefined && { notes: command.notes?.trim() || null }),
         ...(command.finalPrice && { finalPrice: command.finalPrice }),
         ...(command.finalPriceCurrency && { finalPriceCurrency: command.finalPriceCurrency }),
+        // Setear closedAt cuando se cierra el deal (para analíticas correctas)
+        ...(command.status && ['DELIVERED', 'CANCELED'].includes(command.status) && { closedAt: new Date() }),
         updatedAt: new Date(),
       },
       include: {
