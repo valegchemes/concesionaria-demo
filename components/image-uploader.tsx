@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { uploadImage, uploadMultipleImages } from '@/lib/blob'
 import { X, Upload } from 'lucide-react'
+import imageCompression from 'browser-image-compression'
 
 interface ImageUploaderProps {
   onImagesUpload: (urls: string[]) => void
@@ -38,8 +39,8 @@ export function ImageUploader({
         setError(`${file.name} no es una imagen válida`)
         return false
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setError(`${file.name} es muy grande (máx 5MB)`)
+      if (file.size > 20 * 1024 * 1024) {
+        setError(`${file.name} es muy grande (máx 20MB)`)
         return false
       }
       return true
@@ -52,7 +53,25 @@ export function ImageUploader({
     setProgress(0)
 
     try {
-      const urls = await uploadMultipleImages(validFiles, (p) =>
+      const options = {
+        maxSizeMB: 0.5, // Comprimir hasta ~500KB
+        maxWidthOrHeight: 1920, // Resolución max FullHD
+        useWebWorker: true,
+      }
+
+      // Comprimir todas las imágenes en paralelo
+      const compressedFiles = await Promise.all(
+        validFiles.map(async (file) => {
+          try {
+            return await imageCompression(file, options)
+          } catch (error) {
+            console.error('Error comprimiendo la imagen:', file.name, error)
+            return file // Fallback a la original si falla
+          }
+        })
+      )
+
+      const urls = await uploadMultipleImages(compressedFiles, (p) =>
         setProgress(p)
       )
 
@@ -104,7 +123,7 @@ export function ImageUploader({
               : 'Arrastra imágenes aquí o haz clic para seleccionar'}
           </p>
           <p className="text-xs text-gray-500 mt-1">
-            PNG, JPG, GIF hasta 5MB (máx {maxFiles} imágenes)
+            PNG, JPG, HEIC hasta 20MB (se comprimen automáticamente). Máx {maxFiles} fotos.
           </p>
         </label>
       </div>
