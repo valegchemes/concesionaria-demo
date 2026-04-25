@@ -1,8 +1,8 @@
 'use client'
 
-import { Bell, LogOut, Search } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { Bell, LogOut } from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import { GlobalSearch } from './global-search'
 
 interface AppHeaderProps {
   user: {
@@ -17,14 +17,7 @@ export function AppHeader({ user }: AppHeaderProps) {
   return (
     <header className="h-16 bg-white border-b flex items-center justify-between px-6">
       <div className="flex items-center gap-4 flex-1">
-        <div className="relative w-96">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            type="search"
-            placeholder="Buscar leads, unidades..."
-            className="pl-9 w-full"
-          />
-        </div>
+        <GlobalSearch />
       </div>
       
       <div className="flex items-center gap-4">
