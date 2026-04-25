@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,9 +57,11 @@ const statusLabels: Record<string, string> = {
 }
 
 export default function LeadsPage() {
+  const router = useRouter()
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchLeads()
@@ -81,11 +84,22 @@ export default function LeadsPage() {
 
   async function deleteLead(id: string) {
     if (!confirm('¿Eliminar este lead? Esta acción no se puede deshacer.')) return
+    setDeleteError(null)
     try {
       const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' })
-      if (res.ok) setLeads(prev => prev.filter(l => l.id !== id))
+      if (res.ok) {
+        router.refresh()
+        setLeads(prev => prev.filter(l => l.id !== id))
+      } else {
+        const data = await res.json().catch(() => ({}))
+        const msg = data?.error || data?.message || `Error ${res.status}`
+        setDeleteError(msg)
+        alert(`No se pudo eliminar el lead: ${msg}`)
+      }
     } catch (err) {
-      console.error('Error deleting lead:', err)
+      const msg = err instanceof Error ? err.message : 'Error de conexión'
+      setDeleteError(msg)
+      alert(`Error: ${msg}`)
     }
   }
 

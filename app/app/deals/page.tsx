@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -38,6 +39,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function DealsPage() {
+  const router = useRouter()
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -65,9 +67,16 @@ export default function DealsPage() {
     if (!confirm('¿Eliminar esta operación? Esta acción no se puede deshacer.')) return
     try {
       const res = await fetch(`/api/deals/${id}`, { method: 'DELETE' })
-      if (res.ok) setDeals(prev => prev.filter(d => d.id !== id))
+      if (res.ok) {
+        router.refresh()
+        setDeals(prev => prev.filter(d => d.id !== id))
+      } else {
+        const data = await res.json().catch(() => ({}))
+        const msg = data?.error || data?.message || `Error ${res.status}`
+        alert(`No se pudo eliminar la operación: ${msg}`)
+      }
     } catch (err) {
-      console.error('Error deleting deal:', err)
+      alert('Error de conexión al intentar eliminar')
     }
   }
 

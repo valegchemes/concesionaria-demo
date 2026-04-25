@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -62,6 +63,7 @@ function formatDateSimple(dateStr: string): string {
 }
 
 export default function UnitsPage() {
+  const router = useRouter()
   const [units, setUnits] = useState<Unit[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -96,10 +98,15 @@ export default function UnitsPage() {
     try {
       const res = await fetch(`/api/units/${id}`, { method: 'DELETE' })
       if (res.ok) {
+        router.refresh()
         setUnits(prev => prev.filter(u => u.id !== id))
+      } else {
+        const data = await res.json().catch(() => ({}))
+        const msg = data?.error || data?.message || `Error ${res.status}`
+        alert(`No se pudo eliminar la unidad: ${msg}`)
       }
     } catch (err) {
-      console.error('Error deleting unit:', err)
+      alert('Error de conexión al intentar eliminar')
     }
   }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ interface TeamMember {
 }
 
 export default function TeamPage() {
+  const router = useRouter()
   const { data: session } = useSession()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,13 +100,15 @@ export default function TeamPage() {
     try {
       const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' })
       if (res.ok) {
+        router.refresh()
         setMembers(prev => prev.filter(m => m.id !== id))
       } else {
-        const data = await res.json()
-        alert(data.error || 'Error al eliminar el miembro')
+        const data = await res.json().catch(() => ({}))
+        const msg = data?.error || data?.message || `Error ${res.status}`
+        alert(`No se pudo eliminar el miembro: ${msg}`)
       }
     } catch (err) {
-      console.error('Error deleting member:', err)
+      alert('Error de conexión al intentar eliminar')
     }
   }
 
