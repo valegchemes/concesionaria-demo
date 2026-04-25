@@ -158,7 +158,11 @@ export default function LeadsPage() {
 
       <div className="space-y-3">
         {filteredLeads.map((lead) => (
-          <Card key={lead.id} className={hasOverdueTask(lead) ? 'border-red-300' : ''}>
+          <Card 
+            key={lead.id} 
+            className={`cursor-pointer hover:border-blue-400 transition-colors ${hasOverdueTask(lead) ? 'border-red-300' : ''}`}
+            onClick={() => router.push(`/app/leads/${lead.id}`)}
+          >
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -214,14 +218,19 @@ export default function LeadsPage() {
                 </div>
 
                 <div className="flex flex-col gap-2 ml-4">
-                  <Link href={`/app/leads/${lead.id}`}>
-                    <Button size="sm">Ver</Button>
-                  </Link>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <Link href={`/app/leads/${lead.id}`}>
+                      <Button size="sm" className="w-full">Ver</Button>
+                    </Link>
+                  </div>
                   <Button
                     size="sm"
                     variant="ghost"
                     className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
-                    onClick={() => deleteLead(lead.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteLead(lead.id);
+                    }}
                     title="Eliminar lead"
                   >
                     <Trash2 className="h-4 w-4" />
