@@ -114,11 +114,25 @@ export class DealService {
 
     log.info({ dealId: deal.id }, 'Deal created successfully')
 
-    // Update lead status to indicate deal in progress
-    await prisma.lead.update({
-      where: { id: command.leadId },
-      data: { status: 'OFFER' },
-    })
+    // Sincronizar estados si la operación es RESERVADA
+    if (deal.status === 'RESERVED') {
+      await Promise.all([
+        prisma.lead.update({
+          where: { id: command.leadId },
+          data: { status: 'RESERVED' },
+        }),
+        prisma.unit.update({
+          where: { id: command.unitId },
+          data: { status: 'RESERVED' },
+        })
+      ])
+    } else {
+      // Update lead status to indicate deal in progress
+      await prisma.lead.update({
+        where: { id: command.leadId },
+        data: { status: 'OFFER' },
+      })
+    }
 
     return deal
   }
@@ -284,6 +298,25 @@ export class DealService {
         }),
       ])
       log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit soft-deleted and lead marked as SOLD')
+    } else if (command.status === 'RESERVED') {
+      await Promise.all([
+        prisma.unit.update({
+          where: { id: currentDeal.unitId },
+          data: { status: 'RESERVED' as UnitStatus },
+        }),
+        prisma.lead.update({
+          where: { id: currentDeal.leadId },
+          data: { status: 'RESERVED' as LeadStatus },
+        }),
+      ])
+      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit and lead marked as RESERVED')
+    } else if (command.status === 'CANCELED' && currentDeal.status === 'RESERVED') {
+      // Si se cancela una reserva, liberar la unidad
+      await prisma.unit.update({
+        where: { id: currentDeal.unitId },
+        data: { status: 'AVAILABLE' as UnitStatus },
+      })
+      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit marked as AVAILABLE after canceled reservation')
     }
 
     return updated

@@ -45,6 +45,18 @@ interface Lead {
     isCompleted: boolean
     assignedTo: { name: string }
   }[]
+  deals: {
+    id: string
+    status: string
+    finalPrice: number
+    finalPriceCurrency: string
+    depositAmount: number | null
+    createdAt: string
+    unit: {
+      id: string
+      title: string
+    }
+  }[]
 }
 
 interface WhatsAppTemplate {
@@ -359,6 +371,41 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </Button>
             </CardContent>
           </Card>
+
+          {lead.deals && lead.deals.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Handshake className="h-5 w-5 text-purple-500" />
+                  Operaciones
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {lead.deals.map((deal) => (
+                  <div key={deal.id} className="p-3 border rounded-lg bg-slate-50 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <Link href={`/app/units/${deal.unit.id}`} className="font-medium text-blue-600 hover:underline">
+                        {deal.unit.title}
+                      </Link>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${statusColors[deal.status] || 'bg-slate-100 text-slate-800'}`}>
+                        {statusLabels[deal.status] || deal.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm mt-2">
+                      <div>
+                        <p className="text-slate-500 text-xs">Precio Final</p>
+                        <p className="font-semibold">{deal.finalPriceCurrency} {formatPrice(deal.finalPrice)}</p>
+                      </div>
+                      <div>
+                        <p className="text-slate-500 text-xs">Seña / Anticipo</p>
+                        <p className="font-semibold">{deal.depositAmount ? `${deal.finalPriceCurrency} ${formatPrice(deal.depositAmount)}` : '-'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Middle column - Tasks */}

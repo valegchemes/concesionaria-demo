@@ -85,7 +85,11 @@ export class LeadService {
         assignedTo: { select: { id: true, name: true, email: true } },
         createdBy: { select: { id: true, name: true } },
         interestedUnit: { select: { id: true, title: true } },
-        deals: { orderBy: { createdAt: 'desc' }, take: 5 },
+        deals: { 
+          orderBy: { createdAt: 'desc' }, 
+          take: 5,
+          include: { unit: { select: { id: true, title: true } } }
+        },
         tasks: { where: { isCompleted: false }, orderBy: { dueDate: 'asc' } },
       },
     })
