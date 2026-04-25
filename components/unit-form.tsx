@@ -32,6 +32,19 @@ const initialFormData: UnitFormData = {
   description: '',
 }
 
+/** Formatea un string numérico con separadores de miles (punto) al estilo argentino */
+function formatWithDots(raw: string): string {
+  const digits = raw.replace(/\D/g, '') // solo dígitos
+  if (!digits) return ''
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(digits))
+}
+
+/** Convierte el string formateado a número puro para el payload */
+function parseFormatted(formatted: string): number | null {
+  const clean = formatted.replace(/[^\d]/g, '')
+  return clean ? Number(clean) : null
+}
+
 export function UnitForm() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -50,6 +63,13 @@ export function UnitForm() {
     }))
   }
 
+  /** Manejador especial para campos de precio — formatea con puntos al escribir */
+  const handlePriceChange = (name: keyof UnitFormData) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const formatted = formatWithDots(e.target.value)
+      setFormData((prev) => ({ ...prev, [name]: formatted }))
+    }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -61,10 +81,10 @@ export function UnitForm() {
       const payload = {
         title,
         type: formData.type,
-        acquisitionCostArs: formData.acquisitionCostArs ? parseFloat(formData.acquisitionCostArs) : null,
-        acquisitionCostUsd: formData.acquisitionCostUsd ? parseFloat(formData.acquisitionCostUsd) : null,
-        priceUsd: formData.priceUsd ? parseFloat(formData.priceUsd) : null,
-        priceArs: formData.priceArs ? parseFloat(formData.priceArs) : null,
+        acquisitionCostArs: parseFormatted(formData.acquisitionCostArs),
+        acquisitionCostUsd: parseFormatted(formData.acquisitionCostUsd),
+        priceUsd: parseFormatted(formData.priceUsd),
+        priceArs: parseFormatted(formData.priceArs),
         description: formData.description,
         domain: formData.brand.toLowerCase(),
         photos: images.map((url, index) => ({ url, order: index })),
@@ -164,11 +184,11 @@ export function UnitForm() {
             <Input
               id="acquisitionCostArs"
               name="acquisitionCostArs"
-              type="number"
-              step="0.01"
-              placeholder="ej: 90000000"
+              type="text"
+              inputMode="numeric"
+              placeholder="ej: 90.000.000"
               value={formData.acquisitionCostArs}
-              onChange={handleInputChange}
+              onChange={handlePriceChange('acquisitionCostArs')}
             />
           </div>
           <div>
@@ -176,11 +196,11 @@ export function UnitForm() {
             <Input
               id="acquisitionCostUsd"
               name="acquisitionCostUsd"
-              type="number"
-              step="0.01"
-              placeholder="ej: 90000"
+              type="text"
+              inputMode="numeric"
+              placeholder="ej: 90.000"
               value={formData.acquisitionCostUsd}
-              onChange={handleInputChange}
+              onChange={handlePriceChange('acquisitionCostUsd')}
             />
           </div>
         </div>
@@ -188,16 +208,15 @@ export function UnitForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <Label htmlFor="priceUsd">Precio de Venta (USD) *</Label>
+          <Label htmlFor="priceUsd">Precio de Venta (USD)</Label>
           <Input
             id="priceUsd"
             name="priceUsd"
-            type="number"
-            step="0.01"
-            placeholder="ej: 95000"
+            type="text"
+            inputMode="numeric"
+            placeholder="ej: 95.000"
             value={formData.priceUsd}
-            onChange={handleInputChange}
-            required
+            onChange={handlePriceChange('priceUsd')}
           />
         </div>
 
@@ -206,11 +225,11 @@ export function UnitForm() {
           <Input
             id="priceArs"
             name="priceArs"
-            type="number"
-            step="0.01"
-            placeholder="ej: 95000000"
+            type="text"
+            inputMode="numeric"
+            placeholder="ej: 95.000.000"
             value={formData.priceArs}
-            onChange={handleInputChange}
+            onChange={handlePriceChange('priceArs')}
           />
         </div>
       </div>

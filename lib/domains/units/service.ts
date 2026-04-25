@@ -262,8 +262,12 @@ export class UnitService {
   async delete(id: string, companyId: string): Promise<void> {
     log.info({ unitId: id }, 'Deleting unit')
 
-    // Verify unit exists
-    await this.getById(id, companyId)
+    // Verify unit exists (sin filtrar isActive para poder borrar unidades vendidas)
+    const unitExists = await prisma.unit.findFirst({
+      where: { id, companyId },
+      select: { id: true },
+    })
+    if (!unitExists) throw new NotFoundError('Unit', id)
 
     // Check if unit has active leads or deals (only block for IN-PROGRESS deals)
     const [activeLeads, activeDeals] = await Promise.all([
