@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate, formatPrice, generateWhatsAppLink, processTemplate } from '@/lib/utils'
 import { 
   ArrowLeft, Phone, Mail, User, Car, MessageCircle, 
-  Calendar, CheckCircle, Clock, AlertCircle 
+  Calendar, CheckCircle, Clock, AlertCircle, Handshake
 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
