@@ -59,6 +59,15 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
   const router = useRouter()
   const { id } = use(params)
   
+  const getFontSizeClass = (text: string) => {
+    const len = text.length
+    if (len > 22) return 'text-sm'
+    if (len > 18) return 'text-base'
+    if (len > 14) return 'text-lg'
+    if (len > 10) return 'text-xl'
+    return 'text-2xl'
+  }
+  
   const [deal, setDeal] = useState<DealDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -175,25 +184,25 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-center overflow-hidden">
                   <p className="text-sm font-medium text-slate-500 mb-1">Precio Final Pactado</p>
-                  <p className="text-2xl font-black text-slate-900">
+                  <p className={`font-black text-slate-900 break-words ${getFontSizeClass(`${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice, '')}`)}`}>
                     {deal.finalPriceCurrency} {formatPrice(deal.finalPrice, '')}
                   </p>
                 </div>
                 
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-center overflow-hidden">
                   <p className="text-sm font-medium text-slate-500 mb-1">Seña / Anticipo</p>
-                  <p className="text-2xl font-bold text-blue-600">
+                  <p className={`font-bold text-blue-600 break-words ${deal.depositAmount ? getFontSizeClass(`${deal.finalPriceCurrency} ${formatPrice(deal.depositAmount, '')}`) : 'text-2xl'}`}>
                     {deal.depositAmount 
                       ? `${deal.finalPriceCurrency} ${formatPrice(deal.depositAmount, '')}` 
                       : '-'}
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-center overflow-hidden">
                   <p className="text-sm font-medium text-slate-500 mb-1">Saldo Pendiente</p>
-                  <p className="text-xl font-bold text-slate-700">
+                  <p className={`font-bold text-slate-700 break-words ${getFontSizeClass(`${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice - (deal.depositAmount || 0), '')}`)}`}>
                     {deal.depositAmount 
                       ? `${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice - deal.depositAmount, '')}` 
                       : `${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice, '')}`}
