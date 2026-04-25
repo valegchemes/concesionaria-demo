@@ -273,14 +273,14 @@ export class DealService {
       await Promise.all([
         prisma.unit.update({
           where: { id: currentDeal.unitId },
-          data: { status: 'SOLD' as UnitStatus },
+          data: { status: 'SOLD' as UnitStatus, isActive: false },
         }),
         prisma.lead.update({
           where: { id: currentDeal.leadId },
           data: { status: 'SOLD' as LeadStatus },
         }),
       ])
-      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit and lead marked as SOLD')
+      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit soft-deleted and lead marked as SOLD')
     }
 
     return updated

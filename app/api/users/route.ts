@@ -93,9 +93,17 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized. Only admins can delete users.' }, { status: 401 })
+    // Auth via middleware headers (consistent with the rest of the API)
+    const requestingUserId = request.headers.get('x-user-id')
+    const requestingUserRole = request.headers.get('x-user-role')
+    const companyId = request.headers.get('x-company-id')
+
+    if (!requestingUserId || !companyId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    if (requestingUserRole !== 'ADMIN') {
+      return NextResponse.json({ error: 'Solo los administradores pueden eliminar miembros.' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -105,16 +113,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Missing user id' }, { status: 400 })
     }
 
-    if (userId === session.user.id) {
+    if (userId === requestingUserId) {
       return NextResponse.json({ error: 'No puedes eliminarte a ti mismo' }, { status: 400 })
     }
 
     const user = await prisma.user.findFirst({
-      where: { id: userId, companyId: session.user.companyId, isActive: true },
+      where: { id: userId, companyId, isActive: true },
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Usuario no encontrado' }, { status: 404 })
     }
 
     await prisma.user.update({

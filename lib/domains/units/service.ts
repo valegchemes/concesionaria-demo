@@ -265,19 +265,22 @@ export class UnitService {
     // Verify unit exists
     await this.getById(id, companyId)
 
-    // Check if unit has active leads or deals
+    // Check if unit has active leads or deals (only block for IN-PROGRESS deals)
     const [activeLeads, activeDeals] = await Promise.all([
       prisma.lead.count({
         where: { interestedUnitId: id, isActive: true },
       }),
       prisma.deal.count({
-        where: { unitId: id, status: { not: 'CANCELED' as DealStatus } },
+        where: {
+          unitId: id,
+          status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] as DealStatus[] },
+        },
       }),
     ])
 
     if (activeLeads > 0 || activeDeals > 0) {
       throw new ConflictError(
-        'Cannot delete unit with active leads or deals. Change status to SOLD or DISCARDED first.'
+        'No se puede eliminar una unidad con leads activos o una negociación en curso.'
       )
     }
 
