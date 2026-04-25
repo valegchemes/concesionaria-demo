@@ -128,7 +128,7 @@ export default async function DashboardPage() {
             <CardContent>
               <div className="text-2xl font-bold">{formatNumber(stats.units.available)}</div>
               <p className="text-xs text-muted-foreground">
-                {formatNumber(stats.units.sold)} vendidas · {formatNumber(stats.units.total)} total
+                {formatNumber(stats.deals.completed)} vendidas · {formatNumber(stats.units.total)} total
               </p>
             </CardContent>
           </Card>
