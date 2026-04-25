@@ -64,6 +64,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState<Partial<Unit>>({})
+  const [activePhotoIdx, setActivePhotoIdx] = useState(0)
 
   // Cost form
   const [showCostForm, setShowCostForm] = useState(false)
@@ -191,15 +192,41 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="space-y-6">
-          {/* Photo */}
-          <Card>
+          {/* Photos Gallery */}
+          <Card className="overflow-hidden">
             <div className="aspect-video bg-gray-100 relative">
-              {unit.photos?.[0] ? (
-                <img src={unit.photos[0].url} alt={unit.title} className="w-full h-full object-cover" />
+              {unit.photos && unit.photos.length > 0 ? (
+                <img
+                  src={unit.photos[activePhotoIdx]?.url ?? unit.photos[0].url}
+                  alt={unit.title}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">Sin foto</div>
               )}
+              {unit.photos && unit.photos.length > 1 && (
+                <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+                  {activePhotoIdx + 1} / {unit.photos.length}
+                </div>
+              )}
             </div>
+            {unit.photos && unit.photos.length > 1 && (
+              <div className="flex gap-1.5 p-2 overflow-x-auto">
+                {unit.photos.map((photo, idx) => (
+                  <button
+                    key={photo.id}
+                    onClick={() => setActivePhotoIdx(idx)}
+                    className={`flex-shrink-0 w-14 h-10 rounded overflow-hidden border-2 transition-all ${
+                      activePhotoIdx === idx
+                        ? 'border-blue-500 opacity-100'
+                        : 'border-transparent opacity-55 hover:opacity-90'
+                    }`}
+                  >
+                    <img src={photo.url} alt={`foto ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* Prices */}

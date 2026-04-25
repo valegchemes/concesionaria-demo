@@ -172,7 +172,7 @@ export class UnitService {
           location: true,
           tags: true,
           createdAt: true,
-          photos: { select: { url: true }, take: 1 },
+          photos: { select: { url: true }, orderBy: { order: 'asc' } },
           _count: { select: { photos: true, interestedLeads: true } },
         },
         orderBy: { createdAt: 'desc' },

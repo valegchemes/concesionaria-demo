@@ -177,7 +177,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           createdAt: true,
           updatedAt: true,
           _count: { select: { deals: true, interestedLeads: true } },
-          photos: { orderBy: { order: 'asc' }, take: 1 },
+          photos: { orderBy: { order: 'asc' }, select: { url: true, order: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,

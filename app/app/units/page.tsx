@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Search, Car, Bike, Anchor, Edit, Trash2 } from 'lucide-react'
+import { Plus, Search, Car, Bike, Anchor, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Unit {
   id: string
@@ -66,6 +66,7 @@ export default function UnitsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [activePhoto, setActivePhoto] = useState<Record<string, number>>({})
 
   useEffect(() => {
     fetchUnits()
@@ -180,25 +181,49 @@ export default function UnitsPage() {
             const photoUrl = unit.photos?.[0]?.url ?? null
 
             return (
-              <Card key={unit.id} className="overflow-hidden">
-                <div className="aspect-video bg-gray-100 relative">
-                  {photoUrl ? (
-                    <img
-                      src={photoUrl}
-                      alt={unit.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-gray-400">
-                      <TypeIcon className="h-12 w-12" />
+              <Card key={unit.id} className="overflow-hidden group">
+                {/* Imagen principal — clickeable */}
+                <Link href={`/app/units/${unit.id}`}>
+                  <div className="aspect-video bg-gray-100 relative cursor-pointer overflow-hidden">
+                    {unit.photos && unit.photos.length > 0 ? (
+                      <img
+                        src={unit.photos[activePhoto[unit.id] ?? 0]?.url ?? unit.photos[0].url}
+                        alt={unit.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-400">
+                        <TypeIcon className="h-12 w-12" />
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[unit.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                        {statusLabels[unit.status] ?? unit.status}
+                      </span>
                     </div>
-                  )}
-                  <div className="absolute top-2 right-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[unit.status] ?? 'bg-gray-100 text-gray-800'}`}>
-                      {statusLabels[unit.status] ?? unit.status}
-                    </span>
+                    {/* Overlay hover */}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
                   </div>
-                </div>
+                </Link>
+
+                {/* Galería de miniaturas */}
+                {unit.photos && unit.photos.length > 1 && (
+                  <div className="flex gap-1.5 px-3 pt-2 overflow-x-auto scrollbar-hide">
+                    {unit.photos.map((photo, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActivePhoto(prev => ({ ...prev, [unit.id]: idx }))}
+                        className={`flex-shrink-0 w-12 h-9 rounded overflow-hidden border-2 transition-all ${
+                          (activePhoto[unit.id] ?? 0) === idx
+                            ? 'border-blue-500 opacity-100'
+                            : 'border-transparent opacity-60 hover:opacity-90'
+                        }`}
+                      >
+                        <img src={photo.url} alt={`foto ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
 
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">

@@ -17,6 +17,7 @@ export async function requireAuth() {
     where: { id: session.user.id },
     select: { isActive: true, company: { select: { isActive: true } } }
   })
+  console.log("User: ", user)
 
   if (!user?.isActive) {
     throw new UnauthorizedError('Tu cuenta está desactivada. Contactá al administrador.')

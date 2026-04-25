@@ -90,3 +90,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized. Only admins can delete users.' }, { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('id')
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing user id' }, { status: 400 })
+    }
+
+    if (userId === session.user.id) {
+      return NextResponse.json({ error: 'No puedes eliminarte a ti mismo' }, { status: 400 })
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { id: userId, companyId: session.user.companyId, isActive: true },
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: { isActive: false },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error deleting user')
+    return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
+  }
+}
