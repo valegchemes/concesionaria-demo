@@ -131,7 +131,11 @@ export default function DealsPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {filteredDeals.map((deal) => (
-            <Card key={deal.id} className="hover:border-blue-200 transition-colors">
+            <Card 
+              key={deal.id} 
+              className="hover:border-blue-400 cursor-pointer transition-colors"
+              onClick={() => router.push(`/app/deals/${deal.id}`)}
+            >
               <CardContent className="p-5">
                 <div className="flex flex-col md:flex-row justify-between gap-4">
                   <div className="space-y-3 flex-1">
@@ -186,7 +190,10 @@ export default function DealsPage() {
                         size="sm"
                         variant="ghost"
                         className="text-red-400 hover:text-red-600 hover:bg-red-50 h-7 w-7 p-0"
-                        onClick={() => deleteDeal(deal.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteDeal(deal.id)
+                        }}
                         title="Eliminar operación"
                       >
                         <Trash2 className="h-4 w-4" />
