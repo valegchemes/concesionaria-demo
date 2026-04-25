@@ -25,9 +25,9 @@ async function getDashboardData(companyId: string) {
     }),
     prisma.lead.count({ where: { companyId, status: 'NEW' } }),
     prisma.lead.count({ where: { companyId, status: 'LOST' } }),
-    prisma.unit.count({ where: { companyId } }),
-    prisma.unit.count({ where: { companyId, status: 'AVAILABLE' } }),
-    prisma.unit.count({ where: { companyId, status: 'SOLD' } }),
+    prisma.unit.count({ where: { companyId, isActive: true } }),
+    prisma.unit.count({ where: { companyId, isActive: true, status: 'AVAILABLE' } }),
+    prisma.unit.count({ where: { companyId, isActive: true, status: 'SOLD' } }),
     prisma.deal.count({
       where: { companyId, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } }
     }),
