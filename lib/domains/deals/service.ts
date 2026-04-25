@@ -173,7 +173,10 @@ export class DealService {
 
     const where: Prisma.DealWhereInput = {
       companyId,
-      ...(status && { status: status as DealStatus }),
+      ...(status 
+        ? { status: status as DealStatus } 
+        : { status: { not: 'CANCELED' } } // Exclude CANCELED deals by default
+      ),
       ...(soldById && { soldById }),
     }
 

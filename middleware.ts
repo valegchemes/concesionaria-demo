@@ -246,16 +246,22 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       )
     }
 
-    // Crear response con headers de rate limit
-    let response = NextResponse.next()
+    // Crear request headers con la info del tenant para las API routes
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', tenant.userId)
+    requestHeaders.set('x-company-id', tenant.companyId)
+    requestHeaders.set('x-user-role', tenant.role)
+
+    // Crear response con headers de rate limit y los request headers inyectados
+    let response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+    
     response.headers.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS))
     response.headers.set('X-RateLimit-Remaining', String(rateLimit.remaining))
     response.headers.set('X-RateLimit-Reset', String(Math.ceil(rateLimit.resetTime / 1000)))
-
-    // Añadir headers de tenant para uso en API routes
-    response.headers.set('x-user-id', tenant.userId)
-    response.headers.set('x-company-id', tenant.companyId)
-    response.headers.set('x-user-role', tenant.role)
 
     // Logging de API request autorizado
     log.info({ ...metadata, duration: Date.now() - startTime }, 'API request autorizado')
