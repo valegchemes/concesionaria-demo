@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
+import { GlobalBackground } from '@/components/global-background'
 import { prisma } from '@/lib/shared/prisma'
 
 export default async function AppLayout({
@@ -44,14 +45,17 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-screen flex">
-      <AppSidebar user={user} />
-      <div className="flex-1 flex flex-col">
-        <AppHeader user={user} />
-        <main className="flex-1 p-6 overflow-auto">
-          {children}
-        </main>
+    <>
+      <GlobalBackground avatarUrl={user.avatarUrl} />
+      <div className="min-h-screen flex bg-transparent">
+        <AppSidebar user={user} />
+        <div className="flex-1 flex flex-col bg-transparent">
+          <AppHeader user={user} />
+          <main className="flex-1 p-6 overflow-auto bg-transparent">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

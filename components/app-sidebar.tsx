@@ -40,8 +40,8 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-slate-900 text-white flex flex-col">
-      <div className="p-4 border-b border-slate-800">
+    <aside className="w-64 bg-slate-900/85 backdrop-blur-xl text-white flex flex-col border-r border-slate-800/50">
+      <div className="p-4 border-b border-slate-800/50">
         <div className="flex items-center gap-2">
           {user.logoUrl ? (
             <img src={user.logoUrl} alt={user.companyName} className="h-8 w-8 rounded-md object-contain bg-white" />
@@ -73,7 +73,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800">
+      <div className="p-4 border-t border-slate-800/50">
         <div className="flex items-center gap-3">
           {user.avatarUrl ? (
             <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full object-cover border border-slate-700" />
