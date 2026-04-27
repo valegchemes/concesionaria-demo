@@ -541,6 +541,15 @@ async function getCostAnalysis(
     select: { concept: true, amountArs: true, amountUsd: true },
   })
 
+  // Gastos de la empresa (Costos mensuales)
+  const companyExpenses = await prisma.companyExpense.findMany({
+    where: {
+      companyId,
+      date: { gte: start, lte: end },
+    },
+    select: { category: true, amountArs: true, amountUsd: true },
+  })
+
   const costsByConcept = new Map<string, MoneyAmount>()
 
   for (const cost of [...dealCosts, ...unitCosts]) {
@@ -548,6 +557,14 @@ async function getCostAnalysis(
     costsByConcept.set(cost.concept, createMoneyAmount(
       existing.ars + decimalToNumber(cost.amountArs),
       existing.usd + decimalToNumber(cost.amountUsd)
+    ))
+  }
+
+  for (const exp of companyExpenses) {
+    const existing = costsByConcept.get(exp.category) || createMoneyAmount(0, 0)
+    costsByConcept.set(exp.category, createMoneyAmount(
+      existing.ars + decimalToNumber(exp.amountArs),
+      existing.usd + decimalToNumber(exp.amountUsd)
     ))
   }
 
@@ -570,8 +587,10 @@ async function getCostAnalysis(
     totalCosts,
     byType: {
       operational: createMoneyAmount(
-        dealCosts.reduce((sum, c) => sum + decimalToNumber(c.amountArs), 0),
-        dealCosts.reduce((sum, c) => sum + decimalToNumber(c.amountUsd), 0)
+        dealCosts.reduce((sum, c) => sum + decimalToNumber(c.amountArs), 0) +
+        companyExpenses.reduce((sum, e) => sum + decimalToNumber(e.amountArs), 0),
+        dealCosts.reduce((sum, c) => sum + decimalToNumber(c.amountUsd), 0) +
+        companyExpenses.reduce((sum, e) => sum + decimalToNumber(e.amountUsd), 0)
       ),
       maintenance: createMoneyAmount(
         unitCosts.reduce((sum, c) => sum + decimalToNumber(c.amountArs), 0),
