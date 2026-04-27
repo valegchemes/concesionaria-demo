@@ -46,7 +46,7 @@ export default async function AppLayout({
 
   return (
     <>
-      <GlobalBackground avatarUrl={user.avatarUrl} />
+      <GlobalBackground avatarUrl={user.avatarUrl || user.logoUrl} />
       <div className="min-h-screen flex bg-transparent">
         <AppSidebar user={user} />
         <div className="flex-1 flex flex-col bg-transparent">
