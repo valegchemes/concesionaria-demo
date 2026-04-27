@@ -40,7 +40,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-slate-900/60 backdrop-blur-xl text-white flex flex-col border-r border-slate-800/50">
+    <aside className="w-64 bg-slate-900/60 transition-colors duration-500 backdrop-blur-xl text-white flex flex-col border-r border-slate-800/50">
       <div className="p-4 border-b border-slate-800/50">
         <div className="flex items-center gap-2">
           {user.logoUrl ? (

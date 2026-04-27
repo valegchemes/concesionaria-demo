@@ -15,7 +15,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ user }: AppHeaderProps) {
   return (
-    <header className="h-16 bg-white/60 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-6">
+    <header className="h-16 bg-white/60 dark:bg-slate-950/60 transition-colors duration-500 backdrop-blur-md border-b border-gray-200/50 dark:border-slate-800/50 flex items-center justify-between px-6">
       <div className="flex items-center gap-4 flex-1">
         <GlobalSearch />
       </div>
