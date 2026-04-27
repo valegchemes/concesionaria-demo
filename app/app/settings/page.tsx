@@ -19,12 +19,14 @@ export default function SettingsPage() {
   const [whatsappCentral, setWhatsappCentral] = useState('')
   const [currencyPref, setCurrencyPref] = useState('BOTH')
   const [logoUrl, setLogoUrl] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
 
   // States for User Settings
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [password, setPassword] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
   // Load initial data
   useEffect(() => {
@@ -62,6 +64,17 @@ export default function SettingsPage() {
     e.preventDefault()
     setLoading(true)
     try {
+      let finalLogoUrl = logoUrl
+
+      if (logoFile) {
+        const { upload } = await import('@vercel/blob/client')
+        const newBlob = await upload(`logos/${logoFile.name}`, logoFile, {
+          access: 'public',
+          handleUploadUrl: '/api/blob'
+        })
+        finalLogoUrl = newBlob.url
+      }
+
       const res = await fetch('/api/settings/company', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -71,7 +84,7 @@ export default function SettingsPage() {
           email: companyEmail,
           whatsappCentral,
           currencyPreference: currencyPref,
-          logoUrl
+          logoUrl: finalLogoUrl
         })
       })
       if (res.ok) {
@@ -89,13 +102,24 @@ export default function SettingsPage() {
     e.preventDefault()
     setLoading(true)
     try {
+      let finalAvatarUrl = avatarUrl
+
+      if (avatarFile) {
+        const { upload } = await import('@vercel/blob/client')
+        const newBlob = await upload(`avatars/${avatarFile.name}`, avatarFile, {
+          access: 'public',
+          handleUploadUrl: '/api/blob'
+        })
+        finalAvatarUrl = newBlob.url
+      }
+
       const res = await fetch('/api/settings/user', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: userName,
           email: userEmail,
-          avatarUrl,
+          avatarUrl: finalAvatarUrl,
           ...(password ? { password } : {})
         })
       })
@@ -147,9 +171,9 @@ export default function SettingsPage() {
                     accept="image/*" 
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
-                        const reader = new FileReader()
-                        reader.onloadend = () => setLogoUrl(reader.result as string)
-                        reader.readAsDataURL(e.target.files[0])
+                        const file = e.target.files[0]
+                        setLogoFile(file)
+                        setLogoUrl(URL.createObjectURL(file))
                       }
                     }} 
                     className="flex-1" 
@@ -240,9 +264,9 @@ export default function SettingsPage() {
                       accept="image/*" 
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
-                          const reader = new FileReader()
-                          reader.onloadend = () => setAvatarUrl(reader.result as string)
-                          reader.readAsDataURL(e.target.files[0])
+                          const file = e.target.files[0]
+                          setAvatarFile(file)
+                          setAvatarUrl(URL.createObjectURL(file))
                         }
                       }} 
                       className="flex-1" 
