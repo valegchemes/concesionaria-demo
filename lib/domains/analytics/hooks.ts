@@ -350,8 +350,5 @@ export function formatPercentage(value: number, decimals: number = 1): string {
 }
 
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('es-AR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
+  return new Intl.NumberFormat('es-AR').format(value)
 }

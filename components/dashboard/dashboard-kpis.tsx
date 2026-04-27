@@ -123,7 +123,7 @@ export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
       <KPICard
         title="Inventario"
         value={formatNumber(inventory.totalUnits)}
-        subtitle={`${kpis.totalDeals} vendidas · ${inventory.availableUnits} disp.`}
+        subtitle={`${inventory.availableUnits} disponibles · ${inventory.reservedUnits} reservadas`}
         icon={Package}
         isLoading={false}
       />
