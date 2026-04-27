@@ -10,6 +10,8 @@ import {
   Settings,
   Store,
   CreditCard,
+  UsersRound,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,7 +20,8 @@ const navigation = [
   { name: 'Leads', href: '/app/leads', icon: Users },
   { name: 'Unidades', href: '/app/units', icon: Car },
   { name: 'Operaciones', href: '/app/deals', icon: Handshake },
-  { name: 'Equipo', href: '/app/team', icon: Users },
+  { name: 'Equipo', href: '/app/team', icon: UsersRound },
+  { name: 'Costos Mensuales', href: '/app/expenses', icon: Wallet },
   { name: 'Configuración', href: '/app/settings', icon: Settings },
   { name: 'Suscripción', href: '/app/settings/billing', icon: CreditCard },
 ]

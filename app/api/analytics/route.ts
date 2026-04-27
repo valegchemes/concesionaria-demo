@@ -224,16 +224,27 @@ async function getDashboardSummary(
     _count: { _all: true },
   })
 
+  // Query 5: Gastos fijos/mantenimiento (CompanyExpense)
+  const companyExpenses = await prisma.companyExpense.aggregate({
+    where: {
+      companyId,
+      date: { gte: start, lte: end },
+    },
+    _sum: { amountArs: true, amountUsd: true },
+  })
+
   // Cálculo correcto de costos totales
   const totalCostsArs =
     totalAcquisitionCostArs +
     decimalToNumber(dealCosts._sum?.amountArs) +
-    decimalToNumber(unitCosts._sum?.amountArs)
+    decimalToNumber(unitCosts._sum?.amountArs) +
+    decimalToNumber(companyExpenses._sum?.amountArs)
 
   const totalCostsUsd =
     totalAcquisitionCostUsd +
     decimalToNumber(dealCosts._sum?.amountUsd) +
-    decimalToNumber(unitCosts._sum?.amountUsd)
+    decimalToNumber(unitCosts._sum?.amountUsd) +
+    decimalToNumber(companyExpenses._sum?.amountUsd)
 
   const totalCosts = createMoneyAmount(totalCostsArs, totalCostsUsd)
   const revenue = createMoneyAmount(totalRevenue, 0)
@@ -303,13 +314,21 @@ async function getSalesVsProfit(
     },
   })
 
-  // Agrupar por mes manualmente
-  const byMonth = new Map<string, { sales: number; costs: number; count: number; date: Date }>()
+  // Agrupar dinámicamente por día o mes
+  const isDaily = timeRange === '7d' || timeRange === '30d'
+  const byPeriod = new Map<string, { sales: number; costs: number; count: number; date: Date }>()
 
   for (const deal of deals) {
     const d = deal.updatedAt
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    const existing = byMonth.get(key) || { sales: 0, costs: 0, count: 0, date: new Date(d.getFullYear(), d.getMonth(), 1) }
+    const key = isDaily 
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      
+    const existingDate = isDaily
+      ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      : new Date(d.getFullYear(), d.getMonth(), 1)
+      
+    const existing = byPeriod.get(key) || { sales: 0, costs: 0, count: 0, date: existingDate }
 
     const saleAmount = decimalToNumber(deal.finalPrice)
     const acquisitionArs = decimalToNumber(deal.unit?.acquisitionCostArs)
@@ -320,7 +339,7 @@ async function getSalesVsProfit(
     )
     const totalCostForDeal = acquisitionArs + (acquisitionUsd * EXCHANGE_RATE_ARS_PER_USD) + dealExtraCosts
 
-    byMonth.set(key, {
+    byPeriod.set(key, {
       sales: existing.sales + saleAmount,
       costs: existing.costs + totalCostForDeal,
       count: existing.count + 1,
@@ -328,32 +347,85 @@ async function getSalesVsProfit(
     })
   }
 
-  // Rellenar TODOS los meses del rango con ceros para que el gráfico nunca quede vacío
-  const cursor = new Date(start.getFullYear(), start.getMonth(), 1)
-  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1)
-  while (cursor <= endMonth) {
-    const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`
-    if (!byMonth.has(key)) {
-      byMonth.set(key, {
+  // Traer gastos generales (CompanyExpense)
+  const companyExpenses = await prisma.companyExpense.findMany({
+    where: {
+      companyId,
+      date: { gte: start, lte: end },
+    },
+    select: { amountArs: true, amountUsd: true, date: true }
+  })
+
+  for (const exp of companyExpenses) {
+    const d = exp.date
+    const key = isDaily 
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      
+    const existingDate = isDaily
+      ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      : new Date(d.getFullYear(), d.getMonth(), 1)
+      
+    const existing = byPeriod.get(key) || { sales: 0, costs: 0, count: 0, date: existingDate }
+
+    const costArs = decimalToNumber(exp.amountArs)
+    const costUsd = decimalToNumber(exp.amountUsd)
+    const totalExpCost = costArs + (costUsd * EXCHANGE_RATE_ARS_PER_USD)
+
+    byPeriod.set(key, {
+      sales: existing.sales,
+      costs: existing.costs + totalExpCost,
+      count: existing.count,
+      date: existing.date,
+    })
+  }
+
+  // Rellenar TODOS los periodos del rango con ceros para que el gráfico nunca quede vacío
+  const cursor = isDaily 
+    ? new Date(start.getFullYear(), start.getMonth(), start.getDate())
+    : new Date(start.getFullYear(), start.getMonth(), 1)
+    
+  const endPeriod = isDaily
+    ? new Date(end.getFullYear(), end.getMonth(), end.getDate())
+    : new Date(end.getFullYear(), end.getMonth(), 1)
+    
+  while (cursor <= endPeriod) {
+    const key = isDaily
+      ? `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
+      : `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`
+      
+    if (!byPeriod.has(key)) {
+      byPeriod.set(key, {
         sales: 0,
         costs: 0,
         count: 0,
-        date: new Date(cursor.getFullYear(), cursor.getMonth(), 1),
+        date: isDaily 
+          ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
+          : new Date(cursor.getFullYear(), cursor.getMonth(), 1),
       })
     }
-    cursor.setMonth(cursor.getMonth() + 1)
+    
+    if (isDaily) {
+      cursor.setDate(cursor.getDate() + 1)
+    } else {
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
   }
 
   // Ordenar por fecha
-  const sortedKeys = Array.from(byMonth.keys()).sort()
+  const sortedKeys = Array.from(byPeriod.keys()).sort()
 
   const timeSeries: TimeSeriesDataPoint[] = sortedKeys.map(key => {
-    const entry = byMonth.get(key)!
+    const entry = byPeriod.get(key)!
     const profit = Math.max(0, entry.sales - entry.costs)
+
+    const labelOptions: Intl.DateTimeFormatOptions = isDaily
+      ? { day: 'numeric', month: 'short' }
+      : { month: 'short', year: 'numeric' }
 
     return {
       date: entry.date.toISOString(),
-      label: entry.date.toLocaleDateString('es-AR', { month: 'short', year: 'numeric' }),
+      label: entry.date.toLocaleDateString('es-AR', labelOptions),
       sales: createMoneyAmount(entry.sales, 0),
       profit: createMoneyAmount(profit, 0),
       costs: createMoneyAmount(entry.costs, 0),
