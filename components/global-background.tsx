@@ -29,7 +29,7 @@ export const GlobalBackground = memo(function GlobalBackground({ avatarUrl }: Gl
         Capa de desenfoque y opacidad (overlay)
         Asegura que el texto y los paneles superpuestos sean perfectamente legibles
       */}
-      <div className="fixed inset-0 z-[-9] bg-white/80 backdrop-blur-md" />
+      <div className="fixed inset-0 z-[-9] bg-white/40 backdrop-blur-sm" />
     </>
   )
 })
