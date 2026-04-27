@@ -5,8 +5,8 @@ import { z } from 'zod'
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),
   description: z.string().optional(),
-  amountArs: z.number().min(0).default(0),
-  amountUsd: z.number().min(0).default(0),
+  amountArs: z.coerce.number().min(0).default(0),
+  amountUsd: z.coerce.number().min(0).default(0),
   date: z.string().transform(str => new Date(str)),
 })
 

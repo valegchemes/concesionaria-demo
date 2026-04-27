@@ -338,8 +338,8 @@ export function formatCurrency(value: number, currency: 'ARS' | 'USD' = 'ARS'): 
   const formatter = new Intl.NumberFormat('es-AR', {
     style: 'currency',
     currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   })
   
   return formatter.format(value)
@@ -350,5 +350,8 @@ export function formatPercentage(value: number, decimals: number = 1): string {
 }
 
 export function formatNumber(value: number): string {
-  return new Intl.NumberFormat('es-AR').format(value)
+  return new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
 }
