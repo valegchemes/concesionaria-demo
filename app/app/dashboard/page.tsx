@@ -84,15 +84,15 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
         {companyName && (
-          <p className="text-sm text-gray-500 mt-0.5">{companyName}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-300 mt-0.5">{companyName}</p>
         )}
       </div>
 
       {/* KPIs operacionales — siempre visibles */}
       <div className="space-y-4">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
           Resumen Operacional
         </h2>
 
@@ -149,41 +149,41 @@ export default async function DashboardPage() {
 
         {/* Operaciones */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="border-blue-100 bg-blue-50/40">
+          <Card className="border-blue-100 bg-blue-50/40 dark:border-blue-900/50 dark:bg-blue-950/40">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">En Curso</p>
-                  <p className="text-3xl font-black text-blue-800 mt-1">{formatNumber(stats.deals.active)}</p>
-                  <p className="text-xs text-blue-600 mt-1">negociaciones activas</p>
+                  <p className="text-xs font-medium text-blue-700 dark:text-blue-300 uppercase tracking-wide">En Curso</p>
+                  <p className="text-3xl font-black text-blue-800 dark:text-blue-100 mt-1">{formatNumber(stats.deals.active)}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">negociaciones activas</p>
                 </div>
-                <Clock className="h-10 w-10 text-blue-300" />
+                <Clock className="h-10 w-10 text-blue-300 dark:text-blue-400" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-green-100 bg-green-50/40">
+          <Card className="border-green-100 bg-green-50/40 dark:border-green-900/50 dark:bg-green-950/40">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Completadas</p>
-                  <p className="text-3xl font-black text-green-800 mt-1">{formatNumber(stats.deals.completed)}</p>
-                  <p className="text-xs text-green-600 mt-1">operaciones entregadas</p>
+                  <p className="text-xs font-medium text-green-700 dark:text-green-300 uppercase tracking-wide">Completadas</p>
+                  <p className="text-3xl font-black text-green-800 dark:text-green-100 mt-1">{formatNumber(stats.deals.completed)}</p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">operaciones entregadas</p>
                 </div>
-                <CheckCircle className="h-10 w-10 text-green-300" />
+                <CheckCircle className="h-10 w-10 text-green-300 dark:text-green-400" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-red-100 bg-red-50/40">
+          <Card className="border-red-100 bg-red-50/40 dark:border-red-900/50 dark:bg-red-950/40">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-red-700 uppercase tracking-wide">Canceladas</p>
-                  <p className="text-3xl font-black text-red-800 mt-1">{formatNumber(stats.deals.canceled)}</p>
-                  <p className="text-xs text-red-600 mt-1">operaciones canceladas</p>
+                  <p className="text-xs font-medium text-red-700 dark:text-red-300 uppercase tracking-wide">Canceladas</p>
+                  <p className="text-3xl font-black text-red-800 dark:text-red-100 mt-1">{formatNumber(stats.deals.canceled)}</p>
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">operaciones canceladas</p>
                 </div>
-                <XCircle className="h-10 w-10 text-red-300" />
+                <XCircle className="h-10 w-10 text-red-300 dark:text-red-400" />
               </div>
             </CardContent>
           </Card>
@@ -191,8 +191,8 @@ export default async function DashboardPage() {
       </div>
 
       {/* Divisor */}
-      <div className="border-t pt-2">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+      <div className="border-t pt-2 dark:border-slate-800">
+        <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider mb-4">
           Analíticas de Ventas
         </h2>
         {stats.deals.completed > 0 ? (
@@ -203,9 +203,9 @@ export default async function DashboardPage() {
           />
         ) : (
           <Card>
-            <CardContent className="py-10 text-center text-gray-400">
+            <CardContent className="py-10 text-center text-gray-400 dark:text-gray-300">
               <Handshake className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium text-gray-500">Sin ventas completadas aún</p>
+              <p className="font-medium text-gray-500 dark:text-gray-200">Sin ventas completadas aún</p>
               <p className="text-sm mt-1">
                 Los gráficos de ventas, ganancias y costos aparecerán cuando marques tu primera operación como <strong>Entregada</strong>.
               </p>
