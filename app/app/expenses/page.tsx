@@ -9,7 +9,6 @@ import { Plus, Trash2, Wallet, Calculator } from 'lucide-react'
 import { formatCurrency } from '@/lib/domains/analytics/hooks'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
 
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría requerida'),
@@ -39,7 +38,6 @@ export default function ExpensesPage() {
   })
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ExpenseFormData>({
-    resolver: zodResolver(ExpenseSchema),
     defaultValues: {
       amountArs: 0,
       amountUsd: 0,
@@ -127,7 +125,7 @@ export default function ExpensesPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label className="dark:text-slate-300">Categoría</Label>
-                <Input {...register('category')} placeholder="Ej: Luz, Alquiler, Mantenimiento" className="dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
+                <Input {...register('category', { required: 'La categoría es obligatoria' })} placeholder="Ej: Luz, Alquiler, Mantenimiento" className="dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
                 {errors.category && <p className="text-sm text-red-500">{errors.category.message}</p>}
               </div>
 
@@ -149,7 +147,8 @@ export default function ExpensesPage() {
 
               <div className="space-y-2">
                 <Label className="dark:text-slate-300">Fecha</Label>
-                <Input type="date" {...register('date')} className="dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
+                <Input type="date" {...register('date', { required: 'La fecha es obligatoria' })} className="dark:bg-slate-900 dark:border-slate-700 dark:text-white" />
+                {errors.date && <p className="text-sm text-red-500">{errors.date.message}</p>}
               </div>
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>

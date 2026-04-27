@@ -3,13 +3,13 @@ import { prisma } from '@/lib/shared/prisma'
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const companyId = request.headers.get('x-company-id')
     if (!companyId) return NextResponse.json({ error: 'No company ID' }, { status: 401 })
 
-    const { id } = params
+    const { id } = await params
 
     // Verify ownership
     const expense = await prisma.companyExpense.findUnique({ where: { id } })
