@@ -397,7 +397,15 @@ export class DealService {
     }, 'Payment recording initiated')
 
     return await withTransaction(async (tx) => {
-      // Get deal with lock (within transaction)
+      // ── Pessimistic Row-Level Lock (SELECT FOR UPDATE) ────────────────────
+      // Bloquea la fila del Deal en PostgreSQL para que ninguna transacción
+      // concurrente pueda leer ni modificar el saldo hasta que esta termine.
+      // Esto elimina la race condition donde dos pagos simultáneos podrían
+      // superar el monto total del trato y corromper la contabilidad.
+      await tx.$queryRaw`SELECT id FROM "Deal" WHERE id = ${dealId} FOR UPDATE`
+      // ─────────────────────────────────────────────────────────────────────
+
+      // Leer el deal DESPUÉS del lock — datos frescos garantizados
       const deal = await tx.deal.findFirst({
         where: { id: dealId, companyId }
       })

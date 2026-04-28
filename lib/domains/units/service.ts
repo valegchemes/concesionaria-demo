@@ -172,7 +172,8 @@ export class UnitService {
           location: true,
           tags: true,
           createdAt: true,
-          photos: { select: { url: true }, orderBy: { order: 'asc' } },
+          // Solo la foto de portada en listados — el detalle carga todas las imágenes
+          photos: { select: { url: true }, orderBy: { order: 'asc' }, take: 1 },
           _count: { select: { photos: true, interestedLeads: true } },
         },
         orderBy: { createdAt: 'desc' },
