@@ -10,6 +10,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { checkRateLimit } from '@/lib/rate-limit-kv'
 
 // Inline logger — safe for Edge Runtime (no pino/require)
 const log = {
@@ -34,8 +35,8 @@ const PUBLIC_ROUTES = [
   '/catalog',
 ]
 
-const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minuto
-const RATE_LIMIT_MAX_REQUESTS = 100
+// Rate limiting: configurado en lib/rate-limit-kv.ts (Vercel KV / Redis)
+// Valores por defecto: 100 req / 60s por IP o userId
 
 // ============================================================================
 // TIPOS ESTRUCTURADOS
@@ -61,43 +62,22 @@ interface RequestMetadata {
   [key: string]: string | number | boolean | object | undefined | null
 }
 
-interface RateLimitInfo {
-  count: number
-  resetTime: number
-}
+
 
 // ============================================================================
-// RATE LIMITING (Simple in-memory - usar Redis en producción)
+// RATE LIMITING — Vercel KV (Redis distribuido, funciona en serverless)
 // ============================================================================
 
-const rateLimitMap = new Map<string, RateLimitInfo>()
-
-function getRateLimitKey(request: NextRequest, userId?: string): string {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 
-             request.headers.get('x-real-ip') ?? 
+/**
+ * Obtiene el identificador único para rate limiting.
+ * Prioriza userId (autenticado) sobre IP, para evitar que una IP compartida
+ * (ej: oficina o NAT) bloquee a múltiples usuarios legítimos.
+ */
+function getRateLimitIdentifier(request: NextRequest, userId?: string): string {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+             request.headers.get('x-real-ip') ??
              'unknown'
   return userId ? `user:${userId}` : `ip:${ip}`
-}
-
-function checkRateLimit(key: string): { allowed: boolean; remaining: number; resetTime: number } {
-  const now = Date.now()
-  const info = rateLimitMap.get(key)
-
-  if (!info || now > info.resetTime) {
-    // Nueva ventana
-    rateLimitMap.set(key, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_WINDOW_MS,
-    })
-    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetTime: now + RATE_LIMIT_WINDOW_MS }
-  }
-
-  if (info.count >= RATE_LIMIT_MAX_REQUESTS) {
-    return { allowed: false, remaining: 0, resetTime: info.resetTime }
-  }
-
-  info.count++
-  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - info.count, resetTime: info.resetTime }
 }
 
 // ============================================================================
@@ -203,27 +183,28 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   // 3. Proteger rutas API
   if (pathname.startsWith('/api/')) {
-    // Rate limiting para todas las rutas API
-    const rateLimitKey = getRateLimitKey(request, tenant?.userId)
-    const rateLimit = checkRateLimit(rateLimitKey)
+    // Rate limiting distribuido con Vercel KV (Redis)
+    // Funciona correctamente en serverless: cada instancia lee/escribe el mismo contador
+    const rateLimitIdentifier = getRateLimitIdentifier(request, tenant?.userId)
+    const rateLimit = await checkRateLimit(rateLimitIdentifier)
 
-    if (!rateLimit.allowed) {
-      log.warn({ ...metadata }, 'Rate limit excedido')
-      
+    if (!rateLimit.success) {
+      log.warn({ ...metadata, rateLimitIdentifier }, 'Rate limit excedido (KV)')
+
       return addSecurityHeaders(
         NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: 'Too many requests',
             code: 'RATE_LIMIT_EXCEEDED',
-            retryAfter: Math.ceil((rateLimit.resetTime - Date.now()) / 1000),
+            retryAfter: Math.ceil((rateLimit.reset - Date.now()) / 1000),
           },
-          { 
+          {
             status: 429,
             headers: {
-              'X-RateLimit-Limit': String(RATE_LIMIT_MAX_REQUESTS),
+              'X-RateLimit-Limit': String(rateLimit.limit),
               'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': String(Math.ceil(rateLimit.resetTime / 1000)),
+              'X-RateLimit-Reset': String(Math.ceil(rateLimit.reset / 1000)),
             },
           }
         )
@@ -259,9 +240,9 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       },
     })
     
-    response.headers.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS))
+    response.headers.set('X-RateLimit-Limit', String(rateLimit.limit))
     response.headers.set('X-RateLimit-Remaining', String(rateLimit.remaining))
-    response.headers.set('X-RateLimit-Reset', String(Math.ceil(rateLimit.resetTime / 1000)))
+    response.headers.set('X-RateLimit-Reset', String(Math.ceil(rateLimit.reset / 1000)))
 
     // Logging de API request autorizado
     log.info({ ...metadata, duration: Date.now() - startTime }, 'API request autorizado')

@@ -11,6 +11,7 @@ export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
+import { kv } from '@vercel/kv'
 import { prisma } from '@/lib/shared/prisma'
 import { AnalyticsQuerySchema, getDateRangeFromTimeRange } from '@/lib/domains/analytics/types'
 import { successResponse, errorResponse } from '@/lib/shared/api-response'
@@ -30,6 +31,21 @@ import type {
 import { Prisma } from '@prisma/client'
 
 const log = createLogger('API:Analytics')
+
+/**
+ * TTL de caché para analytics: 15 minutos.
+ * Balance entre frescura de datos y protección de Neon DB.
+ * Invalidar explícitamente si se necesitan datos en tiempo real.
+ */
+const ANALYTICS_CACHE_TTL_SECONDS = 900
+
+/**
+ * Construye la clave de caché única por tenant, tipo y rango temporal.
+ * Ejemplo: "analytics:comp_abc123:dashboard:30d"
+ */
+function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string): string {
+  return `analytics:${companyId}:${type}:${timeRange}`
+}
 
 interface AuthenticatedUser {
   userId: string
@@ -120,39 +136,74 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { timeRange } = validation.data
     const dateRange = getDateRangeFromTimeRange(timeRange)
 
-    let result: unknown
-
-    switch (typeParam) {
-      case 'dashboard':
-        result = await getDashboardSummary(user.companyId, timeRange, dateRange)
-        break
-      case 'sales-profit':
-        result = await getSalesVsProfit(user.companyId, timeRange, dateRange)
-        break
-      case 'top-sellers':
-        result = await getTopSellers(user.companyId, timeRange, dateRange)
-        break
-      case 'costs':
-        result = await getCostAnalysis(user.companyId, timeRange, dateRange)
-        break
-      default:
-        throw new ValidationError('Tipo de análisis no válido', {
-          type: ['Valores permitidos: dashboard, sales-profit, top-sellers, costs']
-        })
+    // ── Capa de caché (cache-aside pattern) ──────────────────────────────────
+    // La clave incluye companyId para garantizar aislamiento de tenant.
+    // VALID types guard para el switch a continuación.
+    const validTypes = ['dashboard', 'sales-profit', 'top-sellers', 'costs']
+    if (!validTypes.includes(typeParam)) {
+      throw new ValidationError('Tipo de análisis no válido', {
+        type: ['Valores permitidos: dashboard, sales-profit, top-sellers, costs']
+      })
     }
 
+    const cacheKey = getAnalyticsCacheKey(user.companyId, typeParam, timeRange)
+    let cacheHit = false
+    let result: unknown
+
+    try {
+      const cached = await kv.get<unknown>(cacheKey)
+      if (cached !== null && cached !== undefined) {
+        cacheHit = true
+        result = cached
+        log.debug({ cacheKey, type: typeParam }, 'Analytics cache HIT')
+      }
+    } catch (kvError) {
+      // KV no disponible → fail-open, calculamos normalmente
+      log.warn({ error: String(kvError) }, 'Analytics KV cache error — fallback to DB')
+    }
+
+    if (!cacheHit) {
+      // Cache MISS: computar desde Neon DB
+      switch (typeParam) {
+        case 'dashboard':
+          result = await getDashboardSummary(user.companyId, timeRange, dateRange)
+          break
+        case 'sales-profit':
+          result = await getSalesVsProfit(user.companyId, timeRange, dateRange)
+          break
+        case 'top-sellers':
+          result = await getTopSellers(user.companyId, timeRange, dateRange)
+          break
+        case 'costs':
+          result = await getCostAnalysis(user.companyId, timeRange, dateRange)
+          break
+      }
+
+      // Guardar en KV de forma asíncrona (no bloquea la respuesta)
+      kv.set(cacheKey, result, { ex: ANALYTICS_CACHE_TTL_SECONDS }).catch((err) => {
+        log.warn({ error: String(err), cacheKey }, 'No se pudo guardar analytics en KV cache')
+      })
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
+    const duration = Date.now() - startTime
     log.info(
       {
         userId: user.userId,
         companyId: user.companyId,
         type: typeParam,
         timeRange,
-        duration: Date.now() - startTime
+        duration,
+        cacheHit,
       },
-      'GET /api/analytics - completado'
+      `GET /api/analytics - completado (${cacheHit ? 'CACHE HIT' : 'DB query'})`
     )
 
-    return successResponse(result)
+    const response = successResponse(result)
+    // Header de observabilidad: permite ver en Vercel logs si se usó caché
+    response.headers.set('X-Cache', cacheHit ? 'HIT' : 'MISS')
+    response.headers.set('X-Cache-TTL', String(ANALYTICS_CACHE_TTL_SECONDS))
+    return response
 
   } catch (error) {
     log.error(
