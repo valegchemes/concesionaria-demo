@@ -1,15 +1,12 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
-import { getCurrentUser } from '@/lib/shared/auth-helpers'
+import { getCurrentUser, requirePermission } from '@/lib/shared/auth-helpers'
 import { UpdateUnitSchema } from '@/lib/shared/validation'
 import { unitService } from '@/lib/domains/units/service'
 import { createLogger } from '@/lib/shared/logger'
-import { ForbiddenError } from '@/lib/shared/errors'
 
 const log = createLogger('UnitDetailRoutes')
-const canManageUnits = (role: string) => role === 'ADMIN' || role === 'MANAGER'
-
 export const maxDuration = 30
 
 /**
@@ -33,15 +30,11 @@ export const GET = withErrorHandling(
  */
 export const PUT = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const user = await getCurrentUser()
+    const user = await requirePermission('units', 'manage_all')
     const { id } = await params
 
     const json = await request.json()
     const data = UpdateUnitSchema.parse(json)
-
-    if (!canManageUnits(user.role)) {
-      throw new ForbiddenError('Only admins and managers can update units')
-    }
 
     log.info({ unitId: id, changes: Object.keys(data) }, 'Updating unit')
 
@@ -56,12 +49,8 @@ export const PUT = withErrorHandling(
  */
 export const DELETE = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
-    const user = await getCurrentUser()
+    const user = await requirePermission('units', 'manage_all')
     const { id } = await params
-
-    if (!canManageUnits(user.role)) {
-      throw new ForbiddenError('Only admins and managers can delete units')
-    }
 
     log.info({ unitId: id }, 'Deleting unit')
 

@@ -4,6 +4,12 @@
  * 
  * Handles:
  * - Creating, reading, updating, deleting leads
+// lib/domains/leads/service.ts
+/**
+ * Lead Service - Business logic for lead management
+ * 
+ * Handles:
+ * - Creating, reading, updating, deleting leads
  * - Lead status transitions
  * - Assignment logic
  * - Validation and error handling
@@ -14,13 +20,10 @@ import { Prisma, type LeadSource, type LeadStatus } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
 import { prisma } from '@/lib/shared/prisma'
+import { hasPermission } from '@/lib/shared/authz'
 import type { CreateLeadCommand, UpdateLeadCommand, LeadWithRelations, RequestingUser } from './types'
 
 const log = createLogger('LeadService')
-
-function canManageAllLeads(role: string): boolean {
-  return role === 'ADMIN' || role === 'MANAGER'
-}
 
 export class LeadService {
   /**
@@ -52,7 +55,7 @@ export class LeadService {
     if (
       command.assignedToId &&
       command.assignedToId !== requestingUser.id &&
-      !canManageAllLeads(requestingUser.role)
+      !hasPermission(requestingUser.permissions, 'leads', 'manage_all')
     ) {
       throw new ValidationError('You can only assign leads to yourself')
     }
@@ -138,7 +141,7 @@ export class LeadService {
 
     const canAccess =
       !requestingUser ||
-      canManageAllLeads(requestingUser.role) ||
+      hasPermission(requestingUser.permissions, 'leads', 'manage_all') ||
       lead.assignedToId === requestingUser.id ||
       lead.createdById === requestingUser.id
 
@@ -180,7 +183,7 @@ export class LeadService {
       isActive: true,
       ...(status && { status: status as LeadStatus }),
       ...(assignedToId && { assignedToId }),
-      ...(!canManageAllLeads(requestingUser.role) && {
+      ...(!hasPermission(requestingUser.permissions, 'leads', 'manage_all') && {
         OR: [
           { assignedToId: requestingUser.id },
           { createdById: requestingUser.id },
@@ -262,9 +265,9 @@ export class LeadService {
 
     // Ownership check: Only admin or the assigned/owner user can update
     const isOwner = currentLead.assignedToId === requestingUser.id || currentLead.createdById === requestingUser.id
-    const isAdmin = canManageAllLeads(requestingUser.role)
+    const canManageAll = hasPermission(requestingUser.permissions, 'leads', 'manage_all')
     
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !canManageAll) {
       throw new ValidationError('You can only update leads assigned to you or created by you')
     }
 
@@ -282,7 +285,7 @@ export class LeadService {
         throw new NotFoundError('User', command.assignedToId)
       }
 
-      if (command.assignedToId !== requestingUser.id && !isAdmin) {
+      if (command.assignedToId !== requestingUser.id && !canManageAll) {
         throw new ValidationError('You can only assign leads to yourself')
       }
     }
@@ -342,9 +345,9 @@ export class LeadService {
 
     // Ownership check
     const isOwner = lead.assignedToId === requestingUser.id || lead.createdById === requestingUser.id
-    const isAdmin = canManageAllLeads(requestingUser.role)
+    const canManageAll = hasPermission(requestingUser.permissions, 'leads', 'manage_all')
     
-    if (!isOwner && !isAdmin) {
+    if (!isOwner && !canManageAll) {
       throw new ValidationError('You can only delete leads assigned to you or created by you')
     }
 
@@ -407,7 +410,7 @@ export class LeadService {
           { phone: { contains: query.replace(/\D/g, '') } },
           { email: { contains: query, mode: 'insensitive' } },
         ],
-        ...(!canManageAllLeads(requestingUser.role) && {
+        ...(!hasPermission(requestingUser.permissions, 'leads', 'manage_all') && {
           AND: [
             {
               OR: [

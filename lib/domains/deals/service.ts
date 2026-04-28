@@ -15,6 +15,7 @@ import { prisma, withTransaction } from '@/lib/shared/prisma'
 import { DealStatus, Prisma, UnitStatus, LeadStatus, PaymentMethod } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
+import { hasPermission } from '@/lib/shared/authz'
 import type {
   CreateDealCommand,
   UpdateDealCommand,
@@ -27,10 +28,6 @@ import type {
 } from './types'
 
 const log = createLogger('DealService')
-
-function canManageAllDeals(role: string): boolean {
-  return role === 'ADMIN' || role === 'MANAGER'
-}
 
 export class DealService {
   /**
@@ -74,7 +71,7 @@ export class DealService {
       throw new NotFoundError('User', command.sellerId)
     }
 
-    if (!canManageAllDeals(requestingUser.role) && command.sellerId !== requestingUser.id) {
+    if (!hasPermission(requestingUser.permissions, 'deals', 'manage_all') && command.sellerId !== requestingUser.id) {
       throw new ValidationError('You can only create deals assigned to yourself')
     }
 
@@ -173,7 +170,7 @@ export class DealService {
 
     if (
       requestingUser &&
-      !canManageAllDeals(requestingUser.role) &&
+      !hasPermission(requestingUser.permissions, 'deals', 'manage_all') &&
       deal.sellerId !== requestingUser.id
     ) {
       throw new ValidationError('You can only view deals assigned to you')
@@ -213,7 +210,7 @@ export class DealService {
         : { status: { not: 'CANCELED' } } // Exclude CANCELED deals by default
       ),
       ...(soldById && { sellerId: soldById }),
-      ...(!canManageAllDeals(requestingUser.role) && { sellerId: requestingUser.id }),
+      ...(!hasPermission(requestingUser.permissions, 'deals', 'manage_all') && { sellerId: requestingUser.id }),
     }
 
     const [total, rawDeals] = await Promise.all([
@@ -289,11 +286,11 @@ export class DealService {
       throw new NotFoundError('Deal', id)
     }
 
-    // Ownership check: Admin or the assigned seller can update
+    // Ownership check: Admin/Manager or the assigned seller can update
     const isSeller = currentDeal.sellerId === requestingUser.id
-    const isAdmin = canManageAllDeals(requestingUser.role)
+    const canManageAll = hasPermission(requestingUser.permissions, 'deals', 'manage_all')
     
-    if (!isSeller && !isAdmin) {
+    if (!isSeller && !canManageAll) {
       throw new ValidationError('You can only update deals assigned to you')
     }
 
@@ -411,8 +408,8 @@ export class DealService {
 
       // Verify ownership
       const isSeller = deal.sellerId === requestingUser.id
-      const isAdmin = canManageAllDeals(requestingUser.role)
-      if (!isSeller && !isAdmin) {
+      const canManageAll = hasPermission(requestingUser.permissions, 'deals', 'manage_all')
+      if (!isSeller && !canManageAll) {
         throw new ValidationError('You can only record payments for your own deals')
       }
 
@@ -667,7 +664,7 @@ export class DealService {
   async delete(
     id: string, 
     companyId: string,
-    requestingUser: { id: string; role: string }
+    requestingUser: RequestingUser
   ): Promise<void> {
     log.info({ dealId: id, companyId, requestingUserId: requestingUser.id }, 'Deleting deal')
 
@@ -682,9 +679,9 @@ export class DealService {
 
     // Ownership check
     const isSeller = deal.sellerId === requestingUser.id
-    const isAdmin = canManageAllDeals(requestingUser.role)
+    const canManageAll = hasPermission(requestingUser.permissions, 'deals', 'manage_all')
     
-    if (!isSeller && !isAdmin) {
+    if (!isSeller && !canManageAll) {
       throw new ValidationError('You can only delete deals assigned to you')
     }
 

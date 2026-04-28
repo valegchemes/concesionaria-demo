@@ -41,6 +41,8 @@ export interface UpdateLeadCommand {
 export interface RequestingUser {
   id: string
   role: string
+  /** Resolved RBAC permissions ("resource:action" strings). */
+  permissions: string[]
 }
 
 export interface LeadNotification {

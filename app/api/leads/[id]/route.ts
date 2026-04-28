@@ -24,6 +24,7 @@ export const GET = withErrorHandling(
     const lead = await leadService.getById(id, user.companyId, {
       id: user.id,
       role: user.role,
+      permissions: user.permissions,
     })
 
     return successResponse(lead)
@@ -49,7 +50,8 @@ export const PUT = withErrorHandling(
 
     const lead = await leadService.update(id, user.companyId, data, { 
       id: user.id, 
-      role: user.role 
+      role: user.role,
+      permissions: user.permissions,
     })
 
     return successResponse(lead)
@@ -72,7 +74,8 @@ export const DELETE = withErrorHandling(
 
     await leadService.delete(id, user.companyId, { 
       id: user.id, 
-      role: user.role 
+      role: user.role,
+      permissions: user.permissions,
     })
 
     return successResponse({ deleted: true })

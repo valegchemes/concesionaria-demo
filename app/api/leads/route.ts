@@ -36,6 +36,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     {
       id: user.id,
       role: user.role,
+      permissions: user.permissions,
     },
     {
       page: pagination.page,
@@ -71,6 +72,7 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   }, {
     id: user.id,
     role: user.role,
+    permissions: user.permissions,
   })
 
   return successResponse(lead, 201)

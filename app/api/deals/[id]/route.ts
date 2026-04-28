@@ -24,6 +24,7 @@ export const GET = withErrorHandling(
     const deal = await dealService.getById(id, user.companyId, {
       id: user.id,
       role: user.role,
+      permissions: user.permissions,
     })
 
     return successResponse(deal)
@@ -49,7 +50,8 @@ export const PUT = withErrorHandling(
 
     const deal = await dealService.update(id, user.companyId, data, {
       id: user.id,
-      role: user.role
+      role: user.role,
+      permissions: user.permissions,
     })
 
     return successResponse(deal)
@@ -80,7 +82,8 @@ export const POST = withErrorHandling(
       notes,
     }, {
       id: user.id,
-      role: user.role
+      role: user.role,
+      permissions: user.permissions,
     })
 
     return successResponse(payment, 201)
@@ -103,7 +106,8 @@ export const DELETE = withErrorHandling(
 
     await dealService.delete(id, user.companyId, {
       id: user.id,
-      role: user.role
+      role: user.role,
+      permissions: user.permissions,
     })
 
     return successResponse({ deleted: true })
