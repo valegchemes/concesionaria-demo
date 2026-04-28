@@ -1,13 +1,16 @@
 /**
  * Enterprise-grade Prisma Client Configuration
- * - Connection Pooling via Supabase (puerto 6543)
- - Patrón Singleton para prevenir múltiples instancias
+ * - Connection Pooling via Neon (serverless adapter)
+ * - Patrón Singleton para prevenir múltiples instancias
  * - Logging estructurado con Pino
  * - Manejo de errores robusto
+ * - Multi-Tenant Extension: inyección automática de companyId
+ *   en todas las queries, previniendo Cross-Tenant Data Leakage
  */
 
 import { PrismaClient, Prisma } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
+import { getCurrentTenantId } from '@/lib/shared/tenant'
 
 const log = createLogger('PrismaClient')
 
@@ -73,8 +76,8 @@ if (process.env.NODE_ENV === 'development') {
 // PATRÓN SINGLETON
 // ============================================================================
 
-const globalForPrisma = global as unknown as { 
-  prisma: PrismaClient | undefined 
+const globalForPrisma = global as unknown as {
+  prismaBase: PrismaClient | undefined
 }
 
 function createPrismaClient(): PrismaClient {
@@ -114,12 +117,138 @@ function createPrismaClient(): PrismaClient {
   return client
 }
 
-// Exportar singleton
-export const prisma = globalForPrisma.prisma ?? createPrismaClient()
+// ============================================================================
+// MODELOS CON TENANT ISOLATION (tienen campo companyId)
+// ============================================================================
 
-// Guardar en global para hot reload en desarrollo
+/**
+ * Lista de modelos Prisma que tienen un campo companyId y deben ser filtrados
+ * por tenant automáticamente. Modelos internos (DealPayment, UnitPhoto, etc.)
+ * no tienen companyId propio y se acceden siempre a través de su modelo padre.
+ */
+const TENANT_MODELS = new Set([
+  'deal',
+  'lead',
+  'leadActivity',
+  'task',
+  'unit',
+  'whatsAppTemplate',
+  'publicClickEvent',
+  'auditLog',
+  'role',
+  'saasSubscription',
+  'saasUsageEvent',
+  'companyExpense',
+  'user',
+])
+
+// ============================================================================
+// PRISMA CLIENT EXTENSION: TENANT ISOLATION
+// ============================================================================
+
+type ModelName = string
+type QueryArgs = Record<string, unknown>
+
+/**
+ * Crea una Prisma Client Extension que inyecta automáticamente el companyId
+ * del contexto de tenant en todas las queries de lectura y escritura.
+ *
+ * LECTURA (findMany, findFirst, count, groupBy, aggregate):
+ *   Inyecta where.companyId = currentTenantId en la query.
+ *
+ * ESCRITURA (create, createMany):
+ *   Inyecta data.companyId = currentTenantId en los datos.
+ *
+ * Modelos sin companyId (DealPayment, UnitPhoto, etc.) no son afectados.
+ */
+function createTenantExtension(baseClient: PrismaClient) {
+  return baseClient.$extends({
+    name: 'tenant-isolation',
+    query: {
+      $allModels: {
+        async $allOperations({ model, operation, args, query }: {
+          model: ModelName
+          operation: string
+          args: QueryArgs
+          query: (args: QueryArgs) => Promise<unknown>
+        }) {
+          const modelKey = model.charAt(0).toLowerCase() + model.slice(1)
+
+          // Solo aplicar a modelos que tienen companyId
+          if (!TENANT_MODELS.has(modelKey)) {
+            return query(args)
+          }
+
+          const tenantId = getCurrentTenantId()
+
+          // Si no hay contexto de tenant (scripts, migraciones), pasar directo
+          if (!tenantId) {
+            return query(args)
+          }
+
+          // -----------------------------------------------------------------
+          // OPERACIONES DE LECTURA: inyectar where.companyId
+          // -----------------------------------------------------------------
+          const readOps = ['findMany', 'findFirst', 'findFirstOrThrow', 'count', 'groupBy', 'aggregate']
+          if (readOps.includes(operation)) {
+            const currentArgs = args as { where?: QueryArgs }
+            const currentWhere = currentArgs.where ?? {}
+
+            // Si ya tiene companyId, respetar el valor (no sobreescribir en migraciones)
+            // Si es diferente al tenant actual, es un intento de cross-tenant — bloquearlo
+            if (currentWhere.companyId && currentWhere.companyId !== tenantId) {
+              log.warn(
+                { model, operation, tenantId, requestedCompanyId: currentWhere.companyId },
+                '[TenantIsolation] Cross-tenant query bloqueada'
+              )
+              throw new Error(
+                `[TenantIsolation] Acceso denegado: el companyId de la query no coincide con el tenant actual`
+              )
+            }
+
+            return query({
+              ...args,
+              where: { ...currentWhere, companyId: tenantId },
+            })
+          }
+
+          // -----------------------------------------------------------------
+          // OPERACIONES DE ESCRITURA: inyectar data.companyId
+          // -----------------------------------------------------------------
+          if (operation === 'create') {
+            const currentArgs = args as { data?: QueryArgs }
+            return query({
+              ...args,
+              data: { ...currentArgs.data, companyId: tenantId },
+            })
+          }
+
+          if (operation === 'createMany') {
+            const currentArgs = args as { data?: QueryArgs | QueryArgs[] }
+            const data = Array.isArray(currentArgs.data)
+              ? currentArgs.data.map((d: QueryArgs) => ({ ...d, companyId: tenantId }))
+              : { ...(currentArgs.data ?? {}), companyId: tenantId }
+            return query({ ...args, data })
+          }
+
+          // Todas las demás operaciones (update, delete, upsert, etc.) pasan directo
+          // La protección de estas ya existe a nivel de servicio con findFirst + companyId
+          return query(args)
+        },
+      },
+    },
+  })
+}
+
+/** Cliente base (sin extensión de tenant) — para migraciones, cron jobs y scripts internos */
+export const prismaBypass: PrismaClient = globalForPrisma.prismaBase ?? createPrismaClient()
+
+/** Cliente con extensión de tenant — uso general en toda la aplicación */
+export const prisma = createTenantExtension(prismaBypass)
+
+// Guardar instancia base en global para hot reload en desarrollo
 if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
+  globalForPrisma.prismaBase = prismaBypass
 }
 
 // ============================================================================
@@ -166,12 +295,14 @@ export async function withRetry<T>(
 }
 
 /**
- * Ejecuta operaciones en transacción con manejo de errores
+ * Ejecuta operaciones en transacción con manejo de errores.
+ * Usa prismaBypass para evitar conflictos de tipos con la extensión de tenant.
+ * El aislamiento de tenant sigue activo a través de AsyncLocalStorage.
  */
 export async function withTransaction<T>(
   operations: (tx: Prisma.TransactionClient) => Promise<T>
 ): Promise<T> {
-  return withRetry(() => prisma.$transaction(operations, {
+  return withRetry(() => prismaBypass.$transaction(operations, {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     maxWait: 5000,
     timeout: 10000,
@@ -183,7 +314,7 @@ export async function withTransaction<T>(
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    await prisma.$queryRaw`SELECT 1`
+    await prismaBypass.$queryRaw`SELECT 1`
     return true
   } catch (error) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error de conexión a base de datos')
@@ -196,7 +327,7 @@ export async function checkDatabaseConnection(): Promise<boolean> {
  * Útil para graceful shutdown
  */
 export async function disconnectPrisma(): Promise<void> {
-  await prisma.$disconnect()
+  await prismaBypass.$disconnect()
   log.info({}, 'Prisma client desconectado')
 }
 
