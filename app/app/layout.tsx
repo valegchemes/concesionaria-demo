@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -11,6 +12,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
+  const requestHeaders = await headers()
   const session = await getServerSession(authOptions)
 
   if (!session?.user) {
@@ -44,11 +46,13 @@ export default async function AppLayout({
     logoUrl: dbUser?.company?.logoUrl ?? undefined,
   }
 
+  const currentPath = requestHeaders.get('x-pathname') ?? '/app'
+
   return (
     <>
       <GlobalBackground avatarUrl={user.avatarUrl || user.logoUrl} />
       <div className="min-h-screen flex bg-transparent">
-        <AppSidebar user={user} />
+        <AppSidebar user={user} currentPath={currentPath} />
         <div className="flex-1 flex flex-col bg-transparent">
           <AppHeader user={user} />
           <main className="flex-1 p-6 overflow-auto bg-transparent">

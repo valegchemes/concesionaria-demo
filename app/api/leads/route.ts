@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse, paginatedResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { parsePagination } from '@/lib/shared/pagination'
-import { CreateLeadSchema, UpdateLeadSchema } from '@/lib/shared/validation'
+import { CreateLeadSchema } from '@/lib/shared/validation'
 import { leadService } from '@/lib/domains/leads/service'
 import { createLogger } from '@/lib/shared/logger'
 
@@ -33,6 +33,10 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
 
   const { leads, pagination: paginationMeta } = await leadService.list(
     user.companyId,
+    {
+      id: user.id,
+      role: user.role,
+    },
     {
       page: pagination.page,
       limit: pagination.limit,
@@ -64,6 +68,9 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     ...data,
     companyId: user.companyId,
     createdById: user.id,
+  }, {
+    id: user.id,
+    role: user.role,
   })
 
   return successResponse(lead, 201)

@@ -37,7 +37,9 @@ interface AuthenticatedUser {
   role: string
 }
 
-const EXCHANGE_RATE_ARS_PER_USD = 1000
+const DEFAULT_EXCHANGE_RATE_ARS_PER_USD = Number(
+  process.env.DEFAULT_EXCHANGE_RATE_ARS_PER_USD ?? '1000'
+)
 
 function getAuthenticatedUser(request: NextRequest): AuthenticatedUser {
   const userId = request.headers.get('x-user-id')
@@ -57,12 +59,39 @@ function decimalToNumber(value: Prisma.Decimal | null | undefined): number {
   return Number(value.toString())
 }
 
-function createMoneyAmount(ars: number, usd: number): MoneyAmount {
+function resolveExchangeRate(exchangeRate?: Prisma.Decimal | null): number {
+  const resolved = decimalToNumber(exchangeRate)
+  return resolved > 0 ? resolved : DEFAULT_EXCHANGE_RATE_ARS_PER_USD
+}
+
+function createMoneyAmount(ars: number, usd: number, exchangeRate?: number): MoneyAmount {
   return {
     ars,
     usd,
-    totalConverted: ars + (usd * EXCHANGE_RATE_ARS_PER_USD),
+    totalConverted: ars + (usd * (exchangeRate ?? DEFAULT_EXCHANGE_RATE_ARS_PER_USD)),
   }
+}
+
+function createExactMoneyAmount(ars: number, usd: number, totalConverted: number): MoneyAmount {
+  return {
+    ars,
+    usd,
+    totalConverted,
+  }
+}
+
+function createDealRevenueAmount(deal: {
+  finalPrice: Prisma.Decimal | null | undefined
+  finalPriceCurrency?: string | null
+  exchangeRate?: Prisma.Decimal | null
+}): MoneyAmount {
+  const finalPrice = decimalToNumber(deal.finalPrice)
+  const currency = deal.finalPriceCurrency ?? 'ARS'
+  const exchangeRate = resolveExchangeRate(deal.exchangeRate)
+
+  return currency === 'USD'
+    ? createMoneyAmount(0, finalPrice, exchangeRate)
+    : createMoneyAmount(finalPrice, 0, exchangeRate)
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -168,13 +197,14 @@ async function getDashboardSummary(
   const dealsWithUnits = await prisma.deal.findMany({
     where: {
       companyId,
-      status: { in: ['DELIVERED', 'APPROVED'] },
+      status: 'DELIVERED',
       updatedAt: { gte: start, lte: end },
     },
     select: {
       id: true,
       finalPrice: true,
       finalPriceCurrency: true,
+      exchangeRate: true,
       unit: {
         select: {
           acquisitionCostArs: true,
@@ -186,8 +216,17 @@ async function getDashboardSummary(
 
   const totalDealCount = dealsWithUnits.length
 
-  // Revenue: sumatoria de finalPrice (precio al cliente)
-  const totalRevenue = dealsWithUnits.reduce((sum, d) => sum + decimalToNumber(d.finalPrice), 0)
+  const totalRevenue = dealsWithUnits.reduce(
+    (acc, deal) => {
+      const revenue = createDealRevenueAmount(deal)
+      return createExactMoneyAmount(
+        acc.ars + revenue.ars,
+        acc.usd + revenue.usd,
+        acc.totalConverted + revenue.totalConverted
+      )
+    },
+    createExactMoneyAmount(0, 0, 0)
+  )
 
   // Costo de compra: acquisitionCost de cada unidad vendida
   const totalAcquisitionCostArs = dealsWithUnits.reduce(
@@ -209,10 +248,8 @@ async function getDashboardSummary(
   // Query 3: Costos adicionales de unidades (mantenimiento, reparaciones, etc.)
   const unitCosts = await prisma.unitCostItem.aggregate({
     where: {
-      unit: {
-        companyId,
-        createdAt: { gte: start, lte: end },
-      },
+      date: { gte: start, lte: end },
+      unit: { companyId },
     },
     _sum: { amountArs: true, amountUsd: true },
   })
@@ -247,11 +284,13 @@ async function getDashboardSummary(
     decimalToNumber(companyExpenses._sum?.amountUsd)
 
   const totalCosts = createMoneyAmount(totalCostsArs, totalCostsUsd)
-  const revenue = createMoneyAmount(totalRevenue, 0)
+  const revenue = totalRevenue
 
-  // Ganancia neta = precio venta - costo compra - costos adicionales
-  const netProfitArs = revenue.ars - totalCosts.totalConverted
-  const netProfit = createMoneyAmount(Math.max(0, netProfitArs), 0)
+  const netProfit = createExactMoneyAmount(
+    revenue.ars - totalCosts.ars,
+    revenue.usd - totalCosts.usd,
+    revenue.totalConverted - totalCosts.totalConverted
+  )
 
   const inventoryMap = new Map(inventoryMetrics.map(item => [item.status, item._count._all]))
   const totalUnits = Array.from(inventoryMap.values()).reduce((a, b) => a + b, 0)
@@ -292,15 +331,16 @@ async function getSalesVsProfit(
 ): Promise<SalesVsProfitAnalytics> {
   const { start, end } = dateRange
 
-  // Traer todos los deals con su costo de adquisición
   const deals = await prisma.deal.findMany({
     where: {
       companyId,
-      status: { in: ['DELIVERED', 'APPROVED'] },
+      status: 'DELIVERED',
       updatedAt: { gte: start, lte: end },
     },
     select: {
       finalPrice: true,
+      finalPriceCurrency: true,
+      exchangeRate: true,
       updatedAt: true,
       unit: {
         select: {
@@ -314,97 +354,143 @@ async function getSalesVsProfit(
     },
   })
 
-  // Agrupar dinámicamente por día o mes
   const isDaily = timeRange === '7d' || timeRange === '30d'
-  const byPeriod = new Map<string, { sales: number; costs: number; count: number; date: Date }>()
+  const byPeriod = new Map<
+    string,
+    {
+      salesArs: number
+      salesUsd: number
+      salesConverted: number
+      costsArs: number
+      costsUsd: number
+      costsConverted: number
+      count: number
+      date: Date
+    }
+  >()
 
   for (const deal of deals) {
     const d = deal.updatedAt
-    const key = isDaily 
+    const key = isDaily
       ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      
+
     const existingDate = isDaily
       ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
       : new Date(d.getFullYear(), d.getMonth(), 1)
-      
-    const existing = byPeriod.get(key) || { sales: 0, costs: 0, count: 0, date: existingDate }
 
-    const saleAmount = decimalToNumber(deal.finalPrice)
+    const existing = byPeriod.get(key) || {
+      salesArs: 0,
+      salesUsd: 0,
+      salesConverted: 0,
+      costsArs: 0,
+      costsUsd: 0,
+      costsConverted: 0,
+      count: 0,
+      date: existingDate,
+    }
+
+    const saleAmount = createDealRevenueAmount(deal)
     const acquisitionArs = decimalToNumber(deal.unit?.acquisitionCostArs)
     const acquisitionUsd = decimalToNumber(deal.unit?.acquisitionCostUsd)
-    const dealExtraCosts = deal.closingCosts.reduce(
-      (sum, c) => sum + decimalToNumber(c.amountArs) + decimalToNumber(c.amountUsd) * EXCHANGE_RATE_ARS_PER_USD,
+    const extraCostsArs = deal.closingCosts.reduce(
+      (sum, c) => sum + decimalToNumber(c.amountArs),
       0
     )
-    const totalCostForDeal = acquisitionArs + (acquisitionUsd * EXCHANGE_RATE_ARS_PER_USD) + dealExtraCosts
+    const extraCostsUsd = deal.closingCosts.reduce(
+      (sum, c) => sum + decimalToNumber(c.amountUsd),
+      0
+    )
+    const totalCost = createMoneyAmount(
+      acquisitionArs + extraCostsArs,
+      acquisitionUsd + extraCostsUsd
+    )
 
     byPeriod.set(key, {
-      sales: existing.sales + saleAmount,
-      costs: existing.costs + totalCostForDeal,
+      salesArs: existing.salesArs + saleAmount.ars,
+      salesUsd: existing.salesUsd + saleAmount.usd,
+      salesConverted: existing.salesConverted + saleAmount.totalConverted,
+      costsArs: existing.costsArs + acquisitionArs + extraCostsArs,
+      costsUsd: existing.costsUsd + acquisitionUsd + extraCostsUsd,
+      costsConverted: existing.costsConverted + totalCost.totalConverted,
       count: existing.count + 1,
       date: existing.date,
     })
   }
 
-  // Traer gastos generales (CompanyExpense)
   const companyExpenses = await prisma.companyExpense.findMany({
     where: {
       companyId,
       date: { gte: start, lte: end },
     },
-    select: { amountArs: true, amountUsd: true, date: true }
+    select: { amountArs: true, amountUsd: true, date: true },
   })
 
   for (const exp of companyExpenses) {
     const d = exp.date
-    const key = isDaily 
+    const key = isDaily
       ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
       : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      
+
     const existingDate = isDaily
       ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
       : new Date(d.getFullYear(), d.getMonth(), 1)
-      
-    const existing = byPeriod.get(key) || { sales: 0, costs: 0, count: 0, date: existingDate }
+
+    const existing = byPeriod.get(key) || {
+      salesArs: 0,
+      salesUsd: 0,
+      salesConverted: 0,
+      costsArs: 0,
+      costsUsd: 0,
+      costsConverted: 0,
+      count: 0,
+      date: existingDate,
+    }
 
     const costArs = decimalToNumber(exp.amountArs)
     const costUsd = decimalToNumber(exp.amountUsd)
-    const totalExpCost = costArs + (costUsd * EXCHANGE_RATE_ARS_PER_USD)
+    const totalExpense = createMoneyAmount(costArs, costUsd)
 
     byPeriod.set(key, {
-      sales: existing.sales,
-      costs: existing.costs + totalExpCost,
+      salesArs: existing.salesArs,
+      salesUsd: existing.salesUsd,
+      salesConverted: existing.salesConverted,
+      costsArs: existing.costsArs + costArs,
+      costsUsd: existing.costsUsd + costUsd,
+      costsConverted: existing.costsConverted + totalExpense.totalConverted,
       count: existing.count,
       date: existing.date,
     })
   }
 
-  // Rellenar TODOS los periodos del rango con ceros para que el gráfico nunca quede vacío
-  const cursor = isDaily 
+  const cursor = isDaily
     ? new Date(start.getFullYear(), start.getMonth(), start.getDate())
     : new Date(start.getFullYear(), start.getMonth(), 1)
-    
+
   const endPeriod = isDaily
     ? new Date(end.getFullYear(), end.getMonth(), end.getDate())
     : new Date(end.getFullYear(), end.getMonth(), 1)
-    
+
   while (cursor <= endPeriod) {
     const key = isDaily
       ? `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
       : `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`
-      
+
     if (!byPeriod.has(key)) {
       byPeriod.set(key, {
-        sales: 0,
-        costs: 0,
+        salesArs: 0,
+        salesUsd: 0,
+        salesConverted: 0,
+        costsArs: 0,
+        costsUsd: 0,
+        costsConverted: 0,
         count: 0,
-        date: isDaily 
+        date: isDaily
           ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
           : new Date(cursor.getFullYear(), cursor.getMonth(), 1),
       })
     }
-    
+
     if (isDaily) {
       cursor.setDate(cursor.getDate() + 1)
     } else {
@@ -412,12 +498,13 @@ async function getSalesVsProfit(
     }
   }
 
-  // Ordenar por fecha
   const sortedKeys = Array.from(byPeriod.keys()).sort()
 
   const timeSeries: TimeSeriesDataPoint[] = sortedKeys.map(key => {
     const entry = byPeriod.get(key)!
-    const profit = Math.max(0, entry.sales - entry.costs)
+    const profitArs = entry.salesArs - entry.costsArs
+    const profitUsd = entry.salesUsd - entry.costsUsd
+    const profitConverted = entry.salesConverted - entry.costsConverted
 
     const labelOptions: Intl.DateTimeFormatOptions = isDaily
       ? { day: 'numeric', month: 'short' }
@@ -426,21 +513,38 @@ async function getSalesVsProfit(
     return {
       date: entry.date.toISOString(),
       label: entry.date.toLocaleDateString('es-AR', labelOptions),
-      sales: createMoneyAmount(entry.sales, 0),
-      profit: createMoneyAmount(profit, 0),
-      costs: createMoneyAmount(entry.costs, 0),
+      sales: createExactMoneyAmount(entry.salesArs, entry.salesUsd, entry.salesConverted),
+      profit: createExactMoneyAmount(profitArs, profitUsd, profitConverted),
+      costs: createExactMoneyAmount(entry.costsArs, entry.costsUsd, entry.costsConverted),
       dealCount: entry.count,
     }
   })
 
   const totals = timeSeries.reduce(
     (acc, point) => ({
-      sales: createMoneyAmount(acc.sales.ars + point.sales.ars, 0),
-      profit: createMoneyAmount(acc.profit.ars + point.profit.ars, 0),
-      costs: createMoneyAmount(acc.costs.ars + point.costs.ars, 0),
+      sales: createExactMoneyAmount(
+        acc.sales.ars + point.sales.ars,
+        acc.sales.usd + point.sales.usd,
+        acc.sales.totalConverted + point.sales.totalConverted
+      ),
+      profit: createExactMoneyAmount(
+        acc.profit.ars + point.profit.ars,
+        acc.profit.usd + point.profit.usd,
+        acc.profit.totalConverted + point.profit.totalConverted
+      ),
+      costs: createExactMoneyAmount(
+        acc.costs.ars + point.costs.ars,
+        acc.costs.usd + point.costs.usd,
+        acc.costs.totalConverted + point.costs.totalConverted
+      ),
       dealCount: acc.dealCount + point.dealCount,
     }),
-    { sales: createMoneyAmount(0, 0), profit: createMoneyAmount(0, 0), costs: createMoneyAmount(0, 0), dealCount: 0 }
+    {
+      sales: createExactMoneyAmount(0, 0, 0),
+      profit: createExactMoneyAmount(0, 0, 0),
+      costs: createExactMoneyAmount(0, 0, 0),
+      dealCount: 0,
+    }
   )
 
   return {
@@ -456,49 +560,75 @@ async function getSalesVsProfit(
 
 async function getTopSellers(
   companyId: string,
-  timeRange: TimeRange,
+  _timeRange: TimeRange,
   dateRange: { start: Date; end: Date; label: string }
 ): Promise<TopSellersAnalytics> {
   const { start, end } = dateRange
 
-  const sellerStats = await prisma.deal.groupBy({
-    by: ['sellerId'],
+  const deliveredDeals = await prisma.deal.findMany({
     where: {
       companyId,
-      status: { in: ['DELIVERED', 'APPROVED'] },
+      status: 'DELIVERED',
       updatedAt: { gte: start, lte: end },
     },
-    _sum: { finalPrice: true },
-    _count: { _all: true },
+    select: {
+      sellerId: true,
+      finalPrice: true,
+      finalPriceCurrency: true,
+      exchangeRate: true,
+    },
   })
 
-  const sellerIds = sellerStats.map(s => s.sellerId)
+  const sellerIds = Array.from(new Set(deliveredDeals.map(deal => deal.sellerId)))
   const sellers = await prisma.user.findMany({
     where: { id: { in: sellerIds }, companyId },
     select: { id: true, name: true },
   })
 
   const sellerMap = new Map(sellers.map(s => [s.id, s.name]))
+  const metricsBySeller = new Map<
+    string,
+    { ars: number; usd: number; totalConverted: number; dealCount: number }
+  >()
 
-  const sellerPerformances: SellerPerformance[] = sellerStats.map(stat => {
-    const totalSales = decimalToNumber(stat._sum?.finalPrice)
-    const dealCount = stat._count._all
-
-    return {
-      sellerId: stat.sellerId,
-      sellerName: sellerMap.get(stat.sellerId) || 'Unknown',
-      totalSales: createMoneyAmount(totalSales, 0),
-      dealCount,
-      avgDealValue: dealCount > 0 ? totalSales / dealCount : 0,
-      conversionRate: 0,
+  for (const deal of deliveredDeals) {
+    const revenue = createDealRevenueAmount(deal)
+    const existing = metricsBySeller.get(deal.sellerId) || {
+      ars: 0,
+      usd: 0,
+      totalConverted: 0,
+      dealCount: 0,
     }
-  })
+
+    metricsBySeller.set(deal.sellerId, {
+      ars: existing.ars + revenue.ars,
+      usd: existing.usd + revenue.usd,
+      totalConverted: existing.totalConverted + revenue.totalConverted,
+      dealCount: existing.dealCount + 1,
+    })
+  }
+
+  const sellerPerformances: SellerPerformance[] = Array.from(metricsBySeller.entries()).map(
+    ([sellerId, totals]) => ({
+      sellerId,
+      sellerName: sellerMap.get(sellerId) || 'Unknown',
+      totalSales: createExactMoneyAmount(totals.ars, totals.usd, totals.totalConverted),
+      dealCount: totals.dealCount,
+      avgDealValue: totals.dealCount > 0 ? totals.totalConverted / totals.dealCount : 0,
+      conversionRate: 0,
+    })
+  )
 
   sellerPerformances.sort((a, b) => b.totalSales.totalConverted - a.totalSales.totalConverted)
 
-  const periodTotal = createMoneyAmount(
-    sellerPerformances.reduce((sum, s) => sum + s.totalSales.ars, 0),
-    0
+  const periodTotal = sellerPerformances.reduce(
+    (acc, seller) =>
+      createExactMoneyAmount(
+        acc.ars + seller.totalSales.ars,
+        acc.usd + seller.totalSales.usd,
+        acc.totalConverted + seller.totalSales.totalConverted
+      ),
+    createExactMoneyAmount(0, 0, 0)
   )
 
   return {
@@ -600,3 +730,5 @@ async function getCostAnalysis(
     },
   }
 }
+
+

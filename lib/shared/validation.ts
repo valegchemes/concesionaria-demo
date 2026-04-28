@@ -110,7 +110,10 @@ export const CreateLeadSchema = z.object({
   email: EmailSchema.optional().or(z.literal("")),
   phone: PhoneSchema,
   source: LeadSourceEnum.default("WEBSITE"),
+  status: LeadStatusEnum.default("NEW"),
   notes: z.string().max(500).optional().or(z.literal("")),
+  assignedToId: z.string().optional().nullable(),
+  interestedUnitId: z.string().optional().nullable(),
 })
 
 export const UpdateLeadSchema = CreateLeadSchema.partial().extend({
@@ -151,17 +154,30 @@ export const UpdateUnitSchema = CreateUnitSchema.partial().extend({
 })
 
 // ============================================================================
+// Deal Schemas
+// ============================================================================
+
+// Reuse DealStatusEnum from CreateDealSchema (defined below)
+export const UpdateDealSchema = z.object({
+  status: z.enum(['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT', 'DELIVERED', 'CANCELED']).optional(),
+  notes: z.string().max(2000).optional().or(z.literal('')),
+  finalPrice: CurrencySchema.optional(),
+  finalPriceCurrency: z.enum(['ARS', 'USD']).optional(),
+})
+
+// ============================================================================
 // Company/Settings Schemas
 // ============================================================================
 
 export const UpdateCompanySchema = z.object({
   name: NameSchema.optional(),
-  slug: SlugSchema.optional(),
-  website: URLSchema.optional(),
-  phone: PhoneSchema.optional(),
-  address: StringSchema.optional(),
-  city: StringSchema.optional(),
-  country: StringSchema.optional(),
+  phone: PhoneSchema.optional().or(z.literal('')),
+  email: EmailSchema.optional().or(z.literal('')),
+  whatsappCentral: z.string().optional().or(z.literal('')),
+  address: z.string().max(300).optional().or(z.literal('')),
+  city: z.string().max(100).optional().or(z.literal('')),
+  currencyPreference: z.enum(['ARS', 'USD']).optional(),
+  logoUrl: z.string().optional().or(z.literal('')),
 })
 
 // ============================================================================
@@ -175,6 +191,7 @@ export type UpdateLeadInput = z.infer<typeof UpdateLeadSchema>
 export type CreateUnitInput = z.infer<typeof CreateUnitSchema>
 export type UpdateUnitInput = z.infer<typeof UpdateUnitSchema>
 export type UpdateCompanyInput = z.infer<typeof UpdateCompanySchema>
+export type UpdateDealInput = z.infer<typeof UpdateDealSchema>
 
 export const DealStatusEnum = z.enum([
   'NEGOTIATION',

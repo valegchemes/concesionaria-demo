@@ -21,7 +21,10 @@ export interface CreateLeadCommand {
   phone: string
   email?: string
   source: string
+  status?: string
   notes?: string
+  assignedToId?: string | null
+  interestedUnitId?: string | null
   companyId: string
   createdById: string
 }
@@ -33,6 +36,11 @@ export interface UpdateLeadCommand {
   name?: string
   email?: string
   phone?: string
+}
+
+export interface RequestingUser {
+  id: string
+  role: string
 }
 
 export interface LeadNotification {

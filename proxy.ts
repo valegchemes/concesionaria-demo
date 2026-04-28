@@ -168,7 +168,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 // MIDDLEWARE PRINCIPAL
 // ============================================================================
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const startTime = Date.now()
 
@@ -253,7 +253,7 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
     requestHeaders.set('x-user-role', tenant.role)
 
     // Crear response con headers de rate limit y los request headers inyectados
-    let response = NextResponse.next({
+    const response = NextResponse.next({
       request: {
         headers: requestHeaders,
       },
@@ -280,11 +280,18 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
       return NextResponse.redirect(loginUrl)
     }
 
-    // Añadir headers de tenant
-    const response = NextResponse.next()
-    response.headers.set('x-user-id', tenant.userId)
-    response.headers.set('x-company-id', tenant.companyId)
-    response.headers.set('x-user-role', tenant.role)
+    // Añadir headers de tenant al request para Server Components
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', tenant.userId)
+    requestHeaders.set('x-company-id', tenant.companyId)
+    requestHeaders.set('x-user-role', tenant.role)
+    requestHeaders.set('x-pathname', pathname)
+
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
 
     return addSecurityHeaders(response)
   }
@@ -309,3 +316,5 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
+
+

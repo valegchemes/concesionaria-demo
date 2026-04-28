@@ -25,16 +25,30 @@ export async function POST(
 
     const { id } = await params
 
-    // Verify lead exists
+    // Verify lead exists and user can access it
     const lead = await prisma.lead.findFirst({
       where: {
         id,
         companyId: session.user.companyId,
       },
+      select: {
+        assignedToId: true,
+        createdById: true,
+      },
     })
 
     if (!lead) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+    }
+
+    const canManageAll = session.user.role === 'ADMIN' || session.user.role === 'MANAGER'
+    const canAccessLead =
+      canManageAll ||
+      lead.assignedToId === session.user.id ||
+      lead.createdById === session.user.id
+
+    if (!canAccessLead) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     const body = await request.json()

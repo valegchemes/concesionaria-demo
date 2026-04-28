@@ -4,6 +4,7 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import type { Prisma } from '@prisma/client'
 
 const log = createLogger('SearchRoute')
 
@@ -31,8 +32,6 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   log.debug({ query, companyId: user.companyId }, 'Performing global search')
 
   const companyId = user.companyId
-  const lowercaseQuery = query.toLowerCase()
-
   // Run all searches in parallel
   const [leads, units, deals, users] = await Promise.all([
     // 1. Search Leads
@@ -45,6 +44,16 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
           { email: { contains: query, mode: 'insensitive' } },
           { phone: { contains: query.replace(/\D/g, '') } },
         ],
+        ...(user.role !== 'ADMIN' && user.role !== 'MANAGER' && {
+          AND: [
+            {
+              OR: [
+                { assignedToId: user.id },
+                { createdById: user.id },
+              ],
+            },
+          ],
+        }),
       },
       take: 5,
       select: { id: true, name: true, email: true, phone: true },
@@ -70,6 +79,9 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
       where: {
         companyId,
         status: { not: 'CANCELED' },
+        ...(user.role !== 'ADMIN' && user.role !== 'MANAGER' && {
+          sellerId: user.id,
+        }),
         OR: [
           { lead: { name: { contains: query, mode: 'insensitive' } } },
           { unit: { title: { contains: query, mode: 'insensitive' } } },
@@ -97,7 +109,7 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     }),
   ])
 
-  const formatPrice = (price: any) => {
+  const formatPrice = (price: Prisma.Decimal | number | string | null | undefined) => {
     if (!price) return ''
     return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(price))
   }

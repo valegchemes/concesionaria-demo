@@ -11,27 +11,32 @@
  * - Deal summaries and financial reporting
  */
 
-import { Prisma, type DealStatus, type PaymentMethod, type UnitStatus, type LeadStatus } from '@prisma/client'
+import { prisma, withTransaction } from '@/lib/shared/prisma'
+import { DealStatus, Prisma, UnitStatus, LeadStatus, PaymentMethod } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
-import { prisma } from '@/lib/shared/prisma'
 import type {
   CreateDealCommand,
   UpdateDealCommand,
   RecordPaymentCommand,
   AddCostItemCommand,
-  DealWithRelations,
   DealSummary,
+  DealWithRelations,
   DealListResult,
+  RequestingUser,
 } from './types'
 
 const log = createLogger('DealService')
+
+function canManageAllDeals(role: string): boolean {
+  return role === 'ADMIN' || role === 'MANAGER'
+}
 
 export class DealService {
   /**
    * Create a new deal
    */
-  async create(command: CreateDealCommand): Promise<DealWithRelations> {
+  async create(command: CreateDealCommand, requestingUser: RequestingUser): Promise<DealWithRelations> {
     log.info(
       {
         companyId: command.companyId,
@@ -69,16 +74,20 @@ export class DealService {
       throw new NotFoundError('User', command.sellerId)
     }
 
+    if (!canManageAllDeals(requestingUser.role) && command.sellerId !== requestingUser.id) {
+      throw new ValidationError('You can only create deals assigned to yourself')
+    }
+
     // Validate amount
     if (command.finalPrice <= 0) {
       throw new ValidationError('Final price must be greater than 0')
     }
 
-    // Check for existing active deals for this unit
-    /*
+    // Block parallel active deals for the same unit
     const existingDeal = await prisma.deal.findFirst({
       where: {
         unitId: command.unitId,
+        companyId: command.companyId,
         status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] },
       },
     })
@@ -88,7 +97,6 @@ export class DealService {
         'Unit already has an active deal. Please close or complete the existing deal first.'
       )
     }
-    */
 
     // Create deal
     const deal = await prisma.deal.create({
@@ -140,7 +148,11 @@ export class DealService {
   /**
    * Get deal by ID
    */
-  async getById(id: string, companyId: string): Promise<DealWithRelations> {
+  async getById(
+    id: string,
+    companyId: string,
+    requestingUser?: RequestingUser
+  ): Promise<DealWithRelations> {
     log.debug({ dealId: id, companyId }, 'Fetching deal')
 
     const deal = await prisma.deal.findFirst({
@@ -159,6 +171,14 @@ export class DealService {
       throw new NotFoundError('Deal', id)
     }
 
+    if (
+      requestingUser &&
+      !canManageAllDeals(requestingUser.role) &&
+      deal.sellerId !== requestingUser.id
+    ) {
+      throw new ValidationError('You can only view deals assigned to you')
+    }
+
     return deal
   }
 
@@ -167,6 +187,7 @@ export class DealService {
    */
   async list(
     companyId: string,
+    requestingUser: RequestingUser,
     {
       page = 1,
       limit = 20,
@@ -191,7 +212,8 @@ export class DealService {
         ? { status: status as DealStatus } 
         : { status: { not: 'CANCELED' } } // Exclude CANCELED deals by default
       ),
-      ...(soldById && { soldById }),
+      ...(soldById && { sellerId: soldById }),
+      ...(!canManageAllDeals(requestingUser.role) && { sellerId: requestingUser.id }),
     }
 
     const [total, rawDeals] = await Promise.all([
@@ -226,7 +248,7 @@ export class DealService {
       seller: d.seller ?? undefined,
       createdAt: d.createdAt,
       _count: { payments: d._count.payments, costItems: d._count.closingCosts },
-    })) as any
+    })) as DealListResult['deals']
 
     const totalPages = Math.ceil(total / limitNum)
 
@@ -246,20 +268,54 @@ export class DealService {
 
   /**
    * Update deal
+   * 
+   * Ownership: Admin can update any deal, seller can update their own deals
    */
   async update(
     id: string,
     companyId: string,
-    command: UpdateDealCommand
+    command: UpdateDealCommand,
+    requestingUser: RequestingUser
   ): Promise<DealWithRelations> {
-    log.info({ dealId: id, changes: Object.keys(command) }, 'Updating deal')
+    log.info({ dealId: id, changes: Object.keys(command), requestingUserId: requestingUser.id }, 'Updating deal')
 
-    // Get current deal
-    const currentDeal = await this.getById(id, companyId)
+    // Get current deal with ownership info
+    const currentDeal = await prisma.deal.findFirst({
+      where: { id, companyId },
+      include: { seller: { select: { id: true } } }
+    })
+
+    if (!currentDeal) {
+      throw new NotFoundError('Deal', id)
+    }
+
+    // Ownership check: Admin or the assigned seller can update
+    const isSeller = currentDeal.sellerId === requestingUser.id
+    const isAdmin = canManageAllDeals(requestingUser.role)
+    
+    if (!isSeller && !isAdmin) {
+      throw new ValidationError('You can only update deals assigned to you')
+    }
+
+    // Delegate to internal update logic
+    return this.updateInternal(id, companyId, command, currentDeal)
+  }
+
+  /**
+   * Internal update logic (without ownership checks - for internal use only)
+   */
+  private async updateInternal(
+    id: string,
+    companyId: string,
+    command: UpdateDealCommand,
+    currentDeal?: { status: string; unitId: string; leadId: string; finalPrice: Prisma.Decimal }
+  ): Promise<DealWithRelations> {
+    // Get current deal if not provided
+    const deal = currentDeal || await this.getById(id, companyId)
 
     // Validate status transition
-    if (command.status && command.status !== currentDeal.status) {
-      await this.validateStatusTransition(currentDeal.status, command.status)
+    if (command.status && command.status !== deal.status) {
+      await this.validateStatusTransition(deal.status, command.status)
     }
 
     // Update deal
@@ -289,34 +345,34 @@ export class DealService {
     if (command.status === 'DELIVERED') {
       await Promise.all([
         prisma.unit.update({
-          where: { id: currentDeal.unitId },
+          where: { id: deal.unitId },
           data: { status: 'SOLD' as UnitStatus, isActive: false },
         }),
         prisma.lead.update({
-          where: { id: currentDeal.leadId },
+          where: { id: deal.leadId },
           data: { status: 'SOLD' as LeadStatus },
         }),
       ])
-      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit soft-deleted and lead marked as SOLD')
+      log.info({ dealId: id, unitId: deal.unitId }, 'Unit soft-deleted and lead marked as SOLD')
     } else if (command.status === 'RESERVED') {
       await Promise.all([
         prisma.unit.update({
-          where: { id: currentDeal.unitId },
+          where: { id: deal.unitId },
           data: { status: 'RESERVED' as UnitStatus },
         }),
         prisma.lead.update({
-          where: { id: currentDeal.leadId },
+          where: { id: deal.leadId },
           data: { status: 'RESERVED' as LeadStatus },
         }),
       ])
-      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit and lead marked as RESERVED')
-    } else if (command.status === 'CANCELED' && currentDeal.status === 'RESERVED') {
+      log.info({ dealId: id, unitId: deal.unitId }, 'Unit and lead marked as RESERVED')
+    } else if (command.status === 'CANCELED' && deal.status === 'RESERVED') {
       // Si se cancela una reserva, liberar la unidad
       await prisma.unit.update({
-        where: { id: currentDeal.unitId },
+        where: { id: deal.unitId },
         data: { status: 'AVAILABLE' as UnitStatus },
       })
-      log.info({ dealId: id, unitId: currentDeal.unitId }, 'Unit marked as AVAILABLE after canceled reservation')
+      log.info({ dealId: id, unitId: deal.unitId }, 'Unit marked as AVAILABLE after canceled reservation')
     }
 
     return updated
@@ -324,49 +380,106 @@ export class DealService {
 
   /**
    * Record payment
+   * 
+   * Uses transaction with Serializable isolation to prevent race conditions
+   * where two concurrent payments could exceed the deal amount.
    */
   async recordPayment(
     dealId: string,
     companyId: string,
-    command: RecordPaymentCommand
+    command: RecordPaymentCommand,
+    requestingUser: RequestingUser
   ) {
-    log.info({ dealId, amount: command.amount }, 'Recording payment')
+    log.info({ 
+      dealId, 
+      amount: command.amount,
+      requestingUserId: requestingUser.id,
+      requestingUserRole: requestingUser.role,
+      paymentMethod: command.method,
+      timestamp: new Date().toISOString()
+    }, 'Payment recording initiated')
 
-    // Verify deal exists
-    const deal = await this.getById(dealId, companyId)
+    return await withTransaction(async (tx) => {
+      // Get deal with lock (within transaction)
+      const deal = await tx.deal.findFirst({
+        where: { id: dealId, companyId }
+      })
 
-    // Validate amount
-    if (command.amount <= 0) {
-      throw new ValidationError('Payment amount must be greater than 0')
-    }
+      if (!deal) {
+        throw new NotFoundError('Deal', dealId)
+      }
 
-    // Check if payment would exceed deal amount
-    const summary = await this.getSummary(dealId, companyId)
-    if (summary.totalPayments + command.amount > Number(deal.finalPrice)) {
-      throw new ValidationError(
-        `Payment exceeds remaining balance of ${summary.remainingBalance}`
-      )
-    }
+      // Verify ownership
+      const isSeller = deal.sellerId === requestingUser.id
+      const isAdmin = canManageAllDeals(requestingUser.role)
+      if (!isSeller && !isAdmin) {
+        throw new ValidationError('You can only record payments for your own deals')
+      }
 
-    // Create payment
-    const payment = await prisma.dealPayment.create({
-      data: {
+      // Validate amount
+      if (command.amount <= 0) {
+        throw new ValidationError('Payment amount must be greater than 0')
+      }
+
+      // Calculate current payments (fresh data within transaction)
+      const payments = await tx.dealPayment.findMany({
+        where: { dealId }
+      })
+      const totalPayments = payments.reduce((sum, p) => sum + Number(p.amount), 0)
+      const remainingBalance = Number(deal.finalPrice) - totalPayments
+
+      // Check if payment would exceed deal amount
+      if (totalPayments + command.amount > Number(deal.finalPrice)) {
+        throw new ValidationError(
+          `Payment exceeds remaining balance of ${remainingBalance.toFixed(2)}`
+        )
+      }
+
+      // Create payment
+      const payment = await tx.dealPayment.create({
+        data: {
+          dealId,
+          amount: command.amount,
+          method: command.method as PaymentMethod,
+          notes: command.notes,
+        },
+      })
+
+      // Auto-mark deal as completed if fully paid
+      if (totalPayments + command.amount >= Number(deal.finalPrice)) {
+        await tx.deal.update({
+          where: { id: dealId },
+          data: { status: 'DELIVERED' as DealStatus, closedAt: new Date() }
+        })
+        
+        // Update unit and lead status
+        await Promise.all([
+          tx.unit.update({
+            where: { id: deal.unitId },
+            data: { status: 'SOLD' as UnitStatus, isActive: false }
+          }),
+          tx.lead.update({
+            where: { id: deal.leadId },
+            data: { status: 'SOLD' as LeadStatus }
+          })
+        ])
+      }
+
+      // Log successful payment with full context
+      log.info({
+        paymentId: payment.id,
         dealId,
         amount: command.amount,
-        method: command.method as PaymentMethod,
-        notes: command.notes,
-      },
+        requestingUserId: requestingUser.id,
+        totalPaid: totalPayments + command.amount,
+        finalPrice: Number(deal.finalPrice),
+        remainingBalance: Number(deal.finalPrice) - (totalPayments + command.amount),
+        isFullyPaid: totalPayments + command.amount >= Number(deal.finalPrice),
+        timestamp: new Date().toISOString()
+      }, 'Payment recorded successfully')
+
+      return payment
     })
-
-    log.info({ paymentId: payment.id, dealId }, 'Payment recorded')
-
-    // Auto-mark deal as completed if fully paid
-    if (summary.totalPayments + command.amount >= Number(deal.finalPrice)) {
-      await this.update(dealId, companyId, { status: 'DELIVERED' })
-      log.info({ dealId }, 'Deal auto-marked as delivered (fully paid)')
-    }
-
-    return payment
   }
 
   /**
@@ -393,7 +506,7 @@ export class DealService {
         dealId,
         concept: command.description.trim(),
         amountArs: command.amount,
-      } as any,
+      },
     })
 
     log.info({ costItemId: costItem.id, dealId }, 'Cost item added')
@@ -404,7 +517,7 @@ export class DealService {
   /**
    * Get deal summary (payments, costs, balance)
    */
-  async getSummary(dealId: string, companyId: string): Promise<any> {
+  async getSummary(dealId: string, companyId: string): Promise<DealSummary> {
     log.debug({ dealId }, 'Getting deal summary')
 
     const deal = await this.getById(dealId, companyId)
@@ -421,7 +534,7 @@ export class DealService {
 
     return {
       dealId,
-      finalPrice: Number(deal.finalPrice),
+      grossAmount: Number(deal.finalPrice),
       totalPayments,
       remainingBalance: Math.max(0, netAmount - totalPayments),
       totalCosts,
@@ -452,9 +565,9 @@ export class DealService {
       )
     }
 
-    // Update deal status to delivered (DELIVERED is the final state, CLOSED doesn't exist)
-    await this.update(dealId, companyId, {
-      status: 'DELIVERED' as any,
+    // Update deal status to delivered (system operation, no ownership check)
+    await this.updateInternal(dealId, companyId, {
+      status: 'DELIVERED',
       ...(completionNotes && { notes: completionNotes }),
     })
 
@@ -503,7 +616,7 @@ export class DealService {
   async getByStatus(
     companyId: string,
     status: 'NEGOTIATION' | 'RESERVED' | 'APPROVED' | 'IN_PAYMENT' | 'DELIVERED' | 'CANCELED'
-  ): Promise<Array<{ id: string; finalPrice: any; lead: { name: string } }>> {
+  ): Promise<Array<{ id: string; finalPrice: Prisma.Decimal; lead: { name: string } }>> {
     log.debug({ companyId, status }, 'Getting deals by status')
 
     return await prisma.deal.findMany({
@@ -548,16 +661,31 @@ export class DealService {
   }
   /**
    * Delete a deal permanently
+   * 
+   * Ownership: Admin can delete any deal, seller can delete their own deals
    */
-  async delete(id: string, companyId: string): Promise<void> {
-    log.info({ dealId: id, companyId }, 'Deleting deal')
+  async delete(
+    id: string, 
+    companyId: string,
+    requestingUser: { id: string; role: string }
+  ): Promise<void> {
+    log.info({ dealId: id, companyId, requestingUserId: requestingUser.id }, 'Deleting deal')
 
     const deal = await prisma.deal.findFirst({
       where: { id, companyId },
+      select: { sellerId: true }
     })
 
     if (!deal) {
       throw new NotFoundError('Deal', id)
+    }
+
+    // Ownership check
+    const isSeller = deal.sellerId === requestingUser.id
+    const isAdmin = canManageAllDeals(requestingUser.role)
+    
+    if (!isSeller && !isAdmin) {
+      throw new ValidationError('You can only delete deals assigned to you')
     }
 
     // Delete cascade: payments and cost items first

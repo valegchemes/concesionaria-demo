@@ -1,8 +1,21 @@
 export const dynamic = 'force-dynamic'
+import { NextRequest } from 'next/server'
 import NextAuth from 'next-auth'
 import { authOptions } from './auth-options'
-import { checkRateLimit, rateLimitStore } from '@/lib/rate-limit'
+import { applyRateLimit } from '@/lib/rate-limit-kv'
 
 const handler = NextAuth(authOptions)
 
-export { handler as GET, handler as POST }
+export { handler as GET }
+
+export async function POST(
+  request: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> }
+) {
+  const blocked = await applyRateLimit(request, { strict: true, path: '/api/auth/login' })
+  if (blocked) {
+    return blocked
+  }
+
+  return handler(request, context)
+}

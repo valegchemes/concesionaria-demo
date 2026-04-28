@@ -3,6 +3,9 @@ import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { unitService } from '@/lib/domains/units/service'
+import { ForbiddenError } from '@/lib/shared/errors'
+
+const canManageUnits = (role: string) => role === 'ADMIN' || role === 'MANAGER'
 
 /**
  * GET /api/units/[id]/costs - List all cost items for a unit
@@ -22,6 +25,9 @@ export const GET = withErrorHandling(
 export const POST = withErrorHandling(
   async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
+    if (!canManageUnits(user.role)) {
+      throw new ForbiddenError('Only admins and managers can add cost items')
+    }
     const { id } = await params
     const body = await req.json()
     const item = await unitService.addCostItem(id, user.companyId, {

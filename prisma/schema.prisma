@@ -446,11 +446,13 @@ model CompanyExpense {
   amountArs   Decimal  @default(0)
   amountUsd   Decimal  @default(0)
   date        DateTime // Fecha en la que ocurrió el gasto
+  isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
+
   @@index([companyId, date])
+  @@index([companyId, isActive])
   @@map("CompanyExpense")
 }
 

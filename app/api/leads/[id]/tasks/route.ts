@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { authOptions } from '../../../auth/[...nextauth]/auth-options'
 import { z } from 'zod'
 import { createLogger } from '@/lib/shared/logger'
+import { ValidationError } from '@/lib/shared/errors'
 
 const log = createLogger('API:Tasks')
 
@@ -26,11 +27,16 @@ export async function POST(
 
     const { id } = await params
 
-    // Verify lead belongs to company
+    // Verify lead belongs to company and user can access it
     const lead = await prisma.lead.findFirst({
       where: {
         id,
         companyId: session.user.companyId,
+      },
+      select: {
+        id: true,
+        assignedToId: true,
+        createdById: true,
       },
     })
 
@@ -38,8 +44,26 @@ export async function POST(
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
 
+    const canManageAll = session.user.role === 'ADMIN' || session.user.role === 'MANAGER'
+    const canAccessLead =
+      canManageAll ||
+      lead.assignedToId === session.user.id ||
+      lead.createdById === session.user.id
+
+    if (!canAccessLead) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const validated = taskSchema.parse(body)
+
+    if (
+      validated.assignedToId &&
+      validated.assignedToId !== session.user.id &&
+      !canManageAll
+    ) {
+      throw new ValidationError('You can only assign tasks to yourself')
+    }
 
     const task = await prisma.task.create({
       data: {
@@ -87,6 +111,31 @@ export async function PATCH(
     const body = await request.json()
     const { isCompleted } = body
 
+    const lead = await prisma.lead.findFirst({
+      where: {
+        id,
+        companyId: session.user.companyId,
+      },
+      select: {
+        assignedToId: true,
+        createdById: true,
+      },
+    })
+
+    if (!lead) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+    }
+
+    const canManageAll = session.user.role === 'ADMIN' || session.user.role === 'MANAGER'
+    const canAccessLead =
+      canManageAll ||
+      lead.assignedToId === session.user.id ||
+      lead.createdById === session.user.id
+
+    if (!canAccessLead) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const task = await prisma.task.updateMany({
       where: {
         id: taskId,
@@ -101,6 +150,9 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, count: task.count })
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: error.issues }, { status: 400 })
+    }
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating task')
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
   }

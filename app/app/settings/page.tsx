@@ -1,18 +1,31 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Building2, User, Phone, Globe, DollarSign, Loader2, Save } from 'lucide-react'
+import { Building2, User, Globe, Loader2, Save } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+interface CurrentUser {
+  id: string
+  name: string
+  email: string
+  role: string
+  avatarUrl?: string | null
+  companyId: string
+  companyName: string
+  companySlug: string
+  whatsappCentral?: string | null
+}
+
 export default function SettingsPage() {
-  const { data: session, update } = useSession()
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
-  
-  // States for Company Settings
+  const [me, setMe] = useState<CurrentUser | null>(null)
+  const isCompanyAdmin = me?.role === 'ADMIN'
+
   const [companyName, setCompanyName] = useState('')
   const [companyPhone, setCompanyPhone] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
@@ -21,48 +34,50 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
 
-  // States for User Settings
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
-  // Load initial data
   useEffect(() => {
     async function fetchSettings() {
       try {
-        setUserName(session?.user?.name || '')
-        setUserEmail(session?.user?.email || '')
-        
-        // Fetch company data
-        if (session?.user?.companyId) {
-          const res = await fetch('/api/settings/company')
-          if (res.ok) {
-            const data = await res.json()
-            setCompanyName(data.name || '')
-            setCompanyPhone(data.phone || '')
-            setCompanyEmail(data.email || '')
-            setWhatsappCentral(data.whatsappCentral || '')
-            setCurrencyPref(data.currencyPreference || 'BOTH')
-            setLogoUrl(data.logoUrl || '')
-          } else {
-            // Fallback to session if API fails
-            setCompanyName(session?.user?.companyName || '')
-          }
+        const [meRes, companyRes] = await Promise.all([
+          fetch('/api/me', { cache: 'no-store' }),
+          fetch('/api/settings/company', { cache: 'no-store' }),
+        ])
+
+        if (meRes.ok) {
+          const meData = await meRes.json()
+          setMe(meData)
+          setUserName(meData.name || '')
+          setUserEmail(meData.email || '')
+          setAvatarUrl(meData.avatarUrl || '')
+        }
+
+        if (companyRes.ok) {
+          const companyData = await companyRes.json()
+          setCompanyName(companyData.name || '')
+          setCompanyPhone(companyData.phone || '')
+          setCompanyEmail(companyData.email || '')
+          setWhatsappCentral(companyData.whatsappCentral || '')
+          setCurrencyPref(companyData.currencyPreference || 'BOTH')
+          setLogoUrl(companyData.logoUrl || '')
         }
       } catch (err) {
         console.error('Error fetching settings:', err)
       }
     }
-    if (session?.user) {
-      fetchSettings()
-    }
-  }, [session])
+
+    fetchSettings()
+  }, [])
 
   async function handleCompanySubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+
     try {
       let finalLogoUrl = logoUrl
 
@@ -70,7 +85,7 @@ export default function SettingsPage() {
         const { upload } = await import('@vercel/blob/client')
         const newBlob = await upload(`logos/${logoFile.name}`, logoFile, {
           access: 'public',
-          handleUploadUrl: '/api/blob'
+          handleUploadUrl: '/api/blob',
         })
         finalLogoUrl = newBlob.url
       }
@@ -84,14 +99,19 @@ export default function SettingsPage() {
           email: companyEmail,
           whatsappCentral,
           currencyPreference: currencyPref,
-          logoUrl: finalLogoUrl
-        })
+          logoUrl: finalLogoUrl,
+        }),
       })
+
       if (res.ok) {
-        alert('Configuración de empresa guardada con éxito')
-        await update() // Refresh session
+        setLogoUrl(finalLogoUrl)
+        alert('Configuracion de empresa guardada con exito')
+        router.refresh()
+      } else {
+        const data = await res.json().catch(() => null)
+        alert(data?.error || 'No se pudo guardar la configuracion de empresa')
       }
-    } catch (error) {
+    } catch {
       alert('Error guardando empresa')
     } finally {
       setLoading(false)
@@ -101,6 +121,7 @@ export default function SettingsPage() {
   async function handleUserSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+
     try {
       let finalAvatarUrl = avatarUrl
 
@@ -108,10 +129,12 @@ export default function SettingsPage() {
         const { upload } = await import('@vercel/blob/client')
         const newBlob = await upload(`avatars/${avatarFile.name}`, avatarFile, {
           access: 'public',
-          handleUploadUrl: '/api/blob'
+          handleUploadUrl: '/api/blob',
         })
         finalAvatarUrl = newBlob.url
       }
+
+      const isChangingCredentials = Boolean(password) || userEmail !== me?.email
 
       const res = await fetch('/api/settings/user', {
         method: 'PATCH',
@@ -120,15 +143,31 @@ export default function SettingsPage() {
           name: userName,
           email: userEmail,
           avatarUrl: finalAvatarUrl,
-          ...(password ? { password } : {})
-        })
+          ...(password ? { password } : {}),
+          ...(isChangingCredentials && currentPassword ? { currentPassword } : {}),
+        }),
       })
+
       if (res.ok) {
-        alert('Perfil guardado con éxito')
         setPassword('')
-        await update() // Refresh session
+        setCurrentPassword('')
+        setAvatarUrl(finalAvatarUrl)
+        setMe((prev) =>
+          prev
+            ? {
+                ...prev,
+                name: userName,
+                email: userEmail,
+              }
+            : prev
+        )
+        alert('Perfil guardado con exito')
+        router.refresh()
+      } else {
+        const data = await res.json().catch(() => null)
+        alert(data?.error || 'No se pudo actualizar el perfil')
       }
-    } catch (error) {
+    } catch {
       alert('Error guardando usuario')
     } finally {
       setLoading(false)
@@ -136,172 +175,197 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configuración</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Configuracion</h1>
         <p className="text-muted-foreground">
           Gestiona los ajustes de tu concesionaria y tu perfil de usuario.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Company Settings */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <Card className="col-span-1">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-blue-500" />
               <CardTitle>Concesionaria</CardTitle>
             </div>
-            <CardDescription>Ajustes públicos e información de contacto.</CardDescription>
+            <CardDescription>Ajustes publicos e informacion de contacto.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCompanySubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label>Logo de la Empresa</Label>
                 <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 bg-slate-100 rounded-md overflow-hidden flex items-center justify-center border">
+                  <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border bg-slate-100">
                     {logoUrl ? (
-                      <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
+                      <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
                     ) : (
                       <Building2 className="h-8 w-8 text-slate-300" />
                     )}
                   </div>
-                  <Input 
-                    type="file" 
-                    accept="image/*" 
+                  <Input
+                    type="file"
+                    accept="image/*"
                     onChange={(e) => {
                       if (e.target.files && e.target.files[0]) {
                         const file = e.target.files[0]
                         setLogoFile(file)
                         setLogoUrl(URL.createObjectURL(file))
                       }
-                    }} 
-                    className="flex-1" 
+                    }}
+                    className="flex-1"
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="companyName">Nombre Visible</Label>
-                <Input 
-                  id="companyName" 
-                  value={companyName} 
-                  onChange={e => setCompanyName(e.target.value)} 
-                  required 
+                <Input
+                  id="companyName"
+                  value={companyName}
+                  onChange={e => setCompanyName(e.target.value)}
+                  required
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="companyPhone">Teléfono Fijo / Principal</Label>
-                <Input 
-                  id="companyPhone" 
+                <Label htmlFor="companyPhone">Telefono Fijo / Principal</Label>
+                <Input
+                  id="companyPhone"
                   placeholder="+54 9 11 1234-5678"
-                  value={companyPhone} 
-                  onChange={e => setCompanyPhone(e.target.value)} 
+                  value={companyPhone}
+                  onChange={e => setCompanyPhone(e.target.value)}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="whatsappCentral">WhatsApp Central (Ventas)</Label>
-                <Input 
-                  id="whatsappCentral" 
+                <Input
+                  id="whatsappCentral"
                   placeholder="5491112345678 (Sin '+')"
-                  value={whatsappCentral} 
-                  onChange={e => setWhatsappCentral(e.target.value)} 
+                  value={whatsappCentral}
+                  onChange={e => setWhatsappCentral(e.target.value)}
                 />
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="companyEmail">Email Comercial</Label>
-                <Input 
-                  id="companyEmail" 
-                  type="email" 
-                  value={companyEmail} 
-                  onChange={e => setCompanyEmail(e.target.value)} 
+                <Input
+                  id="companyEmail"
+                  type="email"
+                  value={companyEmail}
+                  onChange={e => setCompanyEmail(e.target.value)}
                 />
               </div>
+
               <div className="space-y-2">
-                <Label htmlFor="currencyPref">Moneda Predefinida (Catálogo)</Label>
-                <select 
-                  id="currencyPref" 
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                <Label htmlFor="currencyPref">Moneda Predefinida (Catalogo)</Label>
+                <select
+                  id="currencyPref"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   value={currencyPref}
                   onChange={e => setCurrencyPref(e.target.value)}
                 >
                   <option value="BOTH">Mostrar ARS y USD</option>
-                  <option value="ARS">Sólo ARS</option>
-                  <option value="USD">Sólo USD</option>
+                  <option value="ARS">Solo ARS</option>
+                  <option value="USD">Solo USD</option>
                 </select>
               </div>
-              <Button type="submit" disabled={loading} className="w-full">
+
+              <Button type="submit" disabled={loading || !isCompanyAdmin} className="w-full">
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Guardar Empresa
               </Button>
+
+              {!isCompanyAdmin && (
+                <p className="text-sm text-muted-foreground">
+                  Solo los administradores pueden cambiar los datos de la concesionaria.
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>
 
-        {/* User Settings */}
-        <div className="space-y-6 col-span-1">
+        <div className="col-span-1 space-y-6">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-gray-500" />
                 <CardTitle>Usuario Actual</CardTitle>
               </div>
-              <CardDescription>Credenciales de tu cuenta ({session?.user?.role}).</CardDescription>
+              <CardDescription>Credenciales de tu cuenta ({me?.role || '...' }).</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUserSubmit} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Tu Foto de Perfil</Label>
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 bg-slate-100 rounded-full overflow-hidden flex items-center justify-center border">
+                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border bg-slate-100">
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                        <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
                       ) : (
                         <User className="h-8 w-8 text-slate-300" />
                       )}
                     </div>
-                    <Input 
-                      type="file" 
-                      accept="image/*" 
+                    <Input
+                      type="file"
+                      accept="image/*"
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
                           const file = e.target.files[0]
                           setAvatarFile(file)
                           setAvatarUrl(URL.createObjectURL(file))
                         }
-                      }} 
-                      className="flex-1" 
+                      }}
+                      className="flex-1"
                     />
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="userName">Tu Nombre</Label>
-                  <Input 
-                    id="userName" 
-                    value={userName} 
-                    onChange={e => setUserName(e.target.value)} 
-                    required 
+                  <Input
+                    id="userName"
+                    value={userName}
+                    onChange={e => setUserName(e.target.value)}
+                    required
                   />
                 </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="userEmail">Tu Email de Acceso</Label>
-                  <Input 
-                    id="userEmail" 
-                    type="email" 
-                    value={userEmail} 
-                    onChange={e => setUserEmail(e.target.value)} 
-                    required 
+                  <Input
+                    id="userEmail"
+                    type="email"
+                    value={userEmail}
+                    onChange={e => setUserEmail(e.target.value)}
+                    required
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="password">Cambiar Contraseña</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
+                  <Label htmlFor="password">Cambiar Contrasena</Label>
+                  <Input
+                    id="password"
+                    type="password"
                     placeholder="Dejar en blanco para mantener actual"
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)} 
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
                   />
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Contrasena Actual</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    placeholder="Obligatoria para cambiar email o contrasena"
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                  />
+                </div>
+
                 <Button type="submit" disabled={loading} variant="outline" className="w-full">
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Actualizar Perfil
@@ -320,13 +384,13 @@ export default function SettingsPage() {
             <CardContent>
               <div className="space-y-4">
                 <div>
-                  <Label>Catálogo Público Visible en:</Label>
-                  <div className="mt-1 p-3 bg-slate-50 border rounded-md font-mono text-sm break-all">
-                    https://concesionaria-demo-three.vercel.app/u/{session?.user?.companySlug || '...'}
+                  <Label>Catalogo Publico Visible en:</Label>
+                  <div className="mt-1 break-all rounded-md border bg-slate-50 p-3 font-mono text-sm">
+                    https://concesionaria-demo-three.vercel.app/u/{me?.companySlug || '...'}
                   </div>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Para mapear un dominio personalizado como "autos-juan.com" contáctate con soporte.
+                  Para mapear un dominio personalizado como &quot;autos-juan.com&quot; contactate con soporte.
                 </p>
               </div>
             </CardContent>

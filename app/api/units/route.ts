@@ -13,22 +13,19 @@ export const maxDuration = 30
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { prisma } from '@/lib/shared/prisma'
-import { CreateUnitSchema, UpdateUnitSchema } from '@/lib/shared/validation'
+import { CreateUnitSchema } from '@/lib/shared/validation'
 import { 
   successResponse, 
   errorResponse, 
   paginatedResponse 
 } from '@/lib/shared/api-response'
 import { 
-  NotFoundError, 
   ForbiddenError, 
   ValidationError,
-  isAppError,
-  getErrorResponse,
-  getErrorStatusCode 
+  isAppError
 } from '@/lib/shared/errors'
 import { createLogger } from '@/lib/shared/logger'
-import type { Unit, UnitStatus, UnitType, Prisma } from '@prisma/client'
+import type { UnitStatus, UnitType, Prisma } from '@prisma/client'
 
 const log = createLogger('API:Units')
 
@@ -52,24 +49,8 @@ interface ListUnitsQuery {
   maxPrice?: number
 }
 
-interface CreateUnitBody {
-  title: string
-  type: UnitType
-  priceArs?: number | null
-  priceUsd?: number | null
-  acquisitionCostArs?: number | null
-  acquisitionCostUsd?: number | null
-  description?: string | null
-  location?: string | null
-  status?: UnitStatus
-  vin?: string | null
-  domain?: string | null
-  engineNumber?: string | null
-  frameNumber?: string | null
-  hin?: string | null
-  registrationNumber?: string | null
-  tags?: string[]
-  photos?: Array<{ url: string; order: number }>
+function canManageUnits(role: string): boolean {
+  return role === 'ADMIN' || role === 'MANAGER'
 }
 
 // ============================================================================
@@ -185,8 +166,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }),
     ])
 
-    const totalPages = Math.ceil(total / filters.limit)
-
     log.info(
       { 
         userId: user.userId, 
@@ -231,6 +210,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // 1. Autenticación
     const user = getAuthenticatedUser(request)
     log.debug({ userId: user.userId, companyId: user.companyId }, 'POST /api/units - iniciado')
+
+    if (!canManageUnits(user.role)) {
+      throw new ForbiddenError('Solo administradores o managers pueden crear unidades')
+    }
 
     // 2. Validación del body con Zod
     const body = await request.json()
@@ -357,3 +340,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     )
   }
 }
+

@@ -1,7 +1,5 @@
-'use client'
-
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 import {
   LayoutDashboard,
   Users,
@@ -22,8 +20,8 @@ const navigation = [
   { name: 'Operaciones', href: '/app/deals', icon: Handshake },
   { name: 'Equipo', href: '/app/team', icon: UsersRound },
   { name: 'Costos Mensuales', href: '/app/expenses', icon: Wallet },
-  { name: 'Configuración', href: '/app/settings', icon: Settings },
-  { name: 'Suscripción', href: '/app/settings/billing', icon: CreditCard },
+  { name: 'Configuracion', href: '/app/settings', icon: Settings },
+  { name: 'Suscripcion', href: '/app/settings/billing', icon: CreditCard },
 ]
 
 interface AppSidebarProps {
@@ -37,33 +35,39 @@ interface AppSidebarProps {
     avatarUrl?: string
     logoUrl?: string
   }
+  currentPath: string
 }
 
-export function AppSidebar({ user }: AppSidebarProps) {
-  const pathname = usePathname()
-
+export function AppSidebar({ user, currentPath }: AppSidebarProps) {
   return (
-    <aside className="w-64 bg-slate-900/60 transition-colors duration-500 backdrop-blur-xl text-white flex flex-col border-r border-slate-800/50">
-      <div className="p-4 border-b border-slate-800/50">
+    <aside className="flex w-64 flex-col border-r border-slate-800/50 bg-slate-900/60 text-white backdrop-blur-xl transition-colors duration-500">
+      <div className="border-b border-slate-800/50 p-4">
         <div className="flex items-center gap-2">
           {user.logoUrl ? (
-            <img src={user.logoUrl} alt={user.companyName} className="h-8 w-8 rounded-md object-contain bg-white" />
+            <Image
+              src={user.logoUrl}
+              alt={user.companyName}
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-md bg-white object-contain"
+              unoptimized
+            />
           ) : (
             <Store className="h-6 w-6 text-blue-400" />
           )}
-          <span className="font-bold text-lg truncate">{user.companyName}</span>
+          <span className="truncate text-lg font-bold">{user.companyName}</span>
         </div>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 space-y-1 p-4">
         {navigation.map((item) => {
-          const isActive = pathname.startsWith(item.href)
+          const isActive = currentPath.startsWith(item.href)
           return (
             <Link
               key={item.name}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-blue-600 text-white'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
@@ -76,18 +80,29 @@ export function AppSidebar({ user }: AppSidebarProps) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-800/50">
+      <div className="border-t border-slate-800/50 p-4">
         <div className="flex items-center gap-3">
           {user.avatarUrl ? (
-            <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full object-cover border border-slate-700" />
+            <Image
+              src={user.avatarUrl}
+              alt={user.name}
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-full border border-slate-700 object-cover"
+              unoptimized
+            />
           ) : (
-            <div className="h-10 w-10 rounded-full bg-slate-800 flex items-center justify-center">
-              <span className="text-sm font-medium text-slate-300">{user.name.charAt(0).toUpperCase()}</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-800">
+              <span className="text-sm font-medium text-slate-300">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
             </div>
           )}
           <div className="overflow-hidden">
-            <p className="text-sm font-medium text-white truncate">{user.name}</p>
-            <p className="text-xs text-slate-400">{user.role === 'ADMIN' ? 'Administrador' : 'Vendedor'}</p>
+            <p className="truncate text-sm font-medium text-white">{user.name}</p>
+            <p className="text-xs text-slate-400">
+              {user.role === 'ADMIN' ? 'Administrador' : user.role === 'MANAGER' ? 'Manager' : 'Vendedor'}
+            </p>
           </div>
         </div>
       </div>

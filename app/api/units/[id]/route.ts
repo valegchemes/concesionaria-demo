@@ -5,8 +5,10 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { UpdateUnitSchema } from '@/lib/shared/validation'
 import { unitService } from '@/lib/domains/units/service'
 import { createLogger } from '@/lib/shared/logger'
+import { ForbiddenError } from '@/lib/shared/errors'
 
 const log = createLogger('UnitDetailRoutes')
+const canManageUnits = (role: string) => role === 'ADMIN' || role === 'MANAGER'
 
 export const maxDuration = 30
 
@@ -37,6 +39,10 @@ export const PUT = withErrorHandling(
     const json = await request.json()
     const data = UpdateUnitSchema.parse(json)
 
+    if (!canManageUnits(user.role)) {
+      throw new ForbiddenError('Only admins and managers can update units')
+    }
+
     log.info({ unitId: id, changes: Object.keys(data) }, 'Updating unit')
 
     const unit = await unitService.update(id, user.companyId, data as any)
@@ -52,6 +58,10 @@ export const DELETE = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id } = await params
+
+    if (!canManageUnits(user.role)) {
+      throw new ForbiddenError('Only admins and managers can delete units')
+    }
 
     log.info({ unitId: id }, 'Deleting unit')
 

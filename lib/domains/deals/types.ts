@@ -30,6 +30,11 @@ export interface CreateDealCommand {
   createdById: string
 }
 
+export interface RequestingUser {
+  id: string
+  role: string
+}
+
 export interface UpdateDealCommand {
   status?: 'NEGOTIATION' | 'RESERVED' | 'APPROVED' | 'IN_PAYMENT' | 'DELIVERED' | 'CANCELED'
   notes?: string

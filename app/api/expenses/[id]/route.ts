@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:Expenses')
 
 export async function DELETE(
   request: NextRequest,
@@ -11,15 +14,23 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Verify ownership
-    const expense = await prisma.companyExpense.findUnique({ where: { id } })
-    if (!expense || expense.companyId !== companyId) {
+    // Verify ownership and expense is active
+    const expense = await prisma.companyExpense.findFirst({
+      where: { id, companyId, isActive: true }
+    })
+    if (!expense) {
       return NextResponse.json({ error: 'No encontrado o sin permisos' }, { status: 404 })
     }
 
-    await prisma.companyExpense.delete({ where: { id } })
+    // Soft delete
+    await prisma.companyExpense.update({
+      where: { id },
+      data: { isActive: false }
+    })
 
-    return NextResponse.json({ success: true })
+    log.info({ expenseId: id, companyId }, 'Expense soft deleted')
+
+    return NextResponse.json({ success: true, deleted: true })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })

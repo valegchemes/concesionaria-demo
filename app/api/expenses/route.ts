@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     const expenses = await prisma.companyExpense.findMany({
-      where: { companyId, ...dateFilter },
+      where: { companyId, isActive: true, ...dateFilter },
       orderBy: { date: 'desc' }
     })
 

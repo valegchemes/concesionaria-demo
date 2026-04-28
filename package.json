@@ -26,6 +26,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/table-core": "^8.21.3",
     "@vercel/blob": "^2.3.3",
+    "@vercel/kv": "^3.0.0",
     "bcryptjs": "^2.4.3",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",

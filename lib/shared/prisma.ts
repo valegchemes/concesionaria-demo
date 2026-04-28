@@ -4,4 +4,4 @@
  * Re-exports from lib/prisma.ts to avoid duplication
  */
 
-export { prisma, default } from '@/lib/prisma'
+export { prisma, withTransaction, default } from '@/lib/prisma'

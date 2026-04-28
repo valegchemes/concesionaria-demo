@@ -2,11 +2,23 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ImageUploader } from '@/components/image-uploader'
+import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CreateUnitSchema, type UnitType } from '@/lib/shared/validation'
+
+const ImageUploader = dynamic(
+  () => import('@/components/image-uploader').then((mod) => mod.ImageUploader),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-lg border-2 border-dashed border-gray-300 p-8 text-center text-sm text-gray-500">
+        Cargando uploader de imagenes...
+      </div>
+    ),
+  }
+)
 
 type UnitFormData = {
   type: UnitType | ''

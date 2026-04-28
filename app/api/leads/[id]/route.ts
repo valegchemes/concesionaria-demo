@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { UpdateLeadSchema } from '@/lib/shared/validation'
 import { leadService } from '@/lib/domains/leads/service'
 import { createLogger } from '@/lib/shared/logger'
+import { applyRateLimit } from '@/lib/rate-limit-kv'
 
 const log = createLogger('LeadDetailRoutes')
 
@@ -20,7 +21,10 @@ export const GET = withErrorHandling(
 
     log.debug({ leadId: id }, 'Fetching lead detail')
 
-    const lead = await leadService.getById(id, user.companyId)
+    const lead = await leadService.getById(id, user.companyId, {
+      id: user.id,
+      role: user.role,
+    })
 
     return successResponse(lead)
   }
@@ -31,6 +35,10 @@ export const GET = withErrorHandling(
  */
 export const PUT = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    // Rate limiting
+    const blocked = await applyRateLimit(request)
+    if (blocked) return blocked
+
     const user = await getCurrentUser()
     const { id } = await params
 
@@ -39,7 +47,10 @@ export const PUT = withErrorHandling(
 
     log.info({ leadId: id, changes: Object.keys(data) }, 'Updating lead')
 
-    const lead = await leadService.update(id, user.companyId, data)
+    const lead = await leadService.update(id, user.companyId, data, { 
+      id: user.id, 
+      role: user.role 
+    })
 
     return successResponse(lead)
   }
@@ -50,12 +61,19 @@ export const PUT = withErrorHandling(
  */
 export const DELETE = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    // Rate limiting
+    const blocked = await applyRateLimit(request)
+    if (blocked) return blocked
+
     const user = await getCurrentUser()
     const { id } = await params
 
     log.info({ leadId: id }, 'Deleting lead')
 
-    await leadService.delete(id, user.companyId)
+    await leadService.delete(id, user.companyId, { 
+      id: user.id, 
+      role: user.role 
+    })
 
     return successResponse({ deleted: true })
   }

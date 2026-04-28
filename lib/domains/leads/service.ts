@@ -14,15 +14,19 @@ import { Prisma, type LeadSource, type LeadStatus } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
 import { prisma } from '@/lib/shared/prisma'
-import type { CreateLeadCommand, UpdateLeadCommand, LeadWithRelations } from './types'
+import type { CreateLeadCommand, UpdateLeadCommand, LeadWithRelations, RequestingUser } from './types'
 
 const log = createLogger('LeadService')
+
+function canManageAllLeads(role: string): boolean {
+  return role === 'ADMIN' || role === 'MANAGER'
+}
 
 export class LeadService {
   /**
    * Create a new lead
    */
-  async create(command: CreateLeadCommand): Promise<LeadWithRelations> {
+  async create(command: CreateLeadCommand, requestingUser: RequestingUser): Promise<LeadWithRelations> {
     log.info({ companyId: command.companyId, leadName: command.name }, 'Creating lead')
 
     // Validate that company exists
@@ -45,6 +49,34 @@ export class LeadService {
       )
     }
 
+    if (
+      command.assignedToId &&
+      command.assignedToId !== requestingUser.id &&
+      !canManageAllLeads(requestingUser.role)
+    ) {
+      throw new ValidationError('You can only assign leads to yourself')
+    }
+
+    if (command.assignedToId) {
+      const assignee = await prisma.user.findFirst({
+        where: { id: command.assignedToId, companyId: command.companyId, isActive: true },
+      })
+
+      if (!assignee) {
+        throw new NotFoundError('User', command.assignedToId)
+      }
+    }
+
+    if (command.interestedUnitId) {
+      const interestedUnit = await prisma.unit.findFirst({
+        where: { id: command.interestedUnitId, companyId: command.companyId, isActive: true },
+      })
+
+      if (!interestedUnit) {
+        throw new NotFoundError('Unit', command.interestedUnitId)
+      }
+    }
+
     // Create lead
     const lead = await prisma.lead.create({
       data: {
@@ -53,9 +85,11 @@ export class LeadService {
         email: command.email?.toLowerCase().trim(),
         source: command.source as LeadSource,
         notes: command.notes?.trim(),
+        assignedToId: command.assignedToId || null,
+        interestedUnitId: command.interestedUnitId || null,
         companyId: command.companyId,
         createdById: command.createdById,
-        status: 'NEW' as LeadStatus,
+        status: (command.status || 'NEW') as LeadStatus,
       },
       include: {
         activities: true,
@@ -69,13 +103,17 @@ export class LeadService {
     // TODO: Emit event for webhooks/notifications
     // await eventBus.emit('lead.created', { leadId: lead.id, companyId })
 
-    return lead as any
+    return lead as LeadWithRelations
   }
 
   /**
    * Get lead by ID
    */
-  async getById(id: string, companyId: string): Promise<LeadWithRelations> {
+  async getById(
+    id: string,
+    companyId: string,
+    requestingUser?: RequestingUser
+  ): Promise<LeadWithRelations> {
     log.debug({ leadId: id, companyId }, 'Fetching lead')
 
     const lead = await prisma.lead.findFirst({
@@ -98,6 +136,16 @@ export class LeadService {
       throw new NotFoundError('Lead', id)
     }
 
+    const canAccess =
+      !requestingUser ||
+      canManageAllLeads(requestingUser.role) ||
+      lead.assignedToId === requestingUser.id ||
+      lead.createdById === requestingUser.id
+
+    if (!canAccess) {
+      throw new ValidationError('You can only view leads assigned to you or created by you')
+    }
+
     return lead
   }
 
@@ -106,6 +154,7 @@ export class LeadService {
    */
   async list(
     companyId: string,
+    requestingUser: RequestingUser,
     {
       page = 1,
       limit = 20,
@@ -129,8 +178,14 @@ export class LeadService {
     const where: Prisma.LeadWhereInput = {
       companyId,
       isActive: true,
-      ...(status && { status: status as any }),
+      ...(status && { status: status as LeadStatus }),
       ...(assignedToId && { assignedToId }),
+      ...(!canManageAllLeads(requestingUser.role) && {
+        OR: [
+          { assignedToId: requestingUser.id },
+          { createdById: requestingUser.id },
+        ],
+      }),
     }
 
     // Get total count and paginated results
@@ -174,16 +229,44 @@ export class LeadService {
 
   /**
    * Update lead
+   * 
+   * Ownership: Admin can update any lead, others can only update their own or unassigned leads
    */
   async update(
     id: string,
     companyId: string,
-    command: UpdateLeadCommand
+    command: UpdateLeadCommand,
+    requestingUser: RequestingUser
   ): Promise<LeadWithRelations> {
-    log.info({ leadId: id, changes: Object.keys(command) }, 'Updating lead')
+    // Get current lead with ownership info
+    const currentLead = await prisma.lead.findFirst({
+      where: { id, companyId },
+      include: { assignedTo: { select: { id: true } } }
+    })
 
-    // Get current lead
-    const currentLead = await this.getById(id, companyId)
+    if (!currentLead) {
+      throw new NotFoundError('Lead', id)
+    }
+
+    log.info({ 
+      leadId: id, 
+      changes: Object.keys(command), 
+      requestingUserId: requestingUser.id,
+      requestingUserRole: requestingUser.role,
+      isOwner: currentLead.assignedToId === requestingUser.id || currentLead.createdById === requestingUser.id,
+      previousStatus: currentLead.status,
+      newStatus: command.status,
+      previousAssignedToId: currentLead.assignedToId,
+      newAssignedToId: command.assignedToId
+    }, 'Lead update initiated')
+
+    // Ownership check: Only admin or the assigned/owner user can update
+    const isOwner = currentLead.assignedToId === requestingUser.id || currentLead.createdById === requestingUser.id
+    const isAdmin = canManageAllLeads(requestingUser.role)
+    
+    if (!isOwner && !isAdmin) {
+      throw new ValidationError('You can only update leads assigned to you or created by you')
+    }
 
     // Validate status transition if changing status
     if (command.status && command.status !== currentLead.status) {
@@ -198,6 +281,10 @@ export class LeadService {
       if (!assignee) {
         throw new NotFoundError('User', command.assignedToId)
       }
+
+      if (command.assignedToId !== requestingUser.id && !isAdmin) {
+        throw new ValidationError('You can only assign leads to yourself')
+      }
     }
 
     // Update lead
@@ -207,7 +294,7 @@ export class LeadService {
         ...(command.name && { name: command.name.trim() }),
         ...(command.phone && { phone: command.phone.trim() }),
         ...(command.email && { email: command.email.toLowerCase().trim() }),
-        ...(command.status && { status: command.status as any }),
+        ...(command.status && { status: command.status as LeadStatus }),
         ...(command.notes !== undefined && { notes: command.notes?.trim() || null }),
         ...(command.assignedToId !== undefined && {
           assignedTo: command.assignedToId
@@ -228,17 +315,38 @@ export class LeadService {
     // TODO: Emit event
     // await eventBus.emit('lead.updated', { leadId: id, changes: command })
 
-    return updated as any
+    return updated as LeadWithRelations
   }
 
   /**
    * Delete lead (soft delete)
+   * 
+   * Ownership: Admin can delete any lead, others can only delete their own
    */
-  async delete(id: string, companyId: string): Promise<void> {
-    log.info({ leadId: id }, 'Deleting lead')
+  async delete(
+    id: string, 
+    companyId: string,
+    requestingUser: RequestingUser
+  ): Promise<void> {
+    log.info({ leadId: id, requestingUserId: requestingUser.id }, 'Deleting lead')
 
-    // Verify lead exists
-    await this.getById(id, companyId)
+    // Get lead with ownership info
+    const lead = await prisma.lead.findFirst({
+      where: { id, companyId },
+      select: { assignedToId: true, createdById: true }
+    })
+
+    if (!lead) {
+      throw new NotFoundError('Lead', id)
+    }
+
+    // Ownership check
+    const isOwner = lead.assignedToId === requestingUser.id || lead.createdById === requestingUser.id
+    const isAdmin = canManageAllLeads(requestingUser.role)
+    
+    if (!isOwner && !isAdmin) {
+      throw new ValidationError('You can only delete leads assigned to you or created by you')
+    }
 
     // Soft delete
     await prisma.lead.update({
@@ -246,7 +354,12 @@ export class LeadService {
       data: { isActive: false },
     })
 
-    log.info({ leadId: id }, 'Lead deleted')
+    log.info({ 
+      leadId: id, 
+      requestingUserId: requestingUser.id,
+      requestingUserRole: requestingUser.role,
+      deletedAt: new Date().toISOString()
+    }, 'Lead soft deleted')
   }
 
   /**
@@ -279,6 +392,7 @@ export class LeadService {
    */
   async search(
     companyId: string,
+    requestingUser: RequestingUser,
     query: string,
     limit: number = 10
   ): Promise<Array<{ id: string; name: string; phone: string; status: string }>> {
@@ -293,6 +407,16 @@ export class LeadService {
           { phone: { contains: query.replace(/\D/g, '') } },
           { email: { contains: query, mode: 'insensitive' } },
         ],
+        ...(!canManageAllLeads(requestingUser.role) && {
+          AND: [
+            {
+              OR: [
+                { assignedToId: requestingUser.id },
+                { createdById: requestingUser.id },
+              ],
+            },
+          ],
+        }),
       },
       select: { id: true, name: true, phone: true, status: true },
       take: limit,

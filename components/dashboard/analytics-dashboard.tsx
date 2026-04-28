@@ -21,7 +21,7 @@ import { DashboardKPIs } from './dashboard-kpis'
 import { DashboardSkeleton } from './loading-skeleton'
 import { EmptyState } from './empty-state'
 import { AlertCircle, TrendingUp, Users, DollarSign, Package } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+
 
 // ============================================================================
 // Props tipadas (sin any)
@@ -44,13 +44,15 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
   // Si no hay companyId, mostrar error
   if (!companyId) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error de autenticación</AlertTitle>
-        <AlertDescription>
-          No se pudo identificar la empresa. Por favor, inicia sesión nuevamente.
-        </AlertDescription>
-      </Alert>
+      <div className="rounded-lg border border-destructive/50 text-destructive p-4 flex gap-3">
+        <AlertCircle className="h-5 w-5 mt-0.5" />
+        <div>
+          <h5 className="mb-1 font-medium leading-none tracking-tight">Error de autenticación</h5>
+          <div className="text-sm opacity-80">
+            No se pudo identificar la empresa. Por favor, inicia sesión nuevamente.
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -109,13 +111,15 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
 
       {/* Error global */}
       {hasError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error al cargar datos</AlertTitle>
-          <AlertDescription>
-            Hubo un problema al obtener las métricas. Intenta recargar la página.
-          </AlertDescription>
-        </Alert>
+        <div className="rounded-lg border border-destructive/50 text-destructive p-4 flex gap-3">
+          <AlertCircle className="h-5 w-5 mt-0.5" />
+          <div>
+            <h5 className="mb-1 font-medium leading-none tracking-tight">Error al cargar datos</h5>
+            <div className="text-sm opacity-80">
+              Hubo un problema al obtener las métricas. Intenta recargar la página.
+            </div>
+          </div>
+        </div>
       )}
 
       {/* KPIs — siempre visibles (muestran 0 si no hay datos) */}

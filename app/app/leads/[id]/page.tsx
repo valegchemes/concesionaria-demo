@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +11,6 @@ import {
   ArrowLeft, Phone, Mail, User, Car, MessageCircle, 
   Calendar, CheckCircle, Clock, AlertCircle, Handshake
 } from 'lucide-react'
-import { useSession } from 'next-auth/react'
 
 interface Lead {
   id: string
@@ -65,6 +63,11 @@ interface WhatsAppTemplate {
   template: string
 }
 
+interface CurrentUser {
+  companyName: string
+  whatsappCentral?: string | null
+}
+
 const sourceLabels: Record<string, string> = {
   INSTAGRAM: 'Instagram',
   FACEBOOK_MARKETPLACE: 'Facebook',
@@ -111,11 +114,10 @@ const activityLabels: Record<string, string> = {
 }
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const router = useRouter()
   // Unwrap promise for Next.js 15
   const { id } = use(params)
   
-  const { data: session } = useSession()
+  const [me, setMe] = useState<CurrentUser | null>(null)
   const [lead, setLead] = useState<Lead | null>(null)
   const [loading, setLoading] = useState(true)
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
@@ -124,12 +126,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [newActivityNote, setNewActivityNote] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState('')
 
-  useEffect(() => {
-    fetchLead()
-    fetchTemplates()
-  }, [id])
-
-  async function fetchLead() {
+  const fetchLead = useCallback(async () => {
     try {
       const res = await fetch(`/api/leads/${id}`)
       if (res.ok) {
@@ -141,9 +138,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
-  async function fetchTemplates() {
+  const fetchTemplates = useCallback(async () => {
     try {
       const res = await fetch('/api/whatsapp/templates')
       if (res.ok) {
@@ -154,7 +151,29 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     } catch (error) {
       console.error('Error fetching templates:', error)
     }
-  }
+  }, [])
+
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const res = await fetch('/api/me', { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setMe({
+          companyName: data.companyName || '',
+          whatsappCentral: data.whatsappCentral || null,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error)
+    }
+  }, [])
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void fetchLead()
+    void fetchTemplates()
+    void fetchCurrentUser()
+  }, [fetchCurrentUser, fetchLead, fetchTemplates])
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault()
@@ -221,7 +240,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       unitPriceARS: lead.interestedUnit?.priceArs?.toString() || '',
       unitPriceUSD: lead.interestedUnit?.priceUsd?.toString() || '',
       publicUnitUrl: `${window.location.origin}/u/${lead.interestedUnit?.id}`,
-      companyName: session?.user?.companyName || '',
+      companyName: me?.companyName || '',
     })
   }
 
@@ -329,7 +348,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               <div className="space-y-2">
                 <Button 
                   className="w-full bg-green-500 hover:bg-green-600"
-                  onClick={() => openWhatsApp(session?.user?.companyId && 'whatsappCentral')}
+                  onClick={() => openWhatsApp(me?.whatsappCentral)}
                 >
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Escribir desde Central

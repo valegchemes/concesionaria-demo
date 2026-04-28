@@ -38,6 +38,10 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   const { deals, pagination: paginationMeta } = await dealService.list(
     user.companyId,
     {
+      id: user.id,
+      role: user.role,
+    },
+    {
       page: pagination.page,
       limit: pagination.limit,
       status: status as string | undefined,
@@ -72,6 +76,9 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     companyId: user.companyId,
     sellerId: data.sellerId,
     createdById: user.id,
+  }, {
+    id: user.id,
+    role: user.role,
   })
 
   return successResponse(deal, 201)

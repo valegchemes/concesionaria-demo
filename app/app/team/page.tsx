@@ -6,18 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
-  Users, 
-  UserPlus, 
-  ShieldCheck, 
-  User, 
-  Mail, 
-  Phone, 
-  Loader2, 
+import {
+  Users,
+  UserPlus,
+  ShieldCheck,
+  User,
+  Mail,
+  Phone,
+  Loader2,
   Trash2,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react'
-import { useSession } from 'next-auth/react'
 
 interface TeamMember {
   id: string
@@ -27,9 +26,14 @@ interface TeamMember {
   whatsappNumber?: string
 }
 
+interface CurrentUser {
+  id: string
+  role: string
+}
+
 export default function TeamPage() {
   const router = useRouter()
-  const { data: session } = useSession()
+  const [me, setMe] = useState<CurrentUser | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -45,14 +49,23 @@ export default function TeamPage() {
   })
 
   useEffect(() => {
-    fetchTeam()
+    void fetchInitialData()
   }, [])
 
-  async function fetchTeam() {
+  async function fetchInitialData() {
     try {
-      const res = await fetch('/api/users', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
+      const [meRes, teamRes] = await Promise.all([
+        fetch('/api/me', { cache: 'no-store' }),
+        fetch('/api/users', { cache: 'no-store' }),
+      ])
+
+      if (meRes.ok) {
+        const meData = await meRes.json()
+        setMe({ id: meData.id, role: meData.role })
+      }
+
+      if (teamRes.ok) {
+        const data = await teamRes.json()
         setMembers(data)
       }
     } catch (err) {
@@ -83,20 +96,22 @@ export default function TeamPage() {
           role: 'SELLER',
           whatsappNumber: '',
         })
-        fetchTeam()
+        await fetchInitialData()
+        router.refresh()
       } else {
         const data = await res.json()
         setError(data.error || 'Error al crear el usuario')
       }
-    } catch (err) {
-      setError('Error de conexión')
+    } catch {
+      setError('Error de conexion')
     } finally {
       setSubmitting(false)
     }
   }
 
   async function deleteMember(id: string, name: string) {
-    if (!confirm(`¿Eliminar a ${name} del equipo? Esta acción no se puede deshacer.`)) return
+    if (!confirm(`Eliminar a ${name} del equipo? Esta accion no se puede deshacer.`)) return
+
     try {
       const res = await fetch(`/api/users?id=${id}`, { method: 'DELETE' })
       if (res.ok) {
@@ -107,23 +122,23 @@ export default function TeamPage() {
         const msg = data?.error || data?.message || `Error ${res.status}`
         alert(`No se pudo eliminar el miembro: ${msg}`)
       }
-    } catch (err) {
-      alert('Error de conexión al intentar eliminar')
+    } catch {
+      alert('Error de conexion al intentar eliminar')
     }
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     )
   }
 
-  const isAdmin = session?.user?.role === 'ADMIN'
+  const isAdmin = me?.role === 'ADMIN'
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Equipo de Ventas</h1>
@@ -135,8 +150,8 @@ export default function TeamPage() {
           <Button onClick={() => setShowAddForm(!showAddForm)}>
             {showAddForm ? 'Cancelar' : (
               <>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Añadir Miembro
+                <UserPlus className="mr-2 h-4 w-4" />
+                Anadir Miembro
               </>
             )}
           </Button>
@@ -152,73 +167,73 @@ export default function TeamPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="bg-red-50 text-red-600 p-3 rounded-md flex items-center gap-2 text-sm border border-red-100">
+                <div className="flex items-center gap-2 rounded-md border border-red-100 bg-red-50 p-3 text-sm text-red-600">
                   <AlertCircle className="h-4 w-4" />
                   {error}
                 </div>
               )}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Nombre Completo</Label>
-                  <Input 
-                    id="name" 
-                    placeholder="Ej: Pedro González"
+                  <Input
+                    id="name"
+                    placeholder="Ej: Pedro Gonzalez"
                     value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Corporativo / Acceso</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
+                  <Input
+                    id="email"
+                    type="email"
                     placeholder="pedro@tudominio.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Contraseña de Acceso</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
+                  <Label htmlFor="password">Contrasena de Acceso</Label>
+                  <Input
+                    id="password"
+                    type="password"
                     value={formData.password}
-                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="whatsappNumber">WhatsApp (Solo números)</Label>
-                  <Input 
-                    id="whatsappNumber" 
+                  <Label htmlFor="whatsappNumber">WhatsApp (Solo numeros)</Label>
+                  <Input
+                    id="whatsappNumber"
                     placeholder="54911..."
                     value={formData.whatsappNumber}
-                    onChange={(e) => setFormData({...formData, whatsappNumber: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="role">Rol en el sistema</Label>
-                  <select 
+                  <select
                     id="role"
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     value={formData.role}
-                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   >
                     <option value="SELLER">Vendedor (Acceso limitado)</option>
                     <option value="ADMIN">Administrador (Control total)</option>
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex justify-end pt-2">
                 <Button type="submit" disabled={submitting}>
                   {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <UserPlus className="h-4 w-4 mr-2" />
+                    <UserPlus className="mr-2 h-4 w-4" />
                   )}
                   Crear Cuenta de Equipo
                 </Button>
@@ -228,37 +243,37 @@ export default function TeamPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {members.map((member) => (
-          <Card key={member.id} className="relative group">
+          <Card key={member.id} className="group relative">
             <CardContent className="pt-6">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
                     <User className="h-5 w-5 text-slate-500" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+                    <h3 className="font-semibold text-slate-900 transition-colors group-hover:text-blue-600">
                       {member.name}
                     </h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="mt-0.5 flex items-center gap-1.5">
                       {member.role === 'ADMIN' ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">
+                        <span className="inline-flex items-center gap-1 rounded bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase text-indigo-700">
                           <ShieldCheck className="h-3 w-3" />
                           Admin
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase">
+                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
                           Vendedor
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                {isAdmin && member.id !== session?.user?.id && (
+                {isAdmin && member.id !== me?.id && (
                   <button
                     onClick={() => deleteMember(member.id, member.name)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50"
+                    className="rounded-md p-1.5 text-red-400 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
                     title="Eliminar miembro"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -282,12 +297,12 @@ export default function TeamPage() {
           </Card>
         ))}
       </div>
-      
+
       {members.length === 0 && (
-        <div className="text-center py-20 bg-slate-50 rounded-lg border-2 border-dashed">
-          <Users className="h-12 w-12 mx-auto text-slate-300" />
+        <div className="rounded-lg border-2 border-dashed bg-slate-50 py-20 text-center">
+          <Users className="mx-auto h-12 w-12 text-slate-300" />
           <h3 className="mt-4 font-semibold text-slate-900">No hay equipo registrado</h3>
-          <p className="text-slate-500">Añade a tu primer colaborador haciendo clic arriba.</p>
+          <p className="text-slate-500">Anade a tu primer colaborador haciendo clic arriba.</p>
         </div>
       )}
     </div>

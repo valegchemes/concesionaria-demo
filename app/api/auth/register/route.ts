@@ -3,44 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hash } from 'bcryptjs'
 import { RegisterCompanySchema } from '@/lib/shared/validation'
-import { checkRateLimit, rateLimitStore } from '@/lib/rate-limit'
+import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { createLogger } from '@/lib/shared/logger'
 
-const log = createLogger('API:Register')
-
-const REGISTER_RATE_LIMIT = 3
-const REGISTER_WINDOW_MS = 15 * 60 * 1000
-
-function checkRegisterRateLimit(ip: string): boolean {
-  const key = `register:${ip}`
-  const now = Date.now()
-  const record = rateLimitStore.get(key)
-
-  if (!record || now > record.resetTime) {
-    rateLimitStore.set(key, { count: 1, resetTime: now + REGISTER_WINDOW_MS })
-    return true
-  }
-
-  if (record.count >= REGISTER_RATE_LIMIT) {
-    return false
-  }
-
-  record.count++
-  return true
-}
+const log = createLogger('AuthRegisterRoute')
 
 export async function POST(request: NextRequest) {
   try {
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
-               request.headers.get('x-real-ip') || 
-               'unknown'
-
-    if (!checkRegisterRateLimit(ip)) {
-      return NextResponse.json(
-        { error: 'Demasiados intentos. Intenta de nuevo en 15 minutos.' },
-        { status: 429 }
-      )
-    }
+    const blocked = await applyRateLimit(request, { strict: true, path: '/api/auth/register' })
+    if (blocked) return blocked
     
     const body = await request.json()
     
@@ -87,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, companyId: company.id }, { status: 201 })
   } catch (error) {
-    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Registration Error')
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Registration error')
     return NextResponse.json({ error: 'Fallo al procesar el registro' }, { status: 500 })
   }
 }

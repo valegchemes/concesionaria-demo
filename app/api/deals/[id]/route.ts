@@ -4,6 +4,8 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { dealService } from '@/lib/domains/deals/service'
 import { createLogger } from '@/lib/shared/logger'
+import { applyRateLimit } from '@/lib/rate-limit-kv'
+import { UpdateDealSchema } from '@/lib/shared/validation'
 
 const log = createLogger('DealDetailRoutes')
 
@@ -19,7 +21,10 @@ export const GET = withErrorHandling(
 
     log.debug({ dealId: id }, 'Fetching deal detail')
 
-    const deal = await dealService.getById(id, user.companyId)
+    const deal = await dealService.getById(id, user.companyId, {
+      id: user.id,
+      role: user.role,
+    })
 
     return successResponse(deal)
   }
@@ -30,14 +35,22 @@ export const GET = withErrorHandling(
  */
 export const PUT = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    // Rate limiting
+    const blocked = await applyRateLimit(request)
+    if (blocked) return blocked
+
     const user = await getCurrentUser()
     const { id } = await params
 
     const json = await request.json()
+    const data = UpdateDealSchema.parse(json)
 
-    log.info({ dealId: id, changes: Object.keys(json) }, 'Updating deal')
+    log.info({ dealId: id, changes: Object.keys(data) }, 'Updating deal')
 
-    const deal = await dealService.update(id, user.companyId, json)
+    const deal = await dealService.update(id, user.companyId, data, {
+      id: user.id,
+      role: user.role
+    })
 
     return successResponse(deal)
   }
@@ -48,6 +61,10 @@ export const PUT = withErrorHandling(
  */
 export const POST = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    // Rate limiting estricto para operaciones financieras
+    const blocked = await applyRateLimit(request, { strict: true })
+    if (blocked) return blocked
+
     const user = await getCurrentUser()
     const { id } = await params
 
@@ -61,6 +78,9 @@ export const POST = withErrorHandling(
       method,
       reference,
       notes,
+    }, {
+      id: user.id,
+      role: user.role
     })
 
     return successResponse(payment, 201)
@@ -72,12 +92,19 @@ export const POST = withErrorHandling(
  */
 export const DELETE = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+    // Rate limiting
+    const blocked = await applyRateLimit(request)
+    if (blocked) return blocked
+
     const user = await getCurrentUser()
     const { id } = await params
 
     log.info({ dealId: id }, 'Deleting deal')
 
-    await dealService.delete(id, user.companyId)
+    await dealService.delete(id, user.companyId, {
+      id: user.id,
+      role: user.role
+    })
 
     return successResponse({ deleted: true })
   }

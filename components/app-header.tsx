@@ -1,8 +1,5 @@
-'use client'
-
-import { Bell, LogOut } from 'lucide-react'
-import { signOut } from 'next-auth/react'
-import { GlobalSearch } from './global-search'
+import Image from 'next/image'
+import { AppHeaderActions } from './app-header-actions'
 
 interface AppHeaderProps {
   user: {
@@ -15,36 +12,28 @@ interface AppHeaderProps {
 
 export function AppHeader({ user }: AppHeaderProps) {
   return (
-    <header className="h-16 bg-white/60 dark:bg-slate-950/60 transition-colors duration-500 backdrop-blur-md border-b border-gray-200/50 dark:border-slate-800/50 flex items-center justify-between px-6">
-      <div className="flex items-center gap-4 flex-1">
-        <GlobalSearch />
-      </div>
-      
-      <div className="flex items-center gap-4">
-        <button className="relative p-2 text-gray-500 hover:text-gray-700">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full" />
-        </button>
-        <div className="flex items-center gap-3">
-          <div className="text-sm text-right">
-            <p className="font-medium">{user.name}</p>
-            <p className="text-gray-500">{user.email}</p>
-          </div>
-          {user.avatarUrl ? (
-            <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full object-cover border" />
-          ) : (
-            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-          )}
+    <header className="flex h-16 items-center justify-between border-b border-gray-200/50 bg-white/60 px-6 backdrop-blur-md transition-colors duration-500 dark:border-slate-800/50 dark:bg-slate-950/60">
+      <AppHeaderActions />
+
+      <div className="flex items-center gap-3">
+        <div className="text-right text-sm">
+          <p className="font-medium">{user.name}</p>
+          <p className="text-gray-500">{user.email}</p>
         </div>
-        <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="p-2 text-gray-500 hover:text-red-600 transition-colors"
-          title="Cerrar sesión"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
+        {user.avatarUrl ? (
+          <Image
+            src={user.avatarUrl}
+            alt={user.name}
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-full border object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+        )}
       </div>
     </header>
   )
