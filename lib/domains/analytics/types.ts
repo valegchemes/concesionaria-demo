@@ -38,7 +38,9 @@ export interface TimeSeriesDataPoint {
   label: string // Formatted date (e.g., "Ene 2024")
   sales: MoneyAmount
   profit: MoneyAmount
-  costs: MoneyAmount
+  costs: MoneyAmount // Total (unit + operational)
+  unitCosts: MoneyAmount // Costos de adquisición y operación de unidades
+  operationalCosts: MoneyAmount // Gastos fijos/mensuales
   dealCount: number
 }
 
@@ -75,6 +77,8 @@ export interface SalesVsProfitAnalytics {
     sales: MoneyAmount
     profit: MoneyAmount
     costs: MoneyAmount
+    unitCosts: MoneyAmount
+    operationalCosts: MoneyAmount
     dealCount: number
   }
   trend: {

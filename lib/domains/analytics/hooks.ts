@@ -127,6 +127,8 @@ interface UseSalesProfitAnalyticsReturn {
     sales: number
     profit: number
     costs: number
+    unitCosts: number
+    operationalCosts: number
   }>
 }
 
@@ -153,6 +155,8 @@ export function useSalesProfitAnalytics(
       sales: point.sales.totalConverted,
       profit: point.profit.totalConverted,
       costs: point.costs.totalConverted,
+      unitCosts: point.unitCosts.totalConverted,
+      operationalCosts: point.operationalCosts.totalConverted,
     }))
   }, [data])
 

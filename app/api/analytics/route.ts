@@ -418,9 +418,12 @@ async function getSalesVsProfit(
       salesArs: number
       salesUsd: number
       salesConverted: number
-      costsArs: number
-      costsUsd: number
-      costsConverted: number
+      unitCostsArs: number
+      unitCostsUsd: number
+      unitCostsConverted: number
+      opCostsArs: number
+      opCostsUsd: number
+      opCostsConverted: number
       count: number
       date: Date
     }
@@ -464,14 +467,14 @@ async function getSalesVsProfit(
     )
 
     byPeriod.set(key, {
+      ...existing,
       salesArs: existing.salesArs + saleAmount.ars,
       salesUsd: existing.salesUsd + saleAmount.usd,
       salesConverted: existing.salesConverted + saleAmount.totalConverted,
-      costsArs: existing.costsArs + acquisitionArs + extraCostsArs,
-      costsUsd: existing.costsUsd + acquisitionUsd + extraCostsUsd,
-      costsConverted: existing.costsConverted + totalCost.totalConverted,
+      unitCostsArs: existing.unitCostsArs + acquisitionArs + extraCostsArs,
+      unitCostsUsd: existing.unitCostsUsd + acquisitionUsd + extraCostsUsd,
+      unitCostsConverted: existing.unitCostsConverted + totalCost.totalConverted,
       count: existing.count + 1,
-      date: existing.date,
     })
   }
 
@@ -498,9 +501,12 @@ async function getSalesVsProfit(
       salesArs: 0,
       salesUsd: 0,
       salesConverted: 0,
-      costsArs: 0,
-      costsUsd: 0,
-      costsConverted: 0,
+      unitCostsArs: 0,
+      unitCostsUsd: 0,
+      unitCostsConverted: 0,
+      opCostsArs: 0,
+      opCostsUsd: 0,
+      opCostsConverted: 0,
       count: 0,
       date: existingDate,
     }
@@ -510,14 +516,10 @@ async function getSalesVsProfit(
     const totalExpense = createMoneyAmount(costArs, costUsd)
 
     byPeriod.set(key, {
-      salesArs: existing.salesArs,
-      salesUsd: existing.salesUsd,
-      salesConverted: existing.salesConverted,
-      costsArs: existing.costsArs + costArs,
-      costsUsd: existing.costsUsd + costUsd,
-      costsConverted: existing.costsConverted + totalExpense.totalConverted,
-      count: existing.count,
-      date: existing.date,
+      ...existing,
+      opCostsArs: existing.opCostsArs + costArs,
+      opCostsUsd: existing.opCostsUsd + costUsd,
+      opCostsConverted: existing.opCostsConverted + totalExpense.totalConverted,
     })
   }
 
@@ -539,9 +541,12 @@ async function getSalesVsProfit(
         salesArs: 0,
         salesUsd: 0,
         salesConverted: 0,
-        costsArs: 0,
-        costsUsd: 0,
-        costsConverted: 0,
+        unitCostsArs: 0,
+        unitCostsUsd: 0,
+        unitCostsConverted: 0,
+        opCostsArs: 0,
+        opCostsUsd: 0,
+        opCostsConverted: 0,
         count: 0,
         date: isDaily
           ? new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate())
@@ -560,9 +565,13 @@ async function getSalesVsProfit(
 
   const timeSeries: TimeSeriesDataPoint[] = sortedKeys.map(key => {
     const entry = byPeriod.get(key)!
-    const profitArs = entry.salesArs - entry.costsArs
-    const profitUsd = entry.salesUsd - entry.costsUsd
-    const profitConverted = entry.salesConverted - entry.costsConverted
+    const totalCostsArs = entry.unitCostsArs + entry.opCostsArs
+    const totalCostsUsd = entry.unitCostsUsd + entry.opCostsUsd
+    const totalCostsConverted = entry.unitCostsConverted + entry.opCostsConverted
+
+    const profitArs = entry.salesArs - totalCostsArs
+    const profitUsd = entry.salesUsd - totalCostsUsd
+    const profitConverted = entry.salesConverted - totalCostsConverted
 
     const labelOptions: Intl.DateTimeFormatOptions = isDaily
       ? { day: 'numeric', month: 'short' }
@@ -573,7 +582,9 @@ async function getSalesVsProfit(
       label: entry.date.toLocaleDateString('es-AR', labelOptions),
       sales: createExactMoneyAmount(entry.salesArs, entry.salesUsd, entry.salesConverted),
       profit: createExactMoneyAmount(profitArs, profitUsd, profitConverted),
-      costs: createExactMoneyAmount(entry.costsArs, entry.costsUsd, entry.costsConverted),
+      costs: createExactMoneyAmount(totalCostsArs, totalCostsUsd, totalCostsConverted),
+      unitCosts: createExactMoneyAmount(entry.unitCostsArs, entry.unitCostsUsd, entry.unitCostsConverted),
+      operationalCosts: createExactMoneyAmount(entry.opCostsArs, entry.opCostsUsd, entry.opCostsConverted),
       dealCount: entry.count,
     }
   })
@@ -595,12 +606,24 @@ async function getSalesVsProfit(
         acc.costs.usd + point.costs.usd,
         acc.costs.totalConverted + point.costs.totalConverted
       ),
+      unitCosts: createExactMoneyAmount(
+        acc.unitCosts.ars + point.unitCosts.ars,
+        acc.unitCosts.usd + point.unitCosts.usd,
+        acc.unitCosts.totalConverted + point.unitCosts.totalConverted
+      ),
+      operationalCosts: createExactMoneyAmount(
+        acc.operationalCosts.ars + point.operationalCosts.ars,
+        acc.operationalCosts.usd + point.operationalCosts.usd,
+        acc.operationalCosts.totalConverted + point.operationalCosts.totalConverted
+      ),
       dealCount: acc.dealCount + point.dealCount,
     }),
     {
       sales: createExactMoneyAmount(0, 0, 0),
       profit: createExactMoneyAmount(0, 0, 0),
       costs: createExactMoneyAmount(0, 0, 0),
+      unitCosts: createExactMoneyAmount(0, 0, 0),
+      operationalCosts: createExactMoneyAmount(0, 0, 0),
       dealCount: 0,
     }
   )

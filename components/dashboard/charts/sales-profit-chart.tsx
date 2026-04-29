@@ -28,6 +28,8 @@ interface ChartDataPoint {
   sales: number
   profit: number
   costs: number
+  unitCosts: number
+  operationalCosts: number
 }
 
 interface SalesProfitChartProps {
@@ -68,9 +70,11 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
   )
 
   const labelMap: Record<string, string> = {
-    sales: 'Ventas',
-    profit: 'Ganancia',
-    costs: 'Costos',
+    sales: 'Ingresos Totales',
+    profit: 'Ganancia Neta',
+    unitCosts: 'Costo de Unidades',
+    operationalCosts: 'Gastos Operativos',
+    costs: 'Costo Total',
   }
 
   return (
@@ -133,7 +137,12 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
 // ── Leyenda personalizada ─────────────────────────────────────────────────────
 
 const legendFormatter = (value: string) => {
-  const map: Record<string, string> = { sales: 'Ventas', profit: 'Ganancia', costs: 'Costos' }
+  const map: Record<string, string> = { 
+    sales: 'Ingresos', 
+    profit: 'Ganancia Neta', 
+    unitCosts: 'Costo Unidades',
+    operationalCosts: 'Gastos Operativos'
+  }
   return <span style={{ fontSize: '12px', color: '#64748b' }}>{map[value] ?? value}</span>
 }
 
@@ -142,7 +151,8 @@ const legendFormatter = (value: string) => {
 const COLORS = {
   sales: { stroke: '#6366f1', fill: 'url(#gradSales)' },
   profit: { stroke: '#10b981', fill: 'url(#gradProfit)' },
-  costs: { stroke: '#f97316', fill: 'url(#gradCosts)' },
+  unitCosts: { stroke: '#f97316', fill: 'url(#gradCosts)' },
+  operationalCosts: { stroke: '#ef4444', fill: 'url(#gradOp)' },
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -185,9 +195,10 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false }: Sale
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
           <Legend wrapperStyle={{ paddingTop: '16px' }} formatter={legendFormatter} />
-          <Bar dataKey="sales" fill="#6366f1" radius={[6, 6, 0, 0]} name="sales" />
-          <Bar dataKey="profit" fill="#10b981" radius={[6, 6, 0, 0]} name="profit" />
-          <Bar dataKey="costs" fill="#f97316" radius={[6, 6, 0, 0]} name="costs" />
+          <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} name="sales" />
+          <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="profit" />
+          <Bar dataKey="unitCosts" fill="#f97316" radius={[4, 4, 0, 0]} name="unitCosts" />
+          <Bar dataKey="operationalCosts" fill="#ef4444" radius={[4, 4, 0, 0]} name="operationalCosts" />
         </BarChart>
       </ResponsiveContainer>
     )
@@ -209,6 +220,10 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false }: Sale
           <linearGradient id="gradCosts" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#f97316" stopOpacity={0.2} />
             <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="gradOp" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
           </linearGradient>
         </defs>
 
@@ -255,14 +270,25 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false }: Sale
         />
         <Area
           type="monotone"
-          dataKey="costs"
-          stroke={COLORS.costs.stroke}
+          dataKey="unitCosts"
+          stroke={COLORS.unitCosts.stroke}
           strokeWidth={2}
-          fill={COLORS.costs.fill}
+          fill={COLORS.unitCosts.fill}
           dot={false}
-          activeDot={{ r: 5, fill: COLORS.costs.stroke, stroke: 'white', strokeWidth: 2 }}
-          name="costs"
+          activeDot={{ r: 4, fill: COLORS.unitCosts.stroke, stroke: 'white', strokeWidth: 2 }}
+          name="unitCosts"
           strokeDasharray="5 3"
+        />
+        <Area
+          type="monotone"
+          dataKey="operationalCosts"
+          stroke={COLORS.operationalCosts.stroke}
+          strokeWidth={2}
+          fill={COLORS.operationalCosts.fill}
+          dot={false}
+          activeDot={{ r: 4, fill: COLORS.operationalCosts.stroke, stroke: 'white', strokeWidth: 2 }}
+          name="operationalCosts"
+          strokeDasharray="3 3"
         />
       </AreaChart>
     </ResponsiveContainer>
