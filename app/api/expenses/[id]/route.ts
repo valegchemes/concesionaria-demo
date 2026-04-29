@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import { kv } from '@vercel/kv'
 
 const log = createLogger('API:Expenses')
 
@@ -29,6 +30,23 @@ export async function DELETE(
     })
 
     log.info({ expenseId: id, companyId }, 'Expense soft deleted')
+
+    // Invalidar caché de analytics para este tenant
+    try {
+      const types = ['dashboard', 'sales-profit', 'top-sellers', 'costs']
+      const ranges = ['7d', '30d', '90d', '1y', 'all']
+      const keys = []
+      for (const t of types) {
+        for (const r of ranges) {
+          keys.push(`analytics:${companyId}:${t}:${r}`)
+        }
+      }
+      if (keys.length > 0) {
+        await kv.del(...keys)
+      }
+    } catch (kvErr) {
+      console.error('Error invalidando cache:', kvErr)
+    }
 
     return NextResponse.json({ success: true, deleted: true })
   } catch (error: unknown) {

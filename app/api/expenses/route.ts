@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
+import { kv } from '@vercel/kv'
 
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),
@@ -72,6 +73,25 @@ export async function POST(request: NextRequest) {
         date: data.date,
       }
     })
+
+    // Invalidar caché de analytics para este tenant
+    try {
+      const types = ['dashboard', 'sales-profit', 'top-sellers', 'costs']
+      const ranges = ['7d', '30d', '90d', '1y', 'all']
+      
+      const keys = []
+      for (const t of types) {
+        for (const r of ranges) {
+          keys.push(`analytics:${companyId}:${t}:${r}`)
+        }
+      }
+      
+      if (keys.length > 0) {
+        await kv.del(...keys)
+      }
+    } catch (kvErr) {
+      console.error('Error invalidando cache:', kvErr)
+    }
 
     return NextResponse.json({ success: true, data: expense })
   } catch (error: unknown) {
