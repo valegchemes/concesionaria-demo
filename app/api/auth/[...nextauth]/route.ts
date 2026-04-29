@@ -12,7 +12,7 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ nextauth: string[] }> }
 ) {
-  const blocked = await applyRateLimit(request, { strict: true, path: '/api/auth/login' })
+  const blocked = await applyRateLimit(request, { strict: true, path: request.nextUrl.pathname })
   if (blocked) {
     return blocked
   }

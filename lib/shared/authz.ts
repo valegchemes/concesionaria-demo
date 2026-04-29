@@ -161,6 +161,14 @@ export function hasPermission(
   return false
 }
 
+export function hasAnyPermission(
+  permissions: Permission[],
+  resource: string,
+  actions: string[]
+): boolean {
+  return actions.some(action => hasPermission(permissions, resource, action))
+}
+
 // ============================================================================
 // PERMISSION RESOLUTION (async — DB + cache)
 // ============================================================================

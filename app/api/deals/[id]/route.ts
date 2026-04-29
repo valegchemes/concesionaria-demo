@@ -4,8 +4,10 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { dealService } from '@/lib/domains/deals/service'
 import { createLogger } from '@/lib/shared/logger'
+import { createAuditLog } from '@/lib/shared/audit-log'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { UpdateDealSchema } from '@/lib/shared/validation'
+import { hasAnyPermission } from '@/lib/shared/authz'
 
 const log = createLogger('DealDetailRoutes')
 
@@ -17,6 +19,10 @@ export const maxDuration = 30
 export const GET = withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
+    if (!hasAnyPermission(user.permissions, 'deals', ['read_all', 'read_own'])) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
+
     const { id } = await params
 
     log.debug({ dealId: id }, 'Fetching deal detail')
@@ -41,8 +47,11 @@ export const PUT = withErrorHandling(
     if (blocked) return blocked
 
     const user = await getCurrentUser()
-    const { id } = await params
+    if (!hasAnyPermission(user.permissions, 'deals', ['manage_all', 'manage_own'])) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
 
+    const { id } = await params
     const json = await request.json()
     const data = UpdateDealSchema.parse(json)
 
@@ -52,6 +61,18 @@ export const PUT = withErrorHandling(
       id: user.id,
       role: user.role,
       permissions: user.permissions,
+    })
+
+    await createAuditLog({
+      action: 'update',
+      resource: 'Deal',
+      resourceId: deal.id,
+      before: undefined,
+      after: deal,
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: user.companyId,
+      userId: user.id,
     })
 
     return successResponse(deal)
@@ -68,8 +89,11 @@ export const POST = withErrorHandling(
     if (blocked) return blocked
 
     const user = await getCurrentUser()
-    const { id } = await params
+    if (!hasAnyPermission(user.permissions, 'deals', ['manage_all'])) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
 
+    const { id } = await params
     const json = await request.json()
     const { amount, method, reference, notes } = json
 
@@ -86,6 +110,17 @@ export const POST = withErrorHandling(
       permissions: user.permissions,
     })
 
+    await createAuditLog({
+      action: 'create',
+      resource: 'DealPayment',
+      resourceId: payment.id,
+      after: payment,
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: user.companyId,
+      userId: user.id,
+    })
+
     return successResponse(payment, 201)
   }
 )
@@ -100,6 +135,10 @@ export const DELETE = withErrorHandling(
     if (blocked) return blocked
 
     const user = await getCurrentUser()
+    if (!hasAnyPermission(user.permissions, 'deals', ['manage_all'])) {
+      return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+    }
+
     const { id } = await params
 
     log.info({ dealId: id }, 'Deleting deal')
@@ -108,6 +147,18 @@ export const DELETE = withErrorHandling(
       id: user.id,
       role: user.role,
       permissions: user.permissions,
+    })
+
+    await createAuditLog({
+      action: 'delete',
+      resource: 'Deal',
+      resourceId: id,
+      before: undefined,
+      after: undefined,
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: user.companyId,
+      userId: user.id,
     })
 
     return successResponse({ deleted: true })

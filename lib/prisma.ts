@@ -231,8 +231,36 @@ function createTenantExtension(baseClient: PrismaClient) {
             return query({ ...args, data })
           }
 
-          // Todas las demás operaciones (update, delete, upsert, etc.) pasan directo
-          // La protección de estas ya existe a nivel de servicio con findFirst + companyId
+          // OPERACIONES DE ESCRITURA ADICIONALES: inyectar companyId en WHERE
+          const writeOps = ['update', 'updateMany', 'delete', 'deleteMany', 'upsert']
+          if (writeOps.includes(operation)) {
+            const currentArgs = args as { where?: QueryArgs; data?: QueryArgs; create?: QueryArgs }
+            const currentWhere = currentArgs.where ?? {}
+
+            if (Object.keys(currentWhere).length > 0) {
+              if (currentWhere.companyId && currentWhere.companyId !== tenantId) {
+                log.warn(
+                  { model, operation, tenantId, requestedCompanyId: currentWhere.companyId },
+                  '[TenantIsolation] Cross-tenant write query bloqueada'
+                )
+                throw new Error(
+                  `[TenantIsolation] Acceso denegado: el companyId de la query no coincide con el tenant actual`
+                )
+              }
+            }
+
+            const extendedWhere = { ...currentWhere, companyId: tenantId }
+            const extendedArgs: QueryArgs = { ...args, where: extendedWhere }
+
+            if (operation === 'upsert') {
+              const upsertArgs = currentArgs as { create?: QueryArgs }
+              const createData = upsertArgs.create ?? {}
+              return query({ ...extendedArgs, create: { ...createData, companyId: tenantId } })
+            }
+
+            return query(extendedArgs)
+          }
+
           return query(args)
         },
       },

@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { createLogger } from '@/lib/shared/logger'
+import { createAuditLog } from '@/lib/shared/audit-log'
+import { requirePermission } from '@/lib/shared/auth-helpers'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { UpdateCompanySchema } from '@/lib/shared/validation'
 import { z } from 'zod'
@@ -14,13 +14,10 @@ export const maxDuration = 30
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.companyId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const currentUser = await requirePermission('settings', 'read')
 
     const company = await prisma.company.findUnique({
-      where: { id: session.user.companyId },
+      where: { id: currentUser.companyId },
       select: {
         name: true,
         phone: true,
@@ -42,26 +39,44 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.companyId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const currentUser = await requirePermission('settings', 'manage')
 
     // Rate limiting estricto para mutaciones críticas
     const rateLimitResponse = await applyRateLimit(request, { strict: true })
     if (rateLimitResponse) return rateLimitResponse
 
-    // Only admins can modify company settings
-    if (session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Forbidden. Only admins can modify company settings.' }, { status: 403 })
-    }
-
     const body = await request.json()
     const data = UpdateCompanySchema.parse(body)
 
+    const before = await prisma.company.findUnique({
+      where: { id: currentUser.companyId },
+      select: {
+        name: true,
+        phone: true,
+        email: true,
+        whatsappCentral: true,
+        address: true,
+        city: true,
+        currencyPreference: true,
+        logoUrl: true,
+      },
+    })
+
     const updatedCompany = await prisma.company.update({
-      where: { id: session.user.companyId },
+      where: { id: currentUser.companyId },
       data
+    })
+
+    await createAuditLog({
+      action: 'update',
+      resource: 'Company',
+      resourceId: currentUser.companyId,
+      before,
+      after: updatedCompany,
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: currentUser.companyId,
+      userId: currentUser.id,
     })
 
     return NextResponse.json(updatedCompany, { status: 200 })

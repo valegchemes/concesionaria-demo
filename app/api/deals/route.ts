@@ -6,6 +6,8 @@ import { parsePagination } from '@/lib/shared/pagination'
 import { CreateDealSchema } from '@/lib/shared/validation'
 import { dealService } from '@/lib/domains/deals/service'
 import { createLogger } from '@/lib/shared/logger'
+import { createAuditLog } from '@/lib/shared/audit-log'
+import { hasAnyPermission } from '@/lib/shared/authz'
 
 const log = createLogger('DealRoutes')
 
@@ -17,6 +19,9 @@ export const maxDuration = 30
  */
 export const GET = withErrorHandling(async (request: NextRequest) => {
   const user = await getCurrentUser()
+  if (!hasAnyPermission(user.permissions, 'deals', ['read_all', 'read_own'])) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+  }
 
   const { searchParams } = new URL(request.url)
   const pagination = parsePagination({
@@ -63,6 +68,9 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
  */
 export const POST = withErrorHandling(async (request: NextRequest) => {
   const user = await getCurrentUser()
+  if (!hasAnyPermission(user.permissions, 'deals', ['manage_all', 'manage_own'])) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
+  }
 
   const json = await request.json()
   const data = CreateDealSchema.parse(json)
@@ -81,6 +89,17 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
     id: user.id,
     role: user.role,
     permissions: user.permissions,
+  })
+
+  await createAuditLog({
+    action: 'create',
+    resource: 'Deal',
+    resourceId: deal.id,
+    after: deal,
+    ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+    userAgent: request.headers.get('user-agent') ?? undefined,
+    companyId: user.companyId,
+    userId: user.id,
   })
 
   return successResponse(deal, 201)

@@ -1,6 +1,14 @@
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { z } from 'zod'
 import { verifyCredentials } from '@/lib/auth'
+import { EmailSchema, SlugSchema } from '@/lib/shared/validation'
+
+const LoginInputSchema = z.object({
+  email: EmailSchema,
+  password: z.string().min(1, 'Password is required'),
+  companySlug: SlugSchema.optional(),
+})
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -12,15 +20,18 @@ export const authOptions: NextAuthOptions = {
         companySlug: { label: 'Company', type: 'text' },
       },
       async authorize(credentials, req) {
-        if (!credentials?.email || !credentials?.password) {
+        const parseResult = LoginInputSchema.safeParse({
+          email: credentials?.email,
+          password: credentials?.password,
+          companySlug: credentials?.companySlug,
+        })
+
+        if (!parseResult.success) {
           return null
         }
 
-        const user = await verifyCredentials(
-          credentials.email,
-          credentials.password,
-          credentials.companySlug
-        )
+        const { email, password, companySlug } = parseResult.data
+        const user = await verifyCredentials(email, password, companySlug)
 
         if (!user) {
           return null

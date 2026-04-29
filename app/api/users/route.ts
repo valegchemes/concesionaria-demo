@@ -3,9 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/auth-options'
-import { hash } from 'bcryptjs'
+import { hashPassword } from '@/lib/auth'
 import { createLogger } from '@/lib/shared/logger'
-import { getUserPermissions, hasPermission } from '@/lib/shared/authz'
+import { requirePermission } from '@/lib/shared/auth-helpers'
+import { createAuditLog } from '@/lib/shared/audit-log'
+import { EmailSchema, NameSchema, PasswordSchema, PhoneSchema } from '@/lib/shared/validation'
+import { z } from 'zod'
 
 const log = createLogger('API:Users')
 
@@ -40,30 +43,30 @@ export async function GET(request: NextRequest) {
 }
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // RBAC check: only users with team:manage_all permission can create users
-    const perms = await getUserPermissions(session.user.id, session.user.companyId)
-    if (!hasPermission(perms, 'team', 'manage_all')) {
-      return NextResponse.json({ error: 'Unauthorized. Only admins can create users.' }, { status: 403 })
-    }
-
     const body = await request.json()
-    const { name, email, password, role, whatsappNumber } = body
 
-    if (!name || !email || !password) {
-      return NextResponse.json({ error: 'Missing name, email or password' }, { status: 400 })
+    const CreateUserSchema = z.object({
+      name: NameSchema,
+      email: EmailSchema,
+      password: PasswordSchema,
+      role: z.enum(['ADMIN', 'MANAGER', 'SELLER']).optional(),
+      whatsappNumber: PhoneSchema.optional().or(z.literal('')),
+    })
+
+    const parsed = CreateUserSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues }, { status: 400 })
     }
+
+    const currentUser = await requirePermission('team', 'manage_all')
+    const { name, email, password, role, whatsappNumber } = parsed.data
 
     // Check if user already exists in this company
     const existingUser = await prisma.user.findUnique({
       where: {
         email_companyId: {
           email,
-          companyId: session.user.companyId,
+          companyId: currentUser.companyId,
         },
       },
     })
@@ -72,7 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User with this email already exists in your company' }, { status: 400 })
     }
 
-    const hashedPassword = await hash(password, 10)
+    const hashedPassword = await hashPassword(password)
 
     const user = await prisma.user.create({
       data: {
@@ -81,7 +84,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         role: role || 'SELLER',
         whatsappNumber,
-        companyId: session.user.companyId,
+        companyId: currentUser.companyId,
       },
       select: {
         id: true,
@@ -89,6 +92,17 @@ export async function POST(request: NextRequest) {
         email: true,
         role: true,
       },
+    })
+
+    await createAuditLog({
+      action: 'create',
+      resource: 'User',
+      resourceId: user.id,
+      after: user,
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: currentUser.companyId,
+      userId: currentUser.id,
     })
 
     return NextResponse.json(user, { status: 201 })
@@ -102,7 +116,6 @@ export async function DELETE(request: NextRequest) {
   try {
     // Auth via middleware headers (consistent with the rest of the API)
     const requestingUserId = request.headers.get('x-user-id')
-    const requestingUserRole = request.headers.get('x-user-role')
     const companyId = request.headers.get('x-company-id')
 
     if (!requestingUserId || !companyId) {
@@ -110,10 +123,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // RBAC check: only users with team:manage_all permission can delete users
-    const perms = await getUserPermissions(requestingUserId, companyId)
-    if (!hasPermission(perms, 'team', 'manage_all')) {
-      return NextResponse.json({ error: 'Solo los administradores pueden eliminar miembros.' }, { status: 403 })
-    }
+    await requirePermission('team', 'manage_all')
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('id')
@@ -137,6 +147,17 @@ export async function DELETE(request: NextRequest) {
     await prisma.user.update({
       where: { id: userId },
       data: { isActive: false },
+    })
+
+    await createAuditLog({
+      action: 'deactivate',
+      resource: 'User',
+      resourceId: userId,
+      before: user,
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: companyId,
+      userId: requestingUserId,
     })
 
     return NextResponse.json({ success: true })

@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { hash } from 'bcryptjs'
+import { hashPassword } from '@/lib/auth'
 import { RegisterCompanySchema } from '@/lib/shared/validation'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { createLogger } from '@/lib/shared/logger'
+import { createAuditLog } from '@/lib/shared/audit-log'
 
 const log = createLogger('AuthRegisterRoute')
 
@@ -33,10 +34,13 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingSlug) {
-      return NextResponse.json({ error: 'El slug "'+slug+'" ya está en uso. Por favor elige otro.' }, { status: 400 })
+      return NextResponse.json(
+        { error: `El slug "${slug}" ya está en uso. Por favor elige otro.` },
+        { status: 409 }
+      )
     }
 
-    const hashedPassword = await hash(password, 10)
+    const hashedPassword = await hashPassword(password)
 
     // Crear la compañia y su admin en una transacción (pero usaremos un create anidado para mayor simplicidad)
     const company = await prisma.company.create({
@@ -51,9 +55,29 @@ export async function POST(request: NextRequest) {
             email: adminEmail,
             password: hashedPassword,
             role: 'ADMIN',
-          }
-        }
-      }
+          },
+        },
+      },
+      include: {
+        users: true,
+      },
+    })
+
+    const admin = company.users[0]
+
+    await createAuditLog({
+      action: 'create',
+      resource: 'Company',
+      resourceId: company.id,
+      after: {
+        id: company.id,
+        slug: company.slug,
+        name: company.name,
+      },
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: company.id,
+      userId: admin?.id ?? company.id,
     })
 
     return NextResponse.json({ success: true, companyId: company.id }, { status: 201 })

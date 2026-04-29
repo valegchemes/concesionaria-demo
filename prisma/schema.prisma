@@ -328,9 +328,9 @@ model AuditLog {
   reason     String?
   createdAt  DateTime @default(now())
   companyId  String
-  userId     String
+  userId     String?
   company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([companyId, createdAt])
   @@index([userId, createdAt])
