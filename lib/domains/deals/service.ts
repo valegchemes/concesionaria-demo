@@ -598,21 +598,22 @@ export class DealService {
     currentStatus: string,
     newStatus: string
   ): Promise<void> {
-    const validTransitions: Record<string, string[]> = {
-      NEGOTIATION: ['RESERVED', 'APPROVED', 'CANCELED'],
-      RESERVED: ['APPROVED', 'NEGOTIATION', 'CANCELED'],
-      APPROVED: ['IN_PAYMENT', 'NEGOTIATION', 'CANCELED'],
-      IN_PAYMENT: ['DELIVERED', 'NEGOTIATION', 'CANCELED'],
-      DELIVERED: ['CANCELED'],
-      CANCELED: [],
-    }
-
-    const allowed = validTransitions[currentStatus] || []
-    if (!allowed.includes(newStatus)) {
+    // No se puede salir de CANCELED
+    if (currentStatus === 'CANCELED') {
       throw new ValidationError(
-        `Cannot transition from ${currentStatus} to ${newStatus}`
+        `No se puede cambiar el estado de una operación cancelada`
       )
     }
+
+    // No se puede revertir DELIVERED a un estado activo
+    const activeStates = ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT']
+    if (currentStatus === 'DELIVERED' && activeStates.includes(newStatus)) {
+      throw new ValidationError(
+        `No se puede revertir una operación ya entregada`
+      )
+    }
+
+    // Todas las demás transiciones son válidas (flexibilidad para el vendedor)
   }
 
   /**

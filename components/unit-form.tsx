@@ -122,12 +122,12 @@ export function UnitForm() {
         throw new Error(data.error || 'Error al crear la unidad')
       }
 
-      const data = await response.json()
+      const resultJson = await response.json()
       
       setFormData(initialFormData)
       setImages([])
 
-      router.push(`/app/units/${data.id}`)
+      router.push(`/app/units/${resultJson.data.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
