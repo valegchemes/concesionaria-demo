@@ -198,8 +198,10 @@ export const analyticsCacheKeys = {
 // ============================================================================
 
 export function getDateRangeFromTimeRange(timeRange: TimeRange): { start: Date; end: Date; label: string } {
-  const end = new Date()
-  const start = new Date()
+  const now = new Date()
+  // Establecer el final del día actual para incluir registros de hoy
+  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
   
   switch (timeRange) {
     case '7d':
