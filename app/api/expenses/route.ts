@@ -20,8 +20,13 @@ export async function GET(request: NextRequest) {
 
     let dateFilter = {}
     if (month) {
-      const start = new Date(`${month}-01T00:00:00.000Z`)
-      const end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59, 999)
+      const [yearStr, monthStr] = month.split('-')
+      const year = parseInt(yearStr, 10)
+      const m = parseInt(monthStr, 10) - 1 // 0-indexed month
+      
+      // Usar Date.UTC para que la fecha no varíe dependiendo del timezone del servidor
+      const start = new Date(Date.UTC(year, m, 1, 0, 0, 0, 0))
+      const end = new Date(Date.UTC(year, m + 1, 0, 23, 59, 59, 999))
       dateFilter = { date: { gte: start, lte: end } }
     }
 
