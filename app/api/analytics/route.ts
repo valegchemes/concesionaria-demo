@@ -180,9 +180,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       }
 
       // Guardar en KV de forma asíncrona (no bloquea la respuesta)
-      kv.set(cacheKey, result, { ex: ANALYTICS_CACHE_TTL_SECONDS }).catch((err) => {
-        log.warn({ error: String(err), cacheKey }, 'No se pudo guardar analytics en KV cache')
-      })
+      try {
+        kv.set(cacheKey, result, { ex: ANALYTICS_CACHE_TTL_SECONDS }).catch((err) => {
+          log.warn({ error: String(err), cacheKey }, 'No se pudo guardar analytics en KV cache (async error)')
+        })
+      } catch (syncError) {
+        // kv.set arroja un error sincrónico si faltan las variables de entorno de KV
+        log.warn({ error: String(syncError), cacheKey }, 'No se pudo guardar analytics en KV cache (sync error)')
+      }
     }
     // ─────────────────────────────────────────────────────────────────────────
 
