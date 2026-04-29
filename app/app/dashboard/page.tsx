@@ -77,7 +77,7 @@ export default async function DashboardPage() {
 
   const conversionRate =
     stats.leads.total > 0
-      ? ((stats.deals.completed / stats.leads.total) * 100).toFixed(1)
+      ? Math.min(100, (stats.deals.completed / stats.leads.total) * 100).toFixed(1)
       : '0'
 
   return (
