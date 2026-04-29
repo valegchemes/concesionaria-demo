@@ -731,6 +731,7 @@ async function getCostAnalysis(
   const companyExpenses = await prisma.companyExpense.findMany({
     where: {
       companyId,
+      isActive: true,
       date: { gte: start, lte: end },
     },
     select: { category: true, amountArs: true, amountUsd: true },

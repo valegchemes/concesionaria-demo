@@ -7,7 +7,11 @@ const ExpenseSchema = z.object({
   description: z.string().optional(),
   amountArs: z.coerce.number().min(0).default(0),
   amountUsd: z.coerce.number().min(0).default(0),
-  date: z.string().transform(str => new Date(str)),
+  // Parsear la fecha como mediodía UTC para evitar desfases de timezone
+  date: z.string().transform(str => {
+    const [year, month, day] = str.split('-').map(Number)
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0, 0))
+  }),
 })
 
 export async function GET(request: NextRequest) {
@@ -23,8 +27,8 @@ export async function GET(request: NextRequest) {
       const [yearStr, monthStr] = month.split('-')
       const year = parseInt(yearStr, 10)
       const m = parseInt(monthStr, 10) - 1 // 0-indexed month
-      
-      // Usar Date.UTC para que la fecha no varíe dependiendo del timezone del servidor
+
+      // Rango completo del mes en UTC
       const start = new Date(Date.UTC(year, m, 1, 0, 0, 0, 0))
       const end = new Date(Date.UTC(year, m + 1, 0, 23, 59, 59, 999))
       dateFilter = { date: { gte: start, lte: end } }
@@ -48,7 +52,15 @@ export async function POST(request: NextRequest) {
     if (!companyId) return NextResponse.json({ error: 'No company ID' }, { status: 401 })
 
     const body = await request.json()
-    const data = ExpenseSchema.parse(body)
+
+    const parsed = ExpenseSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.errors.map(e => e.message).join(', ') },
+        { status: 400 }
+      )
+    }
+    const data = parsed.data
 
     const expense = await prisma.companyExpense.create({
       data: {
@@ -63,6 +75,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: expense })
   } catch (error: unknown) {
+    console.error('[POST /api/expenses] Error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ success: false, error: message }, { status: 400 })
   }
