@@ -1,5 +1,8 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
   Users,
@@ -35,10 +38,11 @@ interface AppSidebarProps {
     avatarUrl?: string
     logoUrl?: string
   }
-  currentPath: string
 }
 
-export function AppSidebar({ user, currentPath }: AppSidebarProps) {
+export function AppSidebar({ user }: AppSidebarProps) {
+  const currentPath = usePathname() || '/app'
+
   return (
     <aside className="flex w-64 flex-col border-r border-slate-800/50 bg-slate-900/60 text-white backdrop-blur-xl transition-colors duration-500">
       <div className="border-b border-slate-800/50 p-4">

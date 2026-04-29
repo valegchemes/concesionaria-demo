@@ -46,13 +46,11 @@ export default async function AppLayout({
     logoUrl: dbUser?.company?.logoUrl ?? undefined,
   }
 
-  const currentPath = requestHeaders.get('x-pathname') ?? '/app'
-
   return (
     <>
       <GlobalBackground avatarUrl={user.avatarUrl || user.logoUrl} />
       <div className="min-h-screen flex bg-transparent">
-        <AppSidebar user={user} currentPath={currentPath} />
+        <AppSidebar user={user} />
         <div className="flex-1 flex flex-col bg-transparent">
           <AppHeader user={user} />
           <main className="flex-1 p-6 overflow-auto bg-transparent">
