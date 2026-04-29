@@ -321,6 +321,7 @@ async function getDashboardSummary(
   const companyExpenses = await prisma.companyExpense.aggregate({
     where: {
       companyId,
+      isActive: true,
       date: { gte: start, lte: end },
     },
     _sum: { amountArs: true, amountUsd: true },
