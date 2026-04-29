@@ -1,16 +1,17 @@
 /**
  * Dashboard KPIs - Tarjetas de métricas clave
- * Sin 'any' - Enterprise Grade
+ * Estilo SaaS corporativo — jerarquía visual clara
  */
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, TrendingDown, DollarSign, Users, Package, Percent } from 'lucide-react'
-import { formatCurrency, formatPercentage, formatNumber } from '@/lib/domains/analytics/hooks'
+import { formatCurrencyCompact, formatNumberCompact, formatPercentage, formatCurrency } from '@/lib/domains/analytics/hooks'
 import type { DashboardSummary } from '@/lib/domains/analytics/types'
+import { cn } from '@/lib/utils'
 
 // ============================================================================
-// Tipos estrictos
+// Tipos
 // ============================================================================
 
 interface DashboardKPIsProps {
@@ -22,48 +23,75 @@ interface KPICardProps {
   title: string
   value: string
   subtitle: string
+  detail?: string
   trend?: 'up' | 'down' | 'neutral'
   icon: React.ElementType
+  iconBg?: string
   isLoading: boolean
 }
 
 // ============================================================================
-// Componente de tarjeta individual
+// KPI Card individual
 // ============================================================================
 
-function KPICard({ title, value, subtitle, trend = 'neutral', icon: Icon, isLoading }: KPICardProps) {
+function KPICard({
+  title,
+  value,
+  subtitle,
+  detail,
+  trend = 'neutral',
+  icon: Icon,
+  iconBg = 'bg-blue-50 dark:bg-blue-950/40',
+  isLoading,
+}: KPICardProps) {
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader className="pb-2">
-          <Skeleton className="h-4 w-[100px]" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-8 w-[120px] mb-1" />
-          <Skeleton className="h-4 w-[80px]" />
-        </CardContent>
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <Skeleton className="h-3 w-24" />
+          <Skeleton className="h-8 w-8 rounded-lg" />
+        </div>
+        <Skeleton className="h-7 w-28 mb-1.5" />
+        <Skeleton className="h-3 w-20" />
       </Card>
     )
   }
 
+  const trendColor =
+    trend === 'up'
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : trend === 'down'
+      ? 'text-red-500 dark:text-red-400'
+      : 'text-muted-foreground'
+
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : null
-  const trendColor = trend === 'up' ? 'text-green-500' : trend === 'down' ? 'text-red-500' : 'text-muted-foreground'
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    <Card className="p-5 hover:shadow-md transition-shadow duration-200">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
-        </CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-          {TrendIcon && <TrendIcon className={`h-3 w-3 ${trendColor}`} />}
-          <span>{subtitle}</span>
+        </p>
+        <div className={cn('p-2 rounded-lg', iconBg)}>
+          <Icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         </div>
-      </CardContent>
+      </div>
+
+      {/* Valor principal — formato compacto */}
+      <p className="text-2xl font-bold text-foreground tabular-nums leading-none">
+        {value}
+      </p>
+
+      {/* Detalle completo en tooltip visual */}
+      {detail && (
+        <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">{detail}</p>
+      )}
+
+      {/* Subtítulo con trend */}
+      <div className={cn('flex items-center gap-1 text-xs mt-2', trendColor)}>
+        {TrendIcon && <TrendIcon className="h-3 w-3" />}
+        <span>{subtitle}</span>
+      </div>
     </Card>
   )
 }
@@ -79,7 +107,7 @@ export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
         {[1, 2, 3, 4].map((i) => (
           <KPICard
             key={i}
-            title="Cargando..."
+            title="—"
             value="-"
             subtitle="-"
             icon={DollarSign}
@@ -96,35 +124,41 @@ export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <KPICard
         title="Ingresos Totales"
-        value={formatCurrency(kpis.totalRevenue.totalConverted)}
+        value={formatCurrencyCompact(kpis.totalRevenue.totalConverted)}
         subtitle={period.label}
+        detail={formatCurrency(kpis.totalRevenue.totalConverted)}
         trend="up"
         icon={DollarSign}
+        iconBg="bg-blue-50 dark:bg-blue-950/40"
         isLoading={false}
       />
 
       <KPICard
         title="Ganancia Neta"
-        value={formatCurrency(kpis.netProfit.totalConverted)}
+        value={formatCurrencyCompact(kpis.netProfit.totalConverted)}
         subtitle={`Margen: ${formatPercentage(kpis.profitMargin)}`}
+        detail={formatCurrency(kpis.netProfit.totalConverted)}
         trend={kpis.profitMargin > 0 ? 'up' : 'down'}
         icon={Percent}
+        iconBg="bg-emerald-50 dark:bg-emerald-950/40"
         isLoading={false}
       />
 
       <KPICard
         title="Operaciones"
-        value={formatNumber(kpis.totalDeals)}
-        subtitle={`Promedio: ${formatCurrency(kpis.avgDealSize)}`}
+        value={String(kpis.totalDeals)}
+        subtitle={`Promedio: ${formatCurrencyCompact(kpis.avgDealSize)}`}
         icon={Users}
+        iconBg="bg-purple-50 dark:bg-purple-950/40"
         isLoading={false}
       />
 
       <KPICard
         title="Inventario"
-        value={formatNumber(inventory.totalUnits)}
+        value={String(inventory.totalUnits)}
         subtitle={`${inventory.availableUnits} disponibles · ${inventory.reservedUnits} reservadas`}
         icon={Package}
+        iconBg="bg-slate-50 dark:bg-slate-800/60"
         isLoading={false}
       />
     </div>

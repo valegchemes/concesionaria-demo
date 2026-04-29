@@ -1,6 +1,6 @@
 /**
- * Cost Breakdown Chart - DonutChart con Recharts
- * Sin 'any' - Enterprise Grade
+ * Cost Breakdown Chart — DonutChart corporativo
+ * Leyenda lateral, sin labels externos, colores sobrios
  */
 
 'use client'
@@ -11,12 +11,11 @@ import {
   Cell,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 
 // ============================================================================
-// Tipos estrictos
+// Tipos
 // ============================================================================
 
 interface ChartDataPoint {
@@ -31,110 +30,147 @@ interface CostBreakdownChartProps {
 }
 
 // ============================================================================
-// Paleta de colores
+// Paleta sobria (colores oscuros muted, no saturados)
 // ============================================================================
 
 const COLORS = [
-  '#3b82f6', // Blue
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Red
-  '#8b5cf6', // Violet
-  '#ec4899', // Pink
-  '#06b6d4', // Cyan
-  '#84cc16', // Lime
+  '#3b82f6', // blue-500
+  '#64748b', // slate-500
+  '#f59e0b', // amber-500
+  '#10b981', // emerald-500
+  '#8b5cf6', // violet-500
+  '#ec4899', // pink-500
+  '#06b6d4', // cyan-500
+  '#f97316', // orange-500
 ]
 
 // ============================================================================
-// Formateador de moneda
+// Formateador
 // ============================================================================
 
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('es-AR', {
+const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat('es-AR', {
     style: 'currency',
     currency: 'ARS',
+    notation: 'compact',
+    compactDisplay: 'short',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 1,
   }).format(value)
+
+// ============================================================================
+// Tooltip personalizado
+// ============================================================================
+
+interface TooltipPayloadItem {
+  name: string
+  value: number
+  payload: ChartDataPoint
+}
+
+function CustomTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean
+  payload?: TooltipPayloadItem[]
+}) {
+  if (!active || !payload?.length) return null
+  const item = payload[0]
+  return (
+    <div className="bg-card border border-border rounded-lg px-3 py-2 shadow-lg text-sm">
+      <p className="font-semibold text-foreground mb-0.5">{item.name}</p>
+      <p className="text-muted-foreground">
+        {new Intl.NumberFormat('es-AR', {
+          style: 'currency',
+          currency: 'ARS',
+          minimumFractionDigits: 0,
+        }).format(item.value)}
+      </p>
+      <p className="text-xs text-muted-foreground">{item.payload.percentage.toFixed(1)}% del total</p>
+    </div>
+  )
 }
 
 // ============================================================================
-// Componente
+// Componente principal
 // ============================================================================
 
 export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps) {
   if (isLoading) {
-    return <Skeleton className="h-full w-full" />
+    return <Skeleton className="h-full w-full rounded-lg" />
   }
 
   if (data.length === 0) {
     return (
-      <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-        <span>Sin datos de costos</span>
+      <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
+        Sin datos de costos en este período
       </div>
     )
   }
 
-  // Filtrar valores muy pequeños (menos de 1%)
-  const significantData = data.filter(item => item.percentage >= 1)
-
-  // Agrupar los pequeños en "Otros" si hay más de 8 categorías
-  let processedData = significantData
-  if (significantData.length > 8) {
-    const topItems = significantData.slice(0, 7)
-    const others = significantData.slice(7)
-    const othersSum = others.reduce((sum, item) => sum + item.value, 0)
-    const othersPercentage = others.reduce((sum, item) => sum + item.percentage, 0)
-    
+  // Agrupar categorías menores al 1% en "Otros"
+  const significant = data.filter((d) => d.percentage >= 1)
+  let processedData = significant
+  if (significant.length > 7) {
+    const top = significant.slice(0, 6)
+    const rest = significant.slice(6)
     processedData = [
-      ...topItems,
-      { name: 'Otros', value: othersSum, percentage: othersPercentage }
+      ...top,
+      {
+        name: 'Otros',
+        value: rest.reduce((s, d) => s + d.value, 0),
+        percentage: rest.reduce((s, d) => s + d.percentage, 0),
+      },
     ]
   }
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <PieChart>
-        <Pie
-          data={processedData}
-          cx="50%"
-          cy="45%"
-          innerRadius={60}
-          outerRadius={100}
-          paddingAngle={2}
-          dataKey="value"
-          nameKey="name"
-          label={(entry: ChartDataPoint) => `${entry.name}: ${entry.percentage.toFixed(1)}%`}
-          labelLine={false}
-        >
-          {processedData.map((entry, index) => (
-            <Cell 
-              key={`cell-${index}`} 
-              fill={COLORS[index % COLORS.length]}
-              stroke="hsl(var(--card))"
-              strokeWidth={2}
+    <div className="flex h-full gap-4">
+      {/* Donut chart — sin labels externos */}
+      <div className="flex-1 min-w-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={processedData}
+              cx="50%"
+              cy="50%"
+              innerRadius="55%"
+              outerRadius="80%"
+              paddingAngle={2}
+              dataKey="value"
+              nameKey="name"
+              strokeWidth={0}
+            >
+              {processedData.map((_, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Leyenda lateral elegante */}
+      <div className="flex flex-col justify-center gap-1.5 w-36 shrink-0">
+        {processedData.map((item, index) => (
+          <div key={item.name} className="flex items-center gap-2 min-w-0">
+            <span
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: COLORS[index % COLORS.length] }}
             />
-          ))}
-        </Pie>
-        <Tooltip
-          contentStyle={{
-            backgroundColor: 'hsl(var(--card))',
-            border: '1px solid hsl(var(--border))',
-            borderRadius: '6px',
-          }}
-          labelStyle={{ color: 'hsl(var(--foreground))' }}
-          formatter={(value: number, name: string) => [
-            formatCurrency(value),
-            name,
-          ]}
-        />
-        <Legend 
-          verticalAlign="bottom" 
-          height={36}
-          iconType="circle"
-          wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
+              <p className="text-[10px] text-muted-foreground tabular-nums">
+                {item.percentage.toFixed(1)}% · {formatCurrency(item.value)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }

@@ -345,6 +345,32 @@ export function formatCurrency(value: number, currency: 'ARS' | 'USD' = 'ARS'): 
   return formatter.format(value)
 }
 
+/**
+ * Formato compacto para KPIs: convierte 338.500.000 → "$338,5 M"
+ */
+export function formatCurrencyCompact(value: number, currency: 'ARS' | 'USD' = 'ARS'): string {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency,
+    notation: 'compact',
+    compactDisplay: 'short',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
+/**
+ * Formato compacto para números sin moneda: convierte 1.234 → "1,2 K"
+ */
+export function formatNumberCompact(value: number): string {
+  return new Intl.NumberFormat('es-AR', {
+    notation: 'compact',
+    compactDisplay: 'short',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  }).format(value)
+}
+
 export function formatPercentage(value: number, decimals: number = 1): string {
   return `${value.toFixed(decimals)}%`
 }

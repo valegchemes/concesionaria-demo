@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatDate } from '@/lib/utils'
-import { Plus, Search, Phone, Mail, User, Car, AlertCircle, CheckCircle2, Trash2 } from 'lucide-react'
+import { Plus, Search, Phone, Mail, Car, Clock, Trash2, Loader2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Lead {
   id: string
@@ -36,24 +37,15 @@ const sourceLabels: Record<string, string> = {
   OTHER: 'Otro',
 }
 
-const statusColors: Record<string, string> = {
-  NEW: 'bg-blue-100 text-blue-800',
-  CONTACTED: 'bg-yellow-100 text-yellow-800',
-  VISIT_SCHEDULED: 'bg-purple-100 text-purple-800',
-  OFFER: 'bg-orange-100 text-orange-800',
-  RESERVED: 'bg-pink-100 text-pink-800',
-  SOLD: 'bg-green-100 text-green-800',
-  LOST: 'bg-gray-100 text-gray-800',
-}
-
-const statusLabels: Record<string, string> = {
-  NEW: 'Nuevo',
-  CONTACTED: 'Contactado',
-  VISIT_SCHEDULED: 'Visita Agendada',
-  OFFER: 'Oferta',
-  RESERVED: 'Reservado',
-  SOLD: 'Vendido',
-  LOST: 'Perdido',
+// Badges de estado: estilo corporativo sutil
+const statusConfig: Record<string, { label: string; classes: string }> = {
+  NEW:             { label: 'Nuevo',         classes: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' },
+  CONTACTED:       { label: 'Contactado',    classes: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' },
+  VISIT_SCHEDULED: { label: 'Visita',        classes: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300' },
+  OFFER:           { label: 'Oferta',        classes: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' },
+  RESERVED:        { label: 'Reservado',     classes: 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300' },
+  SOLD:            { label: 'Vendido',       classes: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' },
+  LOST:            { label: 'Perdido',       classes: 'bg-slate-100 text-slate-400 dark:bg-slate-800/60 dark:text-slate-500' },
 }
 
 export default function LeadsPage() {
@@ -61,18 +53,14 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [deleteError, setDeleteError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchLeads()
-  }, [])
+  useEffect(() => { fetchLeads() }, [])
 
   async function fetchLeads() {
     try {
       const res = await fetch('/api/leads', { cache: 'no-store' })
       if (res.ok) {
         const data = await res.json()
-        // The API returns a standardized object { success: true, data: [...], ... }
         setLeads(data.data || [])
       }
     } catch (error) {
@@ -84,7 +72,6 @@ export default function LeadsPage() {
 
   async function deleteLead(id: string) {
     if (!confirm('¿Eliminar este lead? Esta acción no se puede deshacer.')) return
-    setDeleteError(null)
     try {
       const res = await fetch(`/api/leads/${id}`, { method: 'DELETE' })
       if (res.ok) {
@@ -92,158 +79,155 @@ export default function LeadsPage() {
         setLeads(prev => prev.filter(l => l.id !== id))
       } else {
         const data = await res.json().catch(() => ({}))
-        const msg = data?.error || data?.message || `Error ${res.status}`
-        setDeleteError(msg)
-        alert(`No se pudo eliminar el lead: ${msg}`)
+        alert(`No se pudo eliminar el lead: ${data?.error || data?.message || res.status}`)
       }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error de conexión'
-      setDeleteError(msg)
-      alert(`Error: ${msg}`)
+    } catch {
+      alert('Error de conexión al intentar eliminar')
     }
   }
 
-  const filteredLeads = Array.isArray(leads) 
-    ? leads.filter(lead =>
-        lead.name.toLowerCase().includes(search.toLowerCase()) ||
-        lead.phone.includes(search)
+  const filteredLeads = Array.isArray(leads)
+    ? leads.filter(l =>
+        l.name.toLowerCase().includes(search.toLowerCase()) ||
+        l.phone.includes(search)
       )
     : []
 
   function hasOverdueTask(lead: Lead): boolean {
     if (lead.status === 'LOST' || lead.status === 'SOLD') return false
     const tasks = lead.tasks || []
-    if (tasks.length === 0 && 
-        ['CONTACTED', 'VISIT_SCHEDULED', 'OFFER'].includes(lead.status)) {
-      return true
-    }
-    if (tasks[0] && new Date(tasks[0].dueDate) < new Date()) {
-      return true
-    }
+    if (tasks.length === 0 && ['CONTACTED', 'VISIT_SCHEDULED', 'OFFER'].includes(lead.status)) return true
+    if (tasks[0] && new Date(tasks[0].dueDate) < new Date()) return true
     return false
   }
 
-  if (loading) return <div>Cargando...</div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Gestión de Leads</h1>
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Gestión de Leads</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}
+          </p>
+        </div>
         <div className="flex gap-2">
           <Link href="/app/leads/quick">
-            <Button variant="outline">Lead Rápido</Button>
+            <Button variant="outline" size="sm">Lead Rápido</Button>
           </Link>
           <Link href="/app/leads/new">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-1.5" />
               Nuevo Lead
             </Button>
           </Link>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Buscar por nombre o teléfono..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Buscador */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Buscar por nombre o teléfono…"
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
 
-      <div className="space-y-3">
-        {filteredLeads.map((lead) => (
-          <Card 
-            key={lead.id} 
-            className={`cursor-pointer hover:border-blue-400 transition-colors ${hasOverdueTask(lead) ? 'border-red-300' : ''}`}
-            onClick={() => router.push(`/app/leads/${lead.id}`)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-lg">{lead.name}</h3>
-                    {hasOverdueTask(lead) && (
-                      <AlertCircle className="h-5 w-5 text-red-500" />
-                    )}
+      {/* Lista compacta */}
+      {filteredLeads.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            <p className="font-medium">No hay leads{search ? ' que coincidan' : ' registrados'}.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="divide-y divide-border overflow-hidden">
+          {filteredLeads.map((lead) => {
+            const overdue = hasOverdueTask(lead)
+            const status = statusConfig[lead.status] ?? { label: lead.status, classes: 'bg-slate-100 text-slate-600' }
+
+            return (
+              <div
+                key={lead.id}
+                className={cn(
+                  'flex items-center gap-4 px-4 py-3 hover:bg-muted/40 cursor-pointer transition-colors duration-100 group',
+                  overdue && 'border-l-2 border-l-red-400'
+                )}
+                onClick={() => router.push(`/app/leads/${lead.id}`)}
+              >
+                {/* Avatar inicial */}
+                <div className="h-9 w-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+                    {lead.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+
+                {/* Nombre + datos de contacto */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm text-foreground truncate">{lead.name}</p>
+                    <span className={cn('badge shrink-0', status.classes)}>
+                      {status.label}
+                    </span>
                   </div>
-                  
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-500 mb-2">
+                  <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Phone className="h-4 w-4" />
-                      {lead.phone}
+                      <Phone className="h-3 w-3" />{lead.phone}
                     </span>
                     {lead.email && (
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-4 w-4" />
-                        {lead.email}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[lead.status]}`}>
-                      {statusLabels[lead.status]}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {sourceLabels[lead.source]}
-                    </span>
-                    {lead.assignedTo && (
-                      <span className="text-xs flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {lead.assignedTo.name}
+                      <span className="flex items-center gap-1 hidden sm:flex">
+                        <Mail className="h-3 w-3" />{lead.email}
                       </span>
                     )}
                     {lead.interestedUnit && (
-                      <span className="text-xs flex items-center gap-1">
-                        <Car className="h-3 w-3" />
-                        {lead.interestedUnit.title}
+                      <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <Car className="h-3 w-3" />{lead.interestedUnit.title}
                       </span>
                     )}
                   </div>
+                </div>
 
+                {/* Metadatos a la derecha */}
+                <div className="hidden sm:flex flex-col items-end gap-1 shrink-0 text-xs text-muted-foreground">
+                  <span>{sourceLabels[lead.source] ?? lead.source}</span>
+                  {lead.assignedTo && (
+                    <span>{lead.assignedTo.name}</span>
+                  )}
                   {lead.tasks?.[0] && (
-                    <div className={`mt-2 text-xs flex items-center gap-1 ${
-                      new Date(lead.tasks[0].dueDate) < new Date() ? 'text-red-600' : 'text-gray-500'
-                    }`}>
-                      <CheckCircle2 className="h-3 w-3" />
-                      Próxima tarea: {formatDate(lead.tasks[0].dueDate)}
-                    </div>
+                    <span className={cn('flex items-center gap-1', overdue ? 'text-red-500' : '')}>
+                      <Clock className="h-3 w-3" />
+                      {formatDate(lead.tasks[0].dueDate)}
+                    </span>
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2 ml-4">
-                  <div onClick={(e) => e.stopPropagation()}>
-                    <Link href={`/app/leads/${lead.id}`}>
-                      <Button size="sm" className="w-full">Ver</Button>
-                    </Link>
-                  </div>
+                {/* Acciones */}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 px-2"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteLead(lead.id);
-                    }}
+                    className="h-8 w-8 p-0 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                    onClick={() => deleteLead(lead.id)}
                     title="Eliminar lead"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
-                  <div className="text-xs text-gray-500 text-center">
-                    {lead._count.activities} act.
-                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            )
+          })}
+        </Card>
+      )}
     </div>
   )
 }
