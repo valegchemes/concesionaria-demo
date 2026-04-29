@@ -109,12 +109,12 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
     )
   }
 
-  // Agrupar categorías menores al 1% en "Otros"
-  const significant = data.filter((d) => d.percentage >= 1)
+  // Agrupar categorías menores al 1% en "Otros" si hay demasiadas
+  const significant = data.filter((d) => d.percentage >= 0.1)
   let processedData = significant
-  if (significant.length > 7) {
-    const top = significant.slice(0, 6)
-    const rest = significant.slice(6)
+  if (significant.length > 20) {
+    const top = significant.slice(0, 19)
+    const rest = significant.slice(19)
     processedData = [
       ...top,
       {
@@ -154,8 +154,8 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
         </ResponsiveContainer>
       </div>
 
-      {/* Leyenda lateral elegante */}
-      <div className="flex flex-col justify-center gap-1.5 w-36 shrink-0">
+      {/* Leyenda lateral elegante con scroll */}
+      <div className="flex flex-col gap-2 w-44 shrink-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
         {processedData.map((item, index) => (
           <div key={item.name} className="flex items-center gap-2 min-w-0">
             <span
