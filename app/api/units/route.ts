@@ -13,6 +13,7 @@ export const maxDuration = 30
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { prisma } from '@/lib/shared/prisma'
+import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { CreateUnitSchema } from '@/lib/shared/validation'
 import { 
   successResponse, 
@@ -61,19 +62,6 @@ function canManageUnits(role: string): boolean {
  * Extrae el usuario autenticado de los headers inyectados por el middleware
  * El middleware garantiza que estos headers existen para rutas protegidas
  */
-function getAuthenticatedUser(request: NextRequest): AuthenticatedUser {
-  const userId = request.headers.get('x-user-id')
-  const companyId = request.headers.get('x-company-id')
-  const role = request.headers.get('x-user-role')
-
-  if (!userId || !companyId || !role) {
-    log.error({}, 'Headers de autenticación faltantes - middleware no está funcionando')
-    throw new ForbiddenError('Autenticación requerida')
-  }
-
-  return { userId, companyId, role }
-}
-
 // ============================================================================
 // PARSEO Y VALIDACIÓN DE QUERY PARAMS
 // ============================================================================
@@ -113,8 +101,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   
   try {
     // 1. Autenticación
-    const user = getAuthenticatedUser(request)
-    log.debug({ userId: user.userId, companyId: user.companyId }, 'GET /api/units - iniciado')
+    const user = await getCurrentUser()
+    log.debug({ userId: user.id, companyId: user.companyId }, 'GET /api/units - iniciado')
 
     // 2. Parseo de query params
     const { searchParams } = new URL(request.url)
@@ -168,7 +156,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     log.info(
       { 
-        userId: user.userId, 
+        userId: user.id, 
         companyId: user.companyId,
         count: units.length, 
         total,
@@ -208,8 +196,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     // 1. Autenticación
-    const user = getAuthenticatedUser(request)
-    log.debug({ userId: user.userId, companyId: user.companyId }, 'POST /api/units - iniciado')
+    const user = await getCurrentUser()
+    log.debug({ userId: user.id, companyId: user.companyId }, 'POST /api/units - iniciado')
 
     if (!canManageUnits(user.role)) {
       throw new ForbiddenError('Solo administradores o managers pueden crear unidades')
@@ -223,7 +211,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const zodError = validationResult.error
       log.warn(
         { 
-          userId: user.userId,
+          userId: user.id,
           errors: zodError.flatten().fieldErrors 
         },
         'POST /api/units - validación fallida'
@@ -304,7 +292,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     log.info(
       { 
-        userId: user.userId,
+        userId: user.id,
         companyId: user.companyId,
         unitId: unit.id,
         duration: Date.now() - startTime 

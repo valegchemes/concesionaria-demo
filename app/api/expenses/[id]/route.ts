@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { kv } from '@vercel/kv'
 
 const log = createLogger('API:Expenses')
@@ -10,8 +11,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const companyId = request.headers.get('x-company-id')
-    if (!companyId) return NextResponse.json({ error: 'No company ID' }, { status: 401 })
+    const user = await getCurrentUser()
+    const companyId = user.companyId
 
     const { id } = await params
 

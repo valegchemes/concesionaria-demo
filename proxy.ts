@@ -43,6 +43,7 @@ const PUBLIC_ROUTES = [
 // ============================================================================
 
 interface TokenPayload {
+  id?: string
   sub?: string
   email?: string
   companyId?: string
@@ -104,12 +105,13 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
       secret: process.env.NEXTAUTH_SECRET 
     }) as TokenPayload | null
 
-    if (!token?.sub || !token.companyId) {
+    const userId = token?.id ?? token?.sub
+    if (!userId || !token?.companyId) {
       return null
     }
 
     return {
-      userId: token.sub,
+      userId,
       companyId: token.companyId,
       role: token.role ?? 'SELLER',
     }

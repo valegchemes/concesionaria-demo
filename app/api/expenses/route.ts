@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
+import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { z } from 'zod'
 import { kv } from '@vercel/kv'
 
@@ -17,8 +18,8 @@ const ExpenseSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const companyId = request.headers.get('x-company-id')
-    if (!companyId) return NextResponse.json({ error: 'No company ID' }, { status: 401 })
+    const user = await getCurrentUser()
+    const companyId = user.companyId
 
     const { searchParams } = new URL(request.url)
     const month = searchParams.get('month') // e.g. "2024-05"
@@ -49,8 +50,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const companyId = request.headers.get('x-company-id')
-    if (!companyId) return NextResponse.json({ error: 'No company ID' }, { status: 401 })
+    const user = await getCurrentUser()
+    const companyId = user.companyId
 
     const body = await request.json()
 

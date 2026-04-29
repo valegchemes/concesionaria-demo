@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { authOptions } from '../auth/[...nextauth]/auth-options'
 import { hashPassword } from '@/lib/auth'
 import { createLogger } from '@/lib/shared/logger'
-import { requirePermission } from '@/lib/shared/auth-helpers'
+import { requirePermission, getCurrentUser } from '@/lib/shared/auth-helpers'
 import { createAuditLog } from '@/lib/shared/audit-log'
 import { EmailSchema, NameSchema, PasswordSchema, PhoneSchema } from '@/lib/shared/validation'
 import { z } from 'zod'
@@ -114,13 +114,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Auth via middleware headers (consistent with the rest of the API)
-    const requestingUserId = request.headers.get('x-user-id')
-    const companyId = request.headers.get('x-company-id')
-
-    if (!requestingUserId || !companyId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const currentUser = await getCurrentUser()
+    const requestingUserId = currentUser.id
+    const companyId = currentUser.companyId
 
     // RBAC check: only users with team:manage_all permission can delete users
     await requirePermission('team', 'manage_all')

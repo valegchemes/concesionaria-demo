@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { kv } from '@vercel/kv'
 import { prisma } from '@/lib/shared/prisma'
+import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { AnalyticsQuerySchema, getDateRangeFromTimeRange } from '@/lib/domains/analytics/types'
 import { successResponse, errorResponse } from '@/lib/shared/api-response'
 import { ValidationError, ForbiddenError, isAppError } from '@/lib/shared/errors'
@@ -47,28 +48,9 @@ function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string
   return `analytics:${companyId}:${type}:${timeRange}`
 }
 
-interface AuthenticatedUser {
-  userId: string
-  companyId: string
-  role: string
-}
-
 const DEFAULT_EXCHANGE_RATE_ARS_PER_USD = Number(
   process.env.DEFAULT_EXCHANGE_RATE_ARS_PER_USD ?? '1000'
 )
-
-function getAuthenticatedUser(request: NextRequest): AuthenticatedUser {
-  const userId = request.headers.get('x-user-id')
-  const companyId = request.headers.get('x-company-id')
-  const role = request.headers.get('x-user-role')
-
-  if (!userId || !companyId || !role) {
-    log.error({}, 'Headers de autenticación faltantes')
-    throw new ForbiddenError('Autenticación requerida')
-  }
-
-  return { userId, companyId, role }
-}
 
 function decimalToNumber(value: Prisma.Decimal | null | undefined): number {
   if (value === null || value === undefined) return 0
@@ -114,8 +96,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now()
 
   try {
-    const user = getAuthenticatedUser(request)
-    log.info({ userId: user.userId, companyId: user.companyId }, 'GET /api/analytics - iniciado')
+    const user = await getCurrentUser()
+    log.info({ userId: user.id, companyId: user.companyId }, 'GET /api/analytics - iniciado')
 
     const { searchParams } = new URL(request.url)
     const timeRangeParam = searchParams.get('timeRange') || '30d'
@@ -194,7 +176,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const duration = Date.now() - startTime
     log.info(
       {
-        userId: user.userId,
+        userId: user.id,
         companyId: user.companyId,
         type: typeParam,
         timeRange,
