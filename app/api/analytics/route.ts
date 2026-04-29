@@ -477,6 +477,7 @@ async function getSalesVsProfit(
   const companyExpenses = await prisma.companyExpense.findMany({
     where: {
       companyId,
+      isActive: true,
       date: { gte: start, lte: end },
     },
     select: { amountArs: true, amountUsd: true, date: true },
