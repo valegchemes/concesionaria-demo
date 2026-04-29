@@ -7,6 +7,13 @@ import { ArrowLeft, User, Car, Handshake, DollarSign, Calendar, Clock, CreditCar
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate, formatPrice } from '@/lib/utils'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface DealDetail {
   id: string
@@ -92,6 +99,35 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+
+  async function updateStatus(newStatus: string) {
+    if (!deal) return
+    if (newStatus === 'DELIVERED' && !confirm('¿Marcar como Entregado? Esto cerrará la operación y marcará la unidad como Vendida.')) return
+    if (newStatus === 'CANCELED' && !confirm('¿Seguro que deseas cancelar esta operación?')) return
+
+    try {
+      setUpdatingStatus(true)
+      const res = await fetch(`/api/deals/${deal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+      
+      if (res.ok) {
+        alert('Estado actualizado correctamente')
+        fetchDeal() // refrescar para obtener los datos actualizados
+      } else {
+        const err = await res.json()
+        alert(`Error: ${err.error || 'No se pudo actualizar'}`)
+      }
+    } catch (e) {
+      alert('Error de conexión')
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -115,9 +151,24 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">
               Operación
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${statusColors[deal.status] || 'bg-gray-100 text-gray-800'}`}>
-                {statusLabels[deal.status] || deal.status}
-              </span>
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select
+                  disabled={updatingStatus || deal.status === 'CANCELED' || deal.status === 'DELIVERED'}
+                  value={deal.status}
+                  onValueChange={updateStatus}
+                >
+                  <SelectTrigger className={`h-8 border-none font-bold uppercase tracking-wider text-xs px-3 rounded-full ${statusColors[deal.status] || 'bg-gray-100 text-gray-800'}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(statusLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key} className="text-xs uppercase font-semibold">
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </h1>
             <p className="text-sm text-slate-500 mt-1 flex items-center gap-2">
               <Calendar className="h-4 w-4" />
