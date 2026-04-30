@@ -39,6 +39,9 @@ const log = createLogger('API:Analytics')
  * Balance entre frescura de datos y protección de Neon DB.
  * Invalidar explícitamente si se necesitan datos en tiempo real.
  */
+// Versión de caché. Incrementar esto invalida TODA la caché de analíticas
+// Útil cuando se hacen cambios en la lógica de cálculo
+const CACHE_VERSION = 'analytics:v5:'
 const ANALYTICS_CACHE_TTL_SECONDS = 15 // Reducido a 15 segundos para mayor frescura
 const ANALYTICS_TIMEOUT_MS = 8000 // 8 segundos máximo para computación
 
@@ -750,15 +753,44 @@ async function getSalesVsProfit(
 
   const sortedKeys = Array.from(byPeriod.keys()).sort()
 
+  let cumulativeSalesArs = 0
+  let cumulativeSalesUsd = 0
+  let cumulativeSalesConverted = 0
+  
+  let cumulativeUnitCostsArs = 0
+  let cumulativeUnitCostsUsd = 0
+  let cumulativeUnitCostsConverted = 0
+  
+  let cumulativeOpCostsArs = 0
+  let cumulativeOpCostsUsd = 0
+  let cumulativeOpCostsConverted = 0
+  
+  let cumulativeCount = 0
+
   const timeSeries: TimeSeriesDataPoint[] = sortedKeys.map(key => {
     const entry = byPeriod.get(key)!
-    const totalCostsArs = entry.unitCostsArs + entry.opCostsArs
-    const totalCostsUsd = entry.unitCostsUsd + entry.opCostsUsd
-    const totalCostsConverted = entry.unitCostsConverted + entry.opCostsConverted
+    
+    cumulativeSalesArs += entry.salesArs
+    cumulativeSalesUsd += entry.salesUsd
+    cumulativeSalesConverted += entry.salesConverted
+    
+    cumulativeUnitCostsArs += entry.unitCostsArs
+    cumulativeUnitCostsUsd += entry.unitCostsUsd
+    cumulativeUnitCostsConverted += entry.unitCostsConverted
+    
+    cumulativeOpCostsArs += entry.opCostsArs
+    cumulativeOpCostsUsd += entry.opCostsUsd
+    cumulativeOpCostsConverted += entry.opCostsConverted
+    
+    cumulativeCount += entry.count
 
-    const profitArs = entry.salesArs - totalCostsArs
-    const profitUsd = entry.salesUsd - totalCostsUsd
-    const profitConverted = entry.salesConverted - totalCostsConverted
+    const totalCostsArs = cumulativeUnitCostsArs + cumulativeOpCostsArs
+    const totalCostsUsd = cumulativeUnitCostsUsd + cumulativeOpCostsUsd
+    const totalCostsConverted = cumulativeUnitCostsConverted + cumulativeOpCostsConverted
+
+    const profitArs = cumulativeSalesArs - totalCostsArs
+    const profitUsd = cumulativeSalesUsd - totalCostsUsd
+    const profitConverted = cumulativeSalesConverted - totalCostsConverted
 
     const labelOptions: Intl.DateTimeFormatOptions = isDaily
       ? { day: 'numeric', month: 'short' }
@@ -767,53 +799,33 @@ async function getSalesVsProfit(
     return {
       date: entry.date.toISOString(),
       label: entry.date.toLocaleDateString('es-AR', labelOptions),
-      sales: createExactMoneyAmount(entry.salesArs, entry.salesUsd, entry.salesConverted),
+      sales: createExactMoneyAmount(cumulativeSalesArs, cumulativeSalesUsd, cumulativeSalesConverted),
       profit: createExactMoneyAmount(profitArs, profitUsd, profitConverted),
       costs: createExactMoneyAmount(totalCostsArs, totalCostsUsd, totalCostsConverted),
-      unitCosts: createExactMoneyAmount(entry.unitCostsArs, entry.unitCostsUsd, entry.unitCostsConverted),
-      operationalCosts: createExactMoneyAmount(entry.opCostsArs, entry.opCostsUsd, entry.opCostsConverted),
-      dealCount: entry.count,
+      unitCosts: createExactMoneyAmount(cumulativeUnitCostsArs, cumulativeUnitCostsUsd, cumulativeUnitCostsConverted),
+      operationalCosts: createExactMoneyAmount(cumulativeOpCostsArs, cumulativeOpCostsUsd, cumulativeOpCostsConverted),
+      dealCount: cumulativeCount,
     }
   })
 
-  const totals = timeSeries.reduce(
-    (acc, point) => ({
-      sales: createExactMoneyAmount(
-        acc.sales.ars + point.sales.ars,
-        acc.sales.usd + point.sales.usd,
-        acc.sales.totalConverted + point.sales.totalConverted
-      ),
-      profit: createExactMoneyAmount(
-        acc.profit.ars + point.profit.ars,
-        acc.profit.usd + point.profit.usd,
-        acc.profit.totalConverted + point.profit.totalConverted
-      ),
-      costs: createExactMoneyAmount(
-        acc.costs.ars + point.costs.ars,
-        acc.costs.usd + point.costs.usd,
-        acc.costs.totalConverted + point.costs.totalConverted
-      ),
-      unitCosts: createExactMoneyAmount(
-        acc.unitCosts.ars + point.unitCosts.ars,
-        acc.unitCosts.usd + point.unitCosts.usd,
-        acc.unitCosts.totalConverted + point.unitCosts.totalConverted
-      ),
-      operationalCosts: createExactMoneyAmount(
-        acc.operationalCosts.ars + point.operationalCosts.ars,
-        acc.operationalCosts.usd + point.operationalCosts.usd,
-        acc.operationalCosts.totalConverted + point.operationalCosts.totalConverted
-      ),
-      dealCount: acc.dealCount + point.dealCount,
-    }),
-    {
-      sales: createExactMoneyAmount(0, 0, 0),
-      profit: createExactMoneyAmount(0, 0, 0),
-      costs: createExactMoneyAmount(0, 0, 0),
-      unitCosts: createExactMoneyAmount(0, 0, 0),
-      operationalCosts: createExactMoneyAmount(0, 0, 0),
-      dealCount: 0,
-    }
-  )
+  // Since timeSeries is now cumulative, the 'totals' is simply the last point
+  // However, to maintain the exact same response structure and math logic:
+  const totals = timeSeries.length > 0 ? {
+    sales: timeSeries[timeSeries.length - 1].sales,
+    profit: timeSeries[timeSeries.length - 1].profit,
+    costs: timeSeries[timeSeries.length - 1].costs,
+    unitCosts: timeSeries[timeSeries.length - 1].unitCosts,
+    operationalCosts: timeSeries[timeSeries.length - 1].operationalCosts,
+    dealCount: timeSeries[timeSeries.length - 1].dealCount,
+  } : {
+    sales: createExactMoneyAmount(0, 0, 0),
+    profit: createExactMoneyAmount(0, 0, 0),
+    costs: createExactMoneyAmount(0, 0, 0),
+    unitCosts: createExactMoneyAmount(0, 0, 0),
+    operationalCosts: createExactMoneyAmount(0, 0, 0),
+    dealCount: 0,
+  }
+
 
   return {
     timeSeries,
