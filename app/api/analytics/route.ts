@@ -14,7 +14,7 @@ import { ZodError } from 'zod'
 import { kv } from '@vercel/kv'
 import { prisma } from '@/lib/shared/prisma'
 import { checkDatabaseConnection } from '@/lib/prisma'
-import { getCurrentUser } from '@/lib/shared/auth-helpers'
+import { getCurrentUser, getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { AnalyticsQuerySchema, getDateRangeFromTimeRange } from '@/lib/domains/analytics/types'
 import { successResponse, errorResponse } from '@/lib/shared/api-response'
 import { ValidationError, ForbiddenError, isAppError } from '@/lib/shared/errors'
@@ -185,18 +185,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { timeRange } = validation.data
     const dateRange = getDateRangeFromTimeRange(timeRange)
 
-    // Intentar obtener usuario; si falla, usar headers inyectadas por middleware como fallback
+    // Intentar obtener usuario desde headers (rápido) o DB (lento)
     let user = null as null | { id: string; companyId: string; role?: string }
     try {
-      user = await getCurrentUser()
+      user = await getCurrentUserFromHeaders(request)
     } catch (authErr) {
-      log.warn({ error: String(authErr) }, 'getCurrentUser() falló — usando headers como fallback')
+      log.warn({ error: String(authErr) }, 'Error extrayendo usuario de headers/DB')
     }
 
-    const headerCompanyId = request.headers.get('x-company-id')
-    const headerUserId = request.headers.get('x-user-id')
-    const companyId = user?.companyId ?? headerCompanyId ?? undefined
-    const userId = user?.id ?? headerUserId ?? 'unknown'
+    const companyId = user?.companyId
+    const userId = user?.id ?? 'unknown'
 
     if (!companyId) {
       log.warn({ userId, companyId }, 'No se pudo resolver companyId, devolviendo fallback')

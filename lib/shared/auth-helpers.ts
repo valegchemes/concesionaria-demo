@@ -119,6 +119,8 @@ export async function getTenantId(): Promise<string> {
   return user.companyId
 }
 
+import { headers as nextHeaders } from 'next/headers'
+
 /**
  * Fast-path user extraction from headers injected by middleware.
  * Use this in GET endpoints to avoid DB queries for auth.
@@ -132,12 +134,12 @@ export async function getTenantId(): Promise<string> {
  *   const user = await getCurrentUserFromHeaders(request)
  *   // No DB queries! Uses headers from middleware.
  */
-export async function getCurrentUserFromHeaders(request: Request) {
-  const headers = request.headers
+export async function getCurrentUserFromHeaders(request?: Request) {
+  const headersList = nextHeaders()
 
-  const userId = headers.get('x-user-id')
-  const companyId = headers.get('x-company-id')
-  const role = headers.get('x-user-role')
+  const userId = headersList.get('x-user-id') || (request ? request.headers.get('x-user-id') : null)
+  const companyId = headersList.get('x-company-id') || (request ? request.headers.get('x-company-id') : null)
+  const role = headersList.get('x-user-role') || (request ? request.headers.get('x-user-role') : null)
 
   if (userId && companyId) {
     // Fast path: usar headers del middleware (sin consultar DB)
@@ -160,9 +162,9 @@ export async function getCurrentUserFromHeaders(request: Request) {
  * Check if request has auth headers from middleware (fast-path available).
  * Useful to decide between getCurrentUserFromHeaders vs getCurrentUser.
  */
-export function hasAuthHeaders(request: Request): boolean {
-  return !!(
-    request.headers.get('x-user-id') &&
-    request.headers.get('x-company-id')
-  )
+export function hasAuthHeaders(request?: Request): boolean {
+  const headersList = nextHeaders()
+  const hasInNext = !!(headersList.get('x-user-id') && headersList.get('x-company-id'))
+  const hasInReq = request ? !!(request.headers.get('x-user-id') && request.headers.get('x-company-id')) : false
+  return hasInNext || hasInReq
 }
