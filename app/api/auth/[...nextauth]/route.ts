@@ -18,7 +18,11 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ nextauth: string[] }> }
 ) {
-  const blocked = await applyRateLimit(request, { strict: true, path: request.nextUrl.pathname })
+  // Timeout de 2s en rate limit: si KV no responde, el login igual funciona
+  const blocked = await Promise.race([
+    applyRateLimit(request, { strict: true, path: request.nextUrl.pathname }),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+  ])
   if (blocked) {
     return blocked
   }

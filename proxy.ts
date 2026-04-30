@@ -197,7 +197,13 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
     // Rate limiting distribuido con Vercel KV (Redis)
     // Funciona correctamente en serverless: cada instancia lee/escribe el mismo contador
     const rateLimitIdentifier = getRateLimitIdentifier(request, tenant?.userId)
-    const rateLimit = await checkRateLimit(rateLimitIdentifier)
+    // Timeout de 2s: si KV no responde (no configurado en Vercel), fail-open
+    const rateLimit = await Promise.race([
+      checkRateLimit(rateLimitIdentifier),
+      new Promise<{ success: true; limit: number; remaining: number; reset: number }>(
+        (resolve) => setTimeout(() => resolve({ success: true, limit: 100, remaining: 99, reset: Date.now() + 60000 }), 2000)
+      ),
+    ])
 
     if (!rateLimit.success) {
       log.warn({ ...metadata, rateLimitIdentifier }, 'Rate limit excedido (KV)')

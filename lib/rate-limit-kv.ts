@@ -1,5 +1,15 @@
 import { kv } from '@vercel/kv'
 
+// Timeout wrapper: si KV no responde en 2s, fail-open (no bloquear tráfico)
+function withKVTimeout<T>(promise: Promise<T>, ms = 2000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('KV_TIMEOUT')), ms)
+    ),
+  ])
+}
+
 // Configuración simple y pragmática
 const MAX_REQUESTS = 100        // 100 requests por ventana
 const WINDOW_SECONDS = 60       // Ventana de 1 minuto
@@ -34,12 +44,12 @@ export async function checkRateLimit(
   const reset = windowStart + WINDOW_SECONDS
   
   try {
-    // Incrementar contador atómicamente
-    const current = await kv.incr(key)
+    // Incrementar contador atómicamente (con timeout para evitar colgar en KV no disponible)
+    const current = await withKVTimeout(kv.incr(key))
     
-    // Si es la primera request en esta ventana, setear expiración
+    // Si es la primera request en esta ventana, setear expiración (fire-and-forget)
     if (current === 1) {
-      await kv.expire(key, WINDOW_SECONDS)
+      withKVTimeout(kv.expire(key, WINDOW_SECONDS)).catch(() => {})
     }
     
     return {
@@ -80,10 +90,10 @@ export async function checkStrictRateLimit(
   const STRICT_MAX = 5  // 5 requests por 10 segundos
   
   try {
-    const current = await kv.incr(key)
+    const current = await withKVTimeout(kv.incr(key))
     
     if (current === 1) {
-      await kv.expire(key, 10)
+      withKVTimeout(kv.expire(key, 10)).catch(() => {})
     }
     
     return {
