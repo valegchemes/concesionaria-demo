@@ -260,9 +260,11 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
       },
     })
     
+    /* 
     response.headers.set('X-RateLimit-Limit', String(rateLimit.limit))
     response.headers.set('X-RateLimit-Remaining', String(rateLimit.remaining))
     response.headers.set('X-RateLimit-Reset', String(Math.ceil(rateLimit.reset / 1000)))
+    */
 
     // Logging de API request autorizado
     log.info({ ...metadata, duration: Date.now() - startTime }, 'API request autorizado')
