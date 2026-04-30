@@ -101,10 +101,14 @@ function isPublicRoute(pathname: string): boolean {
  */
 async function getTenantFromToken(request: NextRequest): Promise<{ userId: string; companyId: string; role: string } | null> {
   try {
-    const token = await getToken({ 
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET 
-    }) as TokenPayload | null
+    // Timeout de 2s: si getToken cuelga (bug común en Next.js 15/16 middleware), fallar a null
+    const token = await Promise.race([
+      getToken({ 
+        req: request,
+        secret: process.env.NEXTAUTH_SECRET 
+      }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+    ]) as TokenPayload | null
 
     const userId = token?.id ?? token?.sub
     if (!userId || !token?.companyId) {
