@@ -38,7 +38,8 @@ const log = createLogger('API:Analytics')
  * Balance entre frescura de datos y protección de Neon DB.
  * Invalidar explícitamente si se necesitan datos en tiempo real.
  */
-const ANALYTICS_CACHE_TTL_SECONDS = 900
+const ANALYTICS_CACHE_TTL_SECONDS = 60 * 5 // 5 minutos
+const ANALYTICS_TIMEOUT_MS = 8000 // 8 segundos máximo para computación
 
 /**
  * Construye la clave de caché única por tenant, tipo y rango temporal.
@@ -46,6 +47,74 @@ const ANALYTICS_CACHE_TTL_SECONDS = 900
  */
 function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string): string {
   return `analytics:${companyId}:${type}:${timeRange}`
+}
+
+/**
+ * Wrapper con timeout para proteger contra queries que toman demasiado tiempo.
+ * Si excede el timeout, rechaza con Error('ANALYTICS_TIMEOUT').
+ */
+function withTimeout<T>(promise: Promise<T>, ms: number, context: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`ANALYTICS_TIMEOUT:${context}`)), ms)
+    ),
+  ])
+}
+
+/**
+ * Crea una respuesta fallback vacía pero estructuralmente válida.
+ * Usado cuando analytics falla/timeout para no dejar la UI sin datos.
+ */
+function createFallbackResponse(type: string): unknown {
+  const now = new Date().toISOString()
+  const emptyMoney = { ars: 0, usd: 0, totalConverted: 0 }
+
+  switch (type) {
+    case 'dashboard':
+      return {
+        period: { start: now, end: now, label: 'fallback' },
+        kpis: {
+          totalRevenue: emptyMoney,
+          netProfit: emptyMoney,
+          profitMargin: 0,
+          totalDeals: 0,
+          avgDealSize: 0,
+        },
+        inventory: {
+          totalUnits: 0,
+          soldUnits: 0,
+          availableUnits: 0,
+          reservedUnits: 0,
+          avgTimeToSell: 0,
+        },
+        _fallback: true,
+        _message: 'Datos temporalmente no disponibles - intente en unos minutos',
+      }
+    case 'sales-profit':
+      return {
+        timeSeries: [],
+        totals: { sales: emptyMoney, profit: emptyMoney, costs: emptyMoney, dealCount: 0 },
+        trend: { salesGrowth: 0, profitGrowth: 0, costGrowth: 0 },
+        _fallback: true,
+      }
+    case 'top-sellers':
+      return {
+        sellers: [],
+        periodTotal: emptyMoney,
+        topPerformer: null,
+        _fallback: true,
+      }
+    case 'costs':
+      return {
+        breakdown: [],
+        totalCosts: emptyMoney,
+        byType: { operational: emptyMoney, maintenance: emptyMoney, commissions: emptyMoney },
+        _fallback: true,
+      }
+    default:
+      return { _fallback: true, _error: 'Tipo desconocido' }
+  }
 }
 
 const DEFAULT_EXCHANGE_RATE_ARS_PER_USD = Number(
@@ -145,20 +214,65 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     if (!cacheHit) {
-      // Cache MISS: computar desde Neon DB
-      switch (typeParam) {
-        case 'dashboard':
-          result = await getDashboardSummary(user.companyId, timeRange, dateRange)
-          break
-        case 'sales-profit':
-          result = await getSalesVsProfit(user.companyId, timeRange, dateRange)
-          break
-        case 'top-sellers':
-          result = await getTopSellers(user.companyId, timeRange, dateRange)
-          break
-        case 'costs':
-          result = await getCostAnalysis(user.companyId, timeRange, dateRange)
-          break
+      // Cache MISS: computar desde Neon DB con timeout protection
+      // Si excede 8 segundos, fallback a respuesta vacía para proteger la UI
+      try {
+        switch (typeParam) {
+          case 'dashboard':
+            result = await withTimeout(
+              getDashboardSummary(user.companyId, timeRange, dateRange),
+              ANALYTICS_TIMEOUT_MS,
+              'dashboard'
+            )
+            break
+          case 'sales-profit':
+            result = await withTimeout(
+              getSalesVsProfit(user.companyId, timeRange, dateRange),
+              ANALYTICS_TIMEOUT_MS,
+              'sales-profit'
+            )
+            break
+          case 'top-sellers':
+            result = await withTimeout(
+              getTopSellers(user.companyId, timeRange, dateRange),
+              ANALYTICS_TIMEOUT_MS,
+              'top-sellers'
+            )
+            break
+          case 'costs':
+            result = await withTimeout(
+              getCostAnalysis(user.companyId, timeRange, dateRange),
+              ANALYTICS_TIMEOUT_MS,
+              'costs'
+            )
+            break
+        }
+      } catch (computeError) {
+        // Timeout o error en computación → devolver fallback para no romper la UI
+        const errorMsg = computeError instanceof Error ? computeError.message : String(computeError)
+        const isTimeout = errorMsg.includes('ANALYTICS_TIMEOUT')
+
+        log.warn(
+          {
+            companyId: user.companyId,
+            type: typeParam,
+            timeRange,
+            isTimeout,
+            error: errorMsg,
+            duration: Date.now() - startTime,
+          },
+          isTimeout ? 'Analytics computation TIMEOUT - returning fallback' : 'Analytics computation ERROR - returning fallback'
+        )
+
+        result = createFallbackResponse(typeParam)
+        cacheHit = false // Marcar como no-cache para retry en próxima request
+
+        // Devolver respuesta inmediatamente con header FALLBACK
+        const fallbackResponse = successResponse(result)
+        fallbackResponse.headers.set('X-Cache', 'FALLBACK')
+        fallbackResponse.headers.set('X-Cache-TTL', '0')
+        fallbackResponse.headers.set('X-Fallback-Reason', isTimeout ? 'timeout' : 'error')
+        return fallbackResponse
       }
 
       // Guardar en KV de forma asíncrona (no bloquea la respuesta)

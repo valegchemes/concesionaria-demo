@@ -118,3 +118,51 @@ export async function getTenantId(): Promise<string> {
   const user = await getCurrentUser()
   return user.companyId
 }
+
+/**
+ * Fast-path user extraction from headers injected by middleware.
+ * Use this in GET endpoints to avoid DB queries for auth.
+ * Falls back to getCurrentUser() if headers are missing.
+ *
+ * IMPORTANT: This does NOT verify user is still active (no DB check).
+ * Only use for reads - mutations MUST use getCurrentUser() or requireAuth().
+ *
+ * @example
+ *   // In API route:
+ *   const user = await getCurrentUserFromHeaders(request)
+ *   // No DB queries! Uses headers from middleware.
+ */
+export async function getCurrentUserFromHeaders(request: Request) {
+  const headers = request.headers
+
+  const userId = headers.get('x-user-id')
+  const companyId = headers.get('x-company-id')
+  const role = headers.get('x-user-role')
+
+  if (userId && companyId) {
+    // Fast path: usar headers del middleware (sin consultar DB)
+    return {
+      id: userId,
+      companyId,
+      role: role || 'SELLER',
+      // Email y permissions no están disponibles en headers (requerirían DB)
+      email: '',
+      name: '',
+      permissions: [] as string[],
+    }
+  }
+
+  // Fallback: método tradicional (con queries DB)
+  return getCurrentUser()
+}
+
+/**
+ * Check if request has auth headers from middleware (fast-path available).
+ * Useful to decide between getCurrentUserFromHeaders vs getCurrentUser.
+ */
+export function hasAuthHeaders(request: Request): boolean {
+  return !!(
+    request.headers.get('x-user-id') &&
+    request.headers.get('x-company-id')
+  )
+}
