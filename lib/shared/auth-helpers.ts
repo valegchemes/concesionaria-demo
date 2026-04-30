@@ -10,10 +10,14 @@ import { getUserPermissions, hasPermission, type Permission } from './authz'
 export type { Permission }
 
 export async function requireAuth() {
-  const session = await getServerSession(authOptions)
+  // Timeout de 5s para getServerSession: si cuelga (bug común en Next.js 15/16), lanzar error rápido
+  const session = await Promise.race([
+    getServerSession(authOptions),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+  ])
 
   if (!session?.user?.companyId) {
-    throw new UnauthorizedError('No hay sesión activa. Por favor iniciá sesión.')
+    throw new UnauthorizedError('No hay sesión activa o expiró. Por favor iniciá sesión.')
   }
 
   const user = await prisma.user.findUnique({
@@ -135,11 +139,18 @@ import { headers as nextHeaders } from 'next/headers'
  *   // No DB queries! Uses headers from middleware.
  */
 export async function getCurrentUserFromHeaders(request?: Request) {
-  const headersList = await nextHeaders()
+  // Priorizar headers del request (inyectados por middleware en Next.js 15/16)
+  let userId = request?.headers.get('x-user-id')
+  let companyId = request?.headers.get('x-company-id')
+  let role = request?.headers.get('x-user-role')
 
-  const userId = headersList.get('x-user-id') || (request ? request.headers.get('x-user-id') : null)
-  const companyId = headersList.get('x-company-id') || (request ? request.headers.get('x-company-id') : null)
-  const role = headersList.get('x-user-role') || (request ? request.headers.get('x-user-role') : null)
+  // Si no están en el request, buscar en headers() globales (Next.js server context)
+  if (!userId || !companyId) {
+    const headersList = await nextHeaders()
+    userId = userId || headersList.get('x-user-id')
+    companyId = companyId || headersList.get('x-company-id')
+    role = role || headersList.get('x-user-role')
+  }
 
   if (userId && companyId) {
     // Fast path: usar headers del middleware (sin consultar DB)
