@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { kv } from '@vercel/kv'
 import { prisma } from '@/lib/shared/prisma'
+import { checkDatabaseConnection } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { AnalyticsQuerySchema, getDateRangeFromTimeRange } from '@/lib/domains/analytics/types'
 import { successResponse, errorResponse } from '@/lib/shared/api-response'
@@ -165,9 +166,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now()
 
   try {
-    const user = await getCurrentUser()
-    log.info({ userId: user.id, companyId: user.companyId }, 'GET /api/analytics - iniciado')
-
     const { searchParams } = new URL(request.url)
     const timeRangeParam = searchParams.get('timeRange') || '30d'
     const typeParam = searchParams.get('type') || 'dashboard'
@@ -187,6 +185,43 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { timeRange } = validation.data
     const dateRange = getDateRangeFromTimeRange(timeRange)
 
+    // Intentar obtener usuario; si falla, usar headers inyectadas por middleware como fallback
+    let user = null as null | { id: string; companyId: string; role?: string }
+    try {
+      user = await getCurrentUser()
+    } catch (authErr) {
+      log.warn({ error: String(authErr) }, 'getCurrentUser() falló — usando headers como fallback')
+    }
+
+    const headerCompanyId = request.headers.get('x-company-id')
+    const headerUserId = request.headers.get('x-user-id')
+    const companyId = user?.companyId ?? headerCompanyId ?? undefined
+    const userId = user?.id ?? headerUserId ?? 'unknown'
+
+    if (!companyId) {
+      log.warn({ userId, companyId }, 'No se pudo resolver companyId, devolviendo fallback')
+      const fallback = createFallbackResponse(typeParam)
+      const resp = successResponse(fallback)
+      resp.headers.set('X-Cache', 'FALLBACK')
+      resp.headers.set('X-Fallback-Reason', 'missing_company_id')
+      return resp
+    }
+
+    // Comprobar conexión a la base de datos antes de ejecutar consultas pesadas
+    const dbOk = await checkDatabaseConnection().catch((e) => {
+      log.error({ error: String(e) }, 'checkDatabaseConnection() falló')
+      return false
+    })
+
+    if (!dbOk) {
+      log.warn({ companyId }, 'Base de datos no disponible — devolviendo fallback')
+      const fallback = createFallbackResponse(typeParam)
+      const resp = successResponse(fallback)
+      resp.headers.set('X-Cache', 'FALLBACK')
+      resp.headers.set('X-Fallback-Reason', 'db_unavailable')
+      return resp
+    }
+
     // ── Capa de caché (cache-aside pattern) ──────────────────────────────────
     // La clave incluye companyId para garantizar aislamiento de tenant.
     // VALID types guard para el switch a continuación.
@@ -197,7 +232,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       })
     }
 
-    const cacheKey = getAnalyticsCacheKey(user.companyId, typeParam, timeRange)
+    const cacheKey = getAnalyticsCacheKey(companyId, typeParam, timeRange)
     let cacheHit = false
     let result: unknown
 
@@ -220,28 +255,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         switch (typeParam) {
           case 'dashboard':
             result = await withTimeout(
-              getDashboardSummary(user.companyId, timeRange, dateRange),
+              getDashboardSummary(companyId, timeRange, dateRange),
               ANALYTICS_TIMEOUT_MS,
               'dashboard'
             )
             break
           case 'sales-profit':
             result = await withTimeout(
-              getSalesVsProfit(user.companyId, timeRange, dateRange),
+              getSalesVsProfit(companyId, timeRange, dateRange),
               ANALYTICS_TIMEOUT_MS,
               'sales-profit'
             )
             break
           case 'top-sellers':
             result = await withTimeout(
-              getTopSellers(user.companyId, timeRange, dateRange),
+              getTopSellers(companyId, timeRange, dateRange),
               ANALYTICS_TIMEOUT_MS,
               'top-sellers'
             )
             break
           case 'costs':
             result = await withTimeout(
-              getCostAnalysis(user.companyId, timeRange, dateRange),
+              getCostAnalysis(companyId, timeRange, dateRange),
               ANALYTICS_TIMEOUT_MS,
               'costs'
             )
@@ -290,8 +325,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const duration = Date.now() - startTime
     log.info(
       {
-        userId: user.id,
-        companyId: user.companyId,
+        userId,
+        companyId,
         type: typeParam,
         timeRange,
         duration,
@@ -392,9 +427,9 @@ async function getDashboardSummary(
   const dealIds = dealsWithUnits.map(d => d.id)
   const dealCosts = dealIds.length > 0
     ? await prisma.dealCostItem.aggregate({
-        where: { dealId: { in: dealIds } },
-        _sum: { amountArs: true, amountUsd: true },
-      })
+      where: { dealId: { in: dealIds } },
+      _sum: { amountArs: true, amountUsd: true },
+    })
     : { _sum: { amountArs: null, amountUsd: null } }
 
   // Query 3: Costos adicionales de unidades (mantenimiento, reparaciones, etc.)
