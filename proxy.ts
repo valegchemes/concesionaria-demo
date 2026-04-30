@@ -198,10 +198,8 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
 
   // 3. Proteger rutas API
   if (pathname.startsWith('/api/')) {
-    // Rate limiting distribuido con Vercel KV (Redis)
-    // Funciona correctamente en serverless: cada instancia lee/escribe el mismo contador
+    /* 
     const rateLimitIdentifier = getRateLimitIdentifier(request, tenant?.userId)
-    // Timeout de 2s: si KV no responde (no configurado en Vercel), fail-open
     const rateLimit = await Promise.race([
       checkRateLimit(rateLimitIdentifier),
       new Promise<{ success: true; limit: number; remaining: number; reset: number }>(
@@ -210,27 +208,28 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
     ])
 
     if (!rateLimit.success) {
-      log.warn({ ...metadata, rateLimitIdentifier }, 'Rate limit excedido (KV)')
-
+      log.warn({ ...metadata, rateLimitIdentifier }, 'Rate limit excedido')
       return addSecurityHeaders(
         NextResponse.json(
-          {
-            success: false,
+          { 
+            success: false, 
             error: 'Too many requests',
             code: 'RATE_LIMIT_EXCEEDED',
-            retryAfter: Math.ceil((rateLimit.reset - Date.now()) / 1000),
+            retryAfter: Math.ceil((rateLimit.reset - Date.now()) / 1000)
           },
-          {
+          { 
             status: 429,
             headers: {
               'X-RateLimit-Limit': String(rateLimit.limit),
-              'X-RateLimit-Remaining': '0',
+              'X-RateLimit-Remaining': String(rateLimit.remaining),
               'X-RateLimit-Reset': String(Math.ceil(rateLimit.reset / 1000)),
-            },
+              'Retry-After': String(Math.ceil((rateLimit.reset - Date.now()) / 1000))
+            }
           }
         )
       )
     }
+    */
 
     // Verificar autenticación para rutas API protegidas
     if (!tenant) {
