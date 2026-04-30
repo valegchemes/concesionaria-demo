@@ -41,7 +41,7 @@ const log = createLogger('API:Analytics')
  */
 // Versión de caché. Incrementar esto invalida TODA la caché de analíticas
 // Útil cuando se hacen cambios en la lógica de cálculo
-const CACHE_VERSION = 'analytics:v5:'
+const CACHE_VERSION = 'analytics:v6:'
 const ANALYTICS_CACHE_TTL_SECONDS = 15 // Reducido a 15 segundos para mayor frescura
 const ANALYTICS_TIMEOUT_MS = 8000 // 8 segundos máximo para computación
 
@@ -60,7 +60,8 @@ function addNoCacheHeaders(response: NextResponse): NextResponse {
  * Construye la clave de caché única por tenant, tipo y rango temporal.
  */
 function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string): string {
-  return `analytics:v4:${companyId}:${type}:${timeRange}` // v4 para invalidar caché vieja con bug de unit costs
+  // CACHE_VERSION se usa como prefijo para invalidar todas las claves al hacer un bump de versión
+  return `${CACHE_VERSION}${companyId}:${type}:${timeRange}`
 }
 
 /**

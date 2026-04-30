@@ -162,7 +162,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 // MIDDLEWARE PRINCIPAL
 // ============================================================================
 
-export default async function proxy(request: NextRequest): Promise<NextResponse> {
+export default async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const startTime = Date.now()
 
