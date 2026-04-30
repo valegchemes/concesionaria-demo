@@ -13,7 +13,7 @@ export const maxDuration = 30
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { prisma } from '@/lib/shared/prisma'
-import { getCurrentUser } from '@/lib/shared/auth-helpers'
+import { getCurrentUser, getCurrentUserFromHeaders, hasAuthHeaders } from '@/lib/shared/auth-helpers'
 import { CreateUnitSchema } from '@/lib/shared/validation'
 import { 
   successResponse, 
@@ -100,9 +100,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const startTime = Date.now()
   
   try {
-    // 1. Autenticación
-    const user = await getCurrentUser()
-    log.debug({ userId: user.id, companyId: user.companyId }, 'GET /api/units - iniciado')
+    // 1. Autenticación (fast-path: headers del middleware, 0 queries DB)
+    const user = await getCurrentUserFromHeaders(request)
+    log.debug({ userId: user.id, companyId: user.companyId, source: hasAuthHeaders(request) ? 'headers' : 'fallback' }, 'GET /api/units - iniciado')
 
     // 2. Parseo de query params
     const { searchParams } = new URL(request.url)

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
-import { getCurrentUser } from '@/lib/shared/auth-helpers'
+import { getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { createLogger } from '@/lib/shared/logger'
 import type { Prisma } from '@prisma/client'
@@ -21,7 +21,8 @@ export interface SearchResult {
 }
 
 export const GET = withErrorHandling(async (request: NextRequest) => {
-  const user = await getCurrentUser()
+  // Fast-path: usar headers del middleware (0 queries DB en lugar de 2)
+  const user = await getCurrentUserFromHeaders(request)
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')?.trim()
 

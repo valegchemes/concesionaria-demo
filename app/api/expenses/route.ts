@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
-import { getCurrentUser } from '@/lib/shared/auth-helpers'
+import { getCurrentUser, getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { z } from 'zod'
 import { kv } from '@vercel/kv'
 
@@ -18,7 +18,8 @@ const ExpenseSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    // Fast-path: headers del middleware (0 queries DB)
+    const user = await getCurrentUserFromHeaders(request)
     const companyId = user.companyId
 
     const { searchParams } = new URL(request.url)

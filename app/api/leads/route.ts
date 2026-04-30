@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse, paginatedResponse } from '@/lib/shared/api-response'
-import { getCurrentUser } from '@/lib/shared/auth-helpers'
+import { getCurrentUser, getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { parsePagination } from '@/lib/shared/pagination'
 import { CreateLeadSchema } from '@/lib/shared/validation'
 import { leadService } from '@/lib/domains/leads/service'
@@ -16,7 +16,9 @@ export const maxDuration = 30
  * Query params: page, limit, status, assignedToId
  */
 export const GET = withErrorHandling(async (request: NextRequest) => {
-  const user = await getCurrentUser()
+  // Fast-path: headers del middleware (0 queries DB)
+  // Nota: permissions vacío - leadService.list debe manejar RBAC fallback
+  const user = await getCurrentUserFromHeaders(request)
 
   const { searchParams } = new URL(request.url)
   const pagination = parsePagination({
