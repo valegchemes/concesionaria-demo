@@ -39,15 +39,25 @@ const log = createLogger('API:Analytics')
  * Balance entre frescura de datos y protección de Neon DB.
  * Invalidar explícitamente si se necesitan datos en tiempo real.
  */
-const ANALYTICS_CACHE_TTL_SECONDS = 60 * 5 // 5 minutos
+const ANALYTICS_CACHE_TTL_SECONDS = 15 // Reducido a 15 segundos para mayor frescura
 const ANALYTICS_TIMEOUT_MS = 8000 // 8 segundos máximo para computación
 
 /**
+ * Agrega headers para evitar que el navegador cachee la respuesta de la API.
+ */
+function addNoCacheHeaders(response: NextResponse): NextResponse {
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  response.headers.set('Pragma', 'no-cache')
+  response.headers.set('Expires', '0')
+  response.headers.set('Surrogate-Control', 'no-store')
+  return response
+}
+
+/**
  * Construye la clave de caché única por tenant, tipo y rango temporal.
- * Ejemplo: "analytics:comp_abc123:dashboard:30d"
  */
 function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string): string {
-  return `analytics:${companyId}:${type}:${timeRange}`
+  return `analytics:v3:${companyId}:${type}:${timeRange}` // v3 para invalidar caché vieja
 }
 
 /**
@@ -202,7 +212,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const resp = successResponse(fallback)
       resp.headers.set('X-Cache', 'FALLBACK')
       resp.headers.set('X-Fallback-Reason', 'missing_company_id')
-      return resp
+      return addNoCacheHeaders(resp)
     }
 
     // Comprobar conexión a la base de datos antes de ejecutar consultas pesadas
@@ -217,7 +227,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       const resp = successResponse(fallback)
       resp.headers.set('X-Cache', 'FALLBACK')
       resp.headers.set('X-Fallback-Reason', 'db_unavailable')
-      return resp
+      return addNoCacheHeaders(resp)
     }
 
     // ── Capa de caché (cache-aside pattern) ──────────────────────────────────
@@ -306,7 +316,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         fallbackResponse.headers.set('X-Cache', 'FALLBACK')
         fallbackResponse.headers.set('X-Cache-TTL', '0')
         fallbackResponse.headers.set('X-Fallback-Reason', isTimeout ? 'timeout' : 'error')
-        return fallbackResponse
+        return addNoCacheHeaders(fallbackResponse)
       }
 
       // Guardar en KV de forma asíncrona (no bloquea la respuesta)
@@ -338,7 +348,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // Header de observabilidad: permite ver en Vercel logs si se usó caché
     response.headers.set('X-Cache', cacheHit ? 'HIT' : 'MISS')
     response.headers.set('X-Cache-TTL', String(ANALYTICS_CACHE_TTL_SECONDS))
-    return response
+    return addNoCacheHeaders(response)
 
   } catch (error) {
     log.error(
