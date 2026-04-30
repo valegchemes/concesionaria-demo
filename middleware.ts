@@ -128,21 +128,29 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
 /**
  * Añade headers de seguridad estándar
  */
-const AUTH_COOKIE_NAMES = [
-  '__Secure-next-auth.session-token',
-  'next-auth.session-token',
-  '__Secure-next-auth.callback-url',
-  'next-auth.callback-url',
-  '__Secure-next-auth.csrf-token',
-  'next-auth.csrf-token',
-]
-
 function hasNextAuthCookies(request: NextRequest): boolean {
-  return AUTH_COOKIE_NAMES.some((name) => !!request.cookies.get(name)?.value)
+  return Array.from(request.cookies, ([name]) => name)
+    .some((name) =>
+      name.startsWith('next-auth.') || name.startsWith('__Secure-next-auth.')
+    )
 }
 
-function clearNextAuthCookies(response: NextResponse): NextResponse {
-  for (const name of AUTH_COOKIE_NAMES) {
+function clearNextAuthCookies(response: NextResponse, request?: NextRequest): NextResponse {
+  const cookiesToClear = request
+    ? Array.from(request.cookies, ([name]) => name)
+        .filter((name) => name.startsWith('next-auth.') || name.startsWith('__Secure-next-auth.'))
+    : [
+        '__Secure-next-auth.session-token',
+        'next-auth.session-token',
+        '__Secure-next-auth.callback-url',
+        'next-auth.callback-url',
+        '__Secure-next-auth.csrf-token',
+        'next-auth.csrf-token',
+      ]
+
+  const uniqueNames = Array.from(new Set(cookiesToClear))
+
+  for (const name of uniqueNames) {
     response.cookies.set({
       name,
       value: '',
@@ -214,7 +222,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
     const response = NextResponse.next()
 
     if ((pathname === '/login' || pathname === '/register') && hasNextAuthCookies(request)) {
-      clearNextAuthCookies(response)
+      clearNextAuthCookies(response, request)
     }
 
     return addSecurityHeaders(response)
@@ -277,7 +285,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
       )
 
       if (hasNextAuthCookies(request)) {
-        clearNextAuthCookies(response)
+        clearNextAuthCookies(response, request)
       }
 
       return addSecurityHeaders(response)
@@ -318,7 +326,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
 
       const response = NextResponse.redirect(loginUrl)
       if (hasNextAuthCookies(request)) {
-        clearNextAuthCookies(response)
+        clearNextAuthCookies(response, request)
       }
 
       return addSecurityHeaders(response)
