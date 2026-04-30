@@ -18,7 +18,7 @@ async function getDashboardData(companyId: string) {
     activeDeals,
     completedDeals,
     canceledDeals,
-  ] = await Promise.all([
+  ] = await prisma.$transaction([
     prisma.lead.count({ where: { companyId } }),
     prisma.lead.count({
       where: { companyId, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } },

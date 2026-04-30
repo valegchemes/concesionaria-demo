@@ -392,26 +392,49 @@ async function getDashboardSummary(
 ): Promise<DashboardSummary> {
   const { start, end, label } = dateRange
 
-  // Query 1: Deals completados con su unidad (para calcular costo de compra real)
-  const dealsWithUnits = await prisma.deal.findMany({
-    where: {
-      companyId,
-      status: 'DELIVERED',
-      updatedAt: { gte: start, lte: end },
-    },
-    select: {
-      id: true,
-      finalPrice: true,
-      finalPriceCurrency: true,
-      exchangeRate: true,
-      unit: {
-        select: {
-          acquisitionCostArs: true,
-          acquisitionCostUsd: true,
+  // Para optimizar las consultas y evitar agotar el pool de Neon DB,
+  // ejecutamos todo dentro de una única transacción (1 conexión)
+  const [dealsWithUnits, unitCosts, inventoryMetrics, companyExpenses] = await prisma.$transaction([
+    prisma.deal.findMany({
+      where: {
+        companyId,
+        status: 'DELIVERED',
+        updatedAt: { gte: start, lte: end },
+      },
+      select: {
+        id: true,
+        finalPrice: true,
+        finalPriceCurrency: true,
+        exchangeRate: true,
+        unit: {
+          select: {
+            acquisitionCostArs: true,
+            acquisitionCostUsd: true,
+          },
         },
       },
-    },
-  })
+    }),
+    prisma.unitCostItem.aggregate({
+      where: {
+        unit: { companyId },
+        date: { gte: start, lte: end },
+      },
+      _sum: { amountArs: true, amountUsd: true },
+    }),
+    prisma.unit.groupBy({
+      by: ['status'],
+      where: { companyId, isActive: true },
+      _count: { _all: true },
+    }),
+    prisma.companyExpense.aggregate({
+      where: {
+        companyId,
+        isActive: true,
+        date: { gte: start, lte: end },
+      },
+      _sum: { amountArs: true, amountUsd: true },
+    }),
+  ])
 
   const totalDealCount = dealsWithUnits.length
 
@@ -436,6 +459,7 @@ async function getDashboardSummary(
   )
 
   // Query 2: Costos adicionales de deals (comisiones, gastos de cierre)
+  // Nota: Esto no se puede meter en la misma transacción inicial fácilmente porque depende de dealIds
   const dealIds = dealsWithUnits.map(d => d.id)
   const dealCosts = dealIds.length > 0
     ? await prisma.dealCostItem.aggregate({
@@ -443,32 +467,6 @@ async function getDashboardSummary(
       _sum: { amountArs: true, amountUsd: true },
     })
     : { _sum: { amountArs: null, amountUsd: null } }
-
-  // Query 3: Costos adicionales de unidades (mantenimiento, reparaciones, etc.)
-  const unitCosts = await prisma.unitCostItem.aggregate({
-    where: {
-      date: { gte: start, lte: end },
-      unit: { companyId },
-    },
-    _sum: { amountArs: true, amountUsd: true },
-  })
-
-  // Query 4: Inventario actual
-  const inventoryMetrics = await prisma.unit.groupBy({
-    by: ['status'],
-    where: { companyId, isActive: true },
-    _count: { _all: true },
-  })
-
-  // Query 5: Gastos fijos/mantenimiento (CompanyExpense)
-  const companyExpenses = await prisma.companyExpense.aggregate({
-    where: {
-      companyId,
-      isActive: true,
-      date: { gte: start, lte: end },
-    },
-    _sum: { amountArs: true, amountUsd: true },
-  })
 
   // Cálculo correcto de costos totales
   const totalCostsArs =
