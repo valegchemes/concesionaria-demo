@@ -32,10 +32,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const withTimeout = (promise: Promise<any>, ms: number) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))
+  ])
+
   // 1. DB Check
   try {
     const start = Date.now()
-    await prisma.$queryRaw`SELECT 1`
+    await withTimeout(prisma.$queryRaw`SELECT 1`, 3000)
     results.checks.database = `OK (${Date.now() - start}ms)`
   } catch (e) {
     results.checks.database = `ERROR: ${e instanceof Error ? e.message : String(e)}`
@@ -44,8 +49,8 @@ export async function GET(request: NextRequest) {
   // 2. KV Check
   try {
     const start = Date.now()
-    await kv.set('diag_test', start)
-    const val = await kv.get('diag_test')
+    await withTimeout(kv.set('diag_test', start), 3000)
+    const val = await withTimeout(kv.get('diag_test'), 3000)
     results.checks.kv = `OK (${Date.now() - start}ms, val=${val})`
   } catch (e) {
     results.checks.kv = `ERROR: ${e instanceof Error ? e.message : String(e)}`
