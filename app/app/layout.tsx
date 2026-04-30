@@ -7,6 +7,8 @@ import { AppHeader } from '@/components/app-header'
 import { GlobalBackground } from '@/components/global-background'
 import { prisma } from '@/lib/shared/prisma'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AppLayout({
   children,
 }: {

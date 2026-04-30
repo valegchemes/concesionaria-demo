@@ -128,6 +128,34 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
 /**
  * Añade headers de seguridad estándar
  */
+const AUTH_COOKIE_NAMES = [
+  '__Secure-next-auth.session-token',
+  'next-auth.session-token',
+  '__Secure-next-auth.callback-url',
+  'next-auth.callback-url',
+  '__Secure-next-auth.csrf-token',
+  'next-auth.csrf-token',
+]
+
+function hasNextAuthCookies(request: NextRequest): boolean {
+  return AUTH_COOKIE_NAMES.some((name) => !!request.cookies.get(name)?.value)
+}
+
+function clearNextAuthCookies(response: NextResponse): NextResponse {
+  for (const name of AUTH_COOKIE_NAMES) {
+    response.cookies.set({
+      name,
+      value: '',
+      path: '/',
+      expires: new Date(0),
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    })
+  }
+
+  return response
+}
+
 function addSecurityHeaders(response: NextResponse): NextResponse {
   // Prevenir clickjacking
   response.headers.set('X-Frame-Options', 'DENY')
@@ -234,16 +262,20 @@ export default async function middleware(request: NextRequest): Promise<NextResp
     if (!tenant) {
       log.warn({ ...metadata }, 'Acceso no autorizado a API')
       
-      return addSecurityHeaders(
-        NextResponse.json(
-          { 
-            success: false, 
-            error: 'Authentication required',
-            code: 'UNAUTHORIZED',
-          },
-          { status: 401 }
-        )
+      const response = NextResponse.json(
+        { 
+          success: false, 
+          error: 'Authentication required',
+          code: 'UNAUTHORIZED',
+        },
+        { status: 401 }
       )
+
+      if (hasNextAuthCookies(request)) {
+        clearNextAuthCookies(response)
+      }
+
+      return addSecurityHeaders(response)
     }
 
     // Crear request headers con la info del tenant para las API routes
@@ -278,8 +310,13 @@ export default async function middleware(request: NextRequest): Promise<NextResp
       
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)
-      
-      return NextResponse.redirect(loginUrl)
+
+      const response = NextResponse.redirect(loginUrl)
+      if (hasNextAuthCookies(request)) {
+        clearNextAuthCookies(response)
+      }
+
+      return addSecurityHeaders(response)
     }
 
     // Añadir headers de tenant al request para Server Components
