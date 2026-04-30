@@ -57,7 +57,7 @@ function addNoCacheHeaders(response: NextResponse): NextResponse {
  * Construye la clave de caché única por tenant, tipo y rango temporal.
  */
 function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string): string {
-  return `analytics:v3:${companyId}:${type}:${timeRange}` // v3 para invalidar caché vieja
+  return `analytics:v4:${companyId}:${type}:${timeRange}` // v4 para invalidar caché vieja con bug de unit costs
 }
 
 /**
@@ -630,6 +630,14 @@ async function getSalesVsProfit(
     select: { amountArs: true, amountUsd: true, date: true },
   })
 
+  const unitCosts = await prisma.unitCostItem.findMany({
+    where: {
+      date: { gte: start, lte: end },
+      unit: { companyId },
+    },
+    select: { amountArs: true, amountUsd: true, date: true },
+  })
+
   for (const exp of companyExpenses) {
     const d = exp.date
     const key = isDaily
@@ -663,6 +671,42 @@ async function getSalesVsProfit(
       opCostsArs: existing.opCostsArs + costArs,
       opCostsUsd: existing.opCostsUsd + costUsd,
       opCostsConverted: existing.opCostsConverted + totalExpense.totalConverted,
+    })
+  }
+
+  for (const uc of unitCosts) {
+    const d = uc.date
+    const key = isDaily
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+
+    const existingDate = isDaily
+      ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      : new Date(d.getFullYear(), d.getMonth(), 1)
+
+    const existing = byPeriod.get(key) || {
+      salesArs: 0,
+      salesUsd: 0,
+      salesConverted: 0,
+      unitCostsArs: 0,
+      unitCostsUsd: 0,
+      unitCostsConverted: 0,
+      opCostsArs: 0,
+      opCostsUsd: 0,
+      opCostsConverted: 0,
+      count: 0,
+      date: existingDate,
+    }
+
+    const costArs = decimalToNumber(uc.amountArs)
+    const costUsd = decimalToNumber(uc.amountUsd)
+    const totalCost = createMoneyAmount(costArs, costUsd)
+
+    byPeriod.set(key, {
+      ...existing,
+      unitCostsArs: existing.unitCostsArs + costArs,
+      unitCostsUsd: existing.unitCostsUsd + costUsd,
+      unitCostsConverted: existing.unitCostsConverted + totalCost.totalConverted,
     })
   }
 
