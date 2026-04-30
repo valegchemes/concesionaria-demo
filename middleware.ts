@@ -3,15 +3,14 @@
  * - Protección de rutas API y App
  * - Validación de sesión con NextAuth
  * - Multi-tenancy con tenantId obligatorio
- * - Rate limiting básico
- * - Headers de seguridad
+ * - Headers de seguridad (No-Cache habilitado)
  * - Logging de requests
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-// Inline logger — safe for Edge Runtime (no pino/require)
+// Inline logger — safe for Edge Runtime
 const log = {
   debug: (meta: object, msg: string) => console.debug('[Middleware]', msg, meta),
   info:  (meta: object, msg: string) => console.info('[Middleware]', msg, meta),
@@ -35,9 +34,6 @@ const PUBLIC_ROUTES = [
   '/catalog',
   '/api/diag',
 ]
-
-// Rate limiting: configurado en lib/rate-limit-kv.ts (Vercel KV / Redis)
-// Valores por defecto: 100 req / 60s por IP o userId
 
 // ============================================================================
 // TIPOS ESTRUCTURADOS
@@ -64,27 +60,17 @@ interface RequestMetadata {
   [key: string]: string | number | boolean | object | undefined | null
 }
 
-
-
 // ============================================================================
-// RATE LIMITING — Vercel KV (Redis distribuido, funciona en serverless)
+// UTILIDADES DE SEGURIDAD Y SESIÓN
 // ============================================================================
 
 /**
- * Obtiene el identificador único para rate limiting.
- * Prioriza userId (autenticado) sobre IP, para evitar que una IP compartida
- * (ej: oficina o NAT) bloquee a múltiples usuarios legítimos.
+ * Resuelve NEXTAUTH_URL de forma robusta, manejando el error común de Vercel
+ * donde se guarda el literal "https://$VERCEL_URL" en el dashboard.
  */
-function getRateLimitIdentifier(request: NextRequest, userId?: string): string {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-             request.headers.get('x-real-ip') ??
-             'unknown'
-  return userId ? `user:${userId}` : `ip:${ip}`
+function getResolvedSecret(): string | undefined {
+  return process.env.NEXTAUTH_SECRET
 }
-
-// ============================================================================
-// UTILIDADES DE SEGURIDAD
-// ============================================================================
 
 /**
  * Verifica si una ruta es pública
@@ -101,11 +87,13 @@ function isPublicRoute(pathname: string): boolean {
  */
 async function getTenantFromToken(request: NextRequest): Promise<{ userId: string; companyId: string; role: string } | null> {
   try {
-    // Timeout de 2s: si getToken cuelga (bug común en Next.js 15/16 middleware), fallar a null
+    const secret = getResolvedSecret()
+    
+    // Timeout de 2s: si getToken cuelga, fallar a null
     const token = await Promise.race([
       getToken({ 
         req: request,
-        secret: process.env.NEXTAUTH_SECRET 
+        secret
       }),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
     ]) as TokenPayload | null
@@ -126,9 +114,6 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
   }
 }
 
-/**
- * Añade headers de seguridad estándar
- */
 function hasNextAuthCookies(request: NextRequest): boolean {
   return Array.from(request.cookies, ([name]) => name)
     .some((name) =>
@@ -149,9 +134,7 @@ function clearNextAuthCookies(response: NextResponse, request?: NextRequest): Ne
         'next-auth.csrf-token',
       ]
 
-  const uniqueNames = Array.from(new Set(cookiesToClear))
-
-  for (const name of uniqueNames) {
+  for (const name of Array.from(new Set(cookiesToClear))) {
     response.cookies.set({
       name,
       value: '',
@@ -161,36 +144,27 @@ function clearNextAuthCookies(response: NextResponse, request?: NextRequest): Ne
       secure: process.env.NODE_ENV === 'production',
     })
   }
-
   return response
 }
 
+/**
+ * Añade headers de seguridad y deshabilita cache para asegurar frescura de datos
+ */
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  // Prevenir clickjacking
+  // Seguridad estándar
   response.headers.set('X-Frame-Options', 'DENY')
-  
-  // Prevenir MIME sniffing
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  
-  // Política de referencia
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   
-  // Política de permisos
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  
-  // Desactivar prefetch DNS para proteger privacidad
-  response.headers.set('X-DNS-Prefetch-Control', 'off')
-  
-  // Prevenir carga mixta y forzar HTTPS en producción
+  // Deshabilitar cache del navegador (Solución a "no se almacene cache")
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  response.headers.set('Pragma', 'no-cache')
+  response.headers.set('Expires', '0')
+  response.headers.set('Surrogate-Control', 'no-store')
+
   if (process.env.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   }
-
-  // CSP restringida para el frontend
-  response.headers.set(
-    'Content-Security-Policy',
-    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
-  )
 
   return response
 }
@@ -203,172 +177,79 @@ export default async function middleware(request: NextRequest): Promise<NextResp
   const { pathname } = request.nextUrl
   const startTime = Date.now()
 
-  // Logging de request
-  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 
-                   request.headers.get('x-real-ip') ?? 
-                   'unknown'
-  
-  const metadata: RequestMetadata = {
-    path: pathname,
-    method: request.method,
-    ip: clientIp,
-    userAgent: request.headers.get('user-agent') ?? 'unknown',
-    timestamp: new Date().toISOString(),
-  }
-
-  log.debug(metadata, 'Request recibido')
-
-  // 1. Verificar rutas públicas (no requieren auth)
+  // 1. Verificar rutas públicas
   if (isPublicRoute(pathname)) {
     const response = NextResponse.next()
-
     if ((pathname === '/login' || pathname === '/register') && hasNextAuthCookies(request)) {
       clearNextAuthCookies(response, request)
     }
-
     return addSecurityHeaders(response)
   }
 
   // 2. Extraer información del usuario autenticado
   const tenant = await getTenantFromToken(request)
 
-  if (tenant) {
-    metadata.userId = tenant.userId
-    metadata.companyId = tenant.companyId
+  const metadata: RequestMetadata = {
+    path: pathname,
+    method: request.method,
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown',
+    userAgent: request.headers.get('user-agent') ?? 'unknown',
+    timestamp: new Date().toISOString(),
+    userId: tenant?.userId,
+    companyId: tenant?.companyId,
   }
 
   // 3. Proteger rutas API
   if (pathname.startsWith('/api/')) {
-    /* 
-    const rateLimitIdentifier = getRateLimitIdentifier(request, tenant?.userId)
-    const rateLimit = await Promise.race([
-      checkRateLimit(rateLimitIdentifier),
-      new Promise<{ success: true; limit: number; remaining: number; reset: number }>(
-        (resolve) => setTimeout(() => resolve({ success: true, limit: 100, remaining: 99, reset: Date.now() + 60000 }), 2000)
-      ),
-    ])
-
-    if (!rateLimit.success) {
-      log.warn({ ...metadata, rateLimitIdentifier }, 'Rate limit excedido')
-      return addSecurityHeaders(
-        NextResponse.json(
-          { 
-            success: false, 
-            error: 'Too many requests',
-            code: 'RATE_LIMIT_EXCEEDED',
-            retryAfter: Math.ceil((rateLimit.reset - Date.now()) / 1000)
-          },
-          { 
-            status: 429,
-            headers: {
-              'X-RateLimit-Limit': String(rateLimit.limit),
-              'X-RateLimit-Remaining': String(rateLimit.remaining),
-              'X-RateLimit-Reset': String(Math.ceil(rateLimit.reset / 1000)),
-              'Retry-After': String(Math.ceil((rateLimit.reset - Date.now()) / 1000))
-            }
-          }
-        )
-      )
-    }
-    */
-
-    // Verificar autenticación para rutas API protegidas
     if (!tenant) {
-      log.warn({ ...metadata }, 'Acceso no autorizado a API')
-      
+      log.warn(metadata, 'Acceso no autorizado a API')
       const response = NextResponse.json(
-        { 
-          success: false, 
-          error: 'Authentication required',
-          code: 'UNAUTHORIZED',
-        },
+        { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' },
         { status: 401 }
       )
-
-      if (hasNextAuthCookies(request)) {
-        clearNextAuthCookies(response, request)
-      }
-
-      return addSecurityHeaders(response)
+      return addSecurityHeaders(clearNextAuthCookies(response, request))
     }
 
-    // Crear request headers con la info del tenant para las API routes
+    // Inyectar headers de tenant
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-user-id', tenant.userId)
     requestHeaders.set('x-company-id', tenant.companyId)
     requestHeaders.set('x-user-role', tenant.role)
 
-    // Crear response con headers de rate limit y los request headers inyectados
     const response = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
+      request: { headers: requestHeaders },
     })
     
-    /* 
-    response.headers.set('X-RateLimit-Limit', String(rateLimit.limit))
-    response.headers.set('X-RateLimit-Remaining', String(rateLimit.remaining))
-    response.headers.set('X-RateLimit-Reset', String(Math.ceil(rateLimit.reset / 1000)))
-    */
-
-    // Logging de API request autorizado
     log.info({ ...metadata, duration: Date.now() - startTime }, 'API request autorizado')
-
     return addSecurityHeaders(response)
   }
 
   // 4. Proteger rutas de la aplicación (/app/*)
   if (pathname.startsWith('/app/') || pathname === '/app') {
     if (!tenant) {
-      log.warn({ ...metadata }, 'Redirigiendo a login - sesión no válida')
-      
+      log.warn(metadata, 'Redirigiendo a login - sesión no válida')
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)
-
       const response = NextResponse.redirect(loginUrl)
-      if (hasNextAuthCookies(request)) {
-        clearNextAuthCookies(response, request)
-      }
-
-      return addSecurityHeaders(response)
+      return addSecurityHeaders(clearNextAuthCookies(response, request))
     }
 
-    // Añadir headers de tenant al request para Server Components
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-user-id', tenant.userId)
     requestHeaders.set('x-company-id', tenant.companyId)
     requestHeaders.set('x-user-role', tenant.role)
-    requestHeaders.set('x-pathname', pathname)
 
     const response = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
+      request: { headers: requestHeaders },
     })
-
     return addSecurityHeaders(response)
   }
 
-  // 5. Rutas restantes
-  const response = NextResponse.next()
-  return addSecurityHeaders(response)
+  return addSecurityHeaders(NextResponse.next())
 }
-
-// ============================================================================
-// CONFIGURACIÓN DEL MATCHER
-// ============================================================================
 
 export const config = {
   matcher: [
-    /*
-     * Solo interceptar:
-     * - /api/* (excepto /api/auth que es público y maneja su propia auth)
-     * - /app/* (rutas protegidas de la aplicación)
-     *
-     * EXCLUIR explícitamente:
-     * - /_next/* (chunks JS/CSS del runtime de Next.js)
-     * - /favicon.ico, imágenes estáticas, etc.
-     */
     '/api/((?!auth|webhooks|diag).*)',
     '/app/:path*',
     '/app',
@@ -376,5 +257,3 @@ export const config = {
     '/register',
   ],
 }
-
-
