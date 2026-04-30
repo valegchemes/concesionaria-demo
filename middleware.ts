@@ -33,6 +33,7 @@ const PUBLIC_ROUTES = [
   '/favicon.ico',
   '/public',
   '/catalog',
+  '/api/diag',
 ]
 
 // Rate limiting: configurado en lib/rate-limit-kv.ts (Vercel KV / Redis)
