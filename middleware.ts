@@ -212,6 +212,11 @@ export default async function middleware(request: NextRequest): Promise<NextResp
   // 1. Verificar rutas públicas (no requieren auth)
   if (isPublicRoute(pathname)) {
     const response = NextResponse.next()
+
+    if ((pathname === '/login' || pathname === '/register') && hasNextAuthCookies(request)) {
+      clearNextAuthCookies(response)
+    }
+
     return addSecurityHeaders(response)
   }
 
@@ -358,6 +363,8 @@ export const config = {
     '/api/((?!auth|webhooks|diag).*)',
     '/app/:path*',
     '/app',
+    '/login',
+    '/register',
   ],
 }
 
