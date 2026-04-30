@@ -194,7 +194,11 @@ export async function getUserPermissions(
 ): Promise<Permission[]> {
   // ── 1. Cache lookup ──────────────────────────────────────────────────────
   try {
-    const cached = await kv.get<Permission[]>(cacheKey(userId))
+    const cached = await Promise.race([
+      kv.get<Permission[]>(cacheKey(userId)),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
+    ])
+    
     if (cached && Array.isArray(cached)) {
       log.debug({ userId }, '[AuthZ] Permission cache HIT')
       return cached
