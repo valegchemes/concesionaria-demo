@@ -10,7 +10,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
-import { checkRateLimit } from '@/lib/rate-limit-kv'
 
 // Inline logger — safe for Edge Runtime (no pino/require)
 const log = {
@@ -310,13 +309,18 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
 
 export const config = {
   matcher: [
-    // Rutas de API
-    '/api/:path*',
-    // Rutas de aplicación
+    /*
+     * Solo interceptar:
+     * - /api/* (excepto /api/auth que es público y maneja su propia auth)
+     * - /app/* (rutas protegidas de la aplicación)
+     *
+     * EXCLUIR explícitamente:
+     * - /_next/* (chunks JS/CSS del runtime de Next.js)
+     * - /favicon.ico, imágenes estáticas, etc.
+     */
+    '/api/((?!auth|webhooks|diag).*)',
     '/app/:path*',
     '/app',
-    // Excluir archivos estáticos
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
 

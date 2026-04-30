@@ -127,36 +127,58 @@ import { headers as nextHeaders } from 'next/headers'
 
 /**
  * Fast-path user extraction from headers injected by middleware.
- * Use this in GET endpoints to avoid DB queries for auth.
- * Falls back to getCurrentUser() if headers are missing.
  *
- * IMPORTANT: This does NOT verify user is still active (no DB check).
+ * In Next.js 15/16 App Router, middleware-injected headers can be read via:
+ * 1. request.headers directly (in Route Handlers, this works reliably)
+ * 2. nextHeaders() from 'next/headers' (works in Server Components and Route Handlers)
+ *
+ * We try BOTH to ensure maximum compatibility. The request object is prioritized
+ * because nextHeaders() can throw "called outside a request scope" in some contexts.
+ *
+ * Falls back to getServerSession() if neither source has the headers.
+ * IMPORTANT: Falls back DON'T verify user is still active (no DB check for fast paths).
  * Only use for reads - mutations MUST use getCurrentUser() or requireAuth().
- *
- * @example
- *   // In API route:
- *   const user = await getCurrentUserFromHeaders(request)
- *   // No DB queries! Uses headers from middleware.
  */
 export async function getCurrentUserFromHeaders(request?: Request) {
-  // Priorizar headers del request (inyectados por middleware en Next.js 15/16)
-  const userId = request?.headers.get('x-user-id')
-  const companyId = request?.headers.get('x-company-id')
-  const role = request?.headers.get('x-user-role')
+  // 1. Try request.headers first (most reliable in Route Handlers)
+  const reqUserId = request?.headers.get('x-user-id')
+  const reqCompanyId = request?.headers.get('x-company-id')
+  const reqRole = request?.headers.get('x-user-role')
 
-  if (userId && companyId) {
-    // Fast path: usar headers del middleware (sin consultar DB)
+  if (reqUserId && reqCompanyId) {
     return {
-      id: userId,
-      companyId,
-      role: role || 'SELLER',
+      id: reqUserId,
+      companyId: reqCompanyId,
+      role: reqRole || 'SELLER',
       email: '',
       name: '',
       permissions: [] as string[],
     }
   }
 
-  // Fallback: método tradicional (con queries DB y timeout)
+  // 2. Try next/headers (works in Server Components + some Route Handler contexts)
+  try {
+    const headersList = await nextHeaders()
+    const nhUserId = headersList.get('x-user-id')
+    const nhCompanyId = headersList.get('x-company-id')
+    const nhRole = headersList.get('x-user-role')
+
+    if (nhUserId && nhCompanyId) {
+      return {
+        id: nhUserId,
+        companyId: nhCompanyId,
+        role: nhRole || 'SELLER',
+        email: '',
+        name: '',
+        permissions: [] as string[],
+      }
+    }
+  } catch {
+    // nextHeaders() can throw "called outside a request scope" in some contexts
+    // This is expected when called from scripts or tests — just fall through
+  }
+
+  // 3. Fallback: full session lookup (slowest, but guaranteed)
   return getCurrentUser()
 }
 
@@ -165,8 +187,13 @@ export async function getCurrentUserFromHeaders(request?: Request) {
  * Useful to decide between getCurrentUserFromHeaders vs getCurrentUser.
  */
 export async function hasAuthHeaders(request?: Request): Promise<boolean> {
-  const headersList = await nextHeaders()
-  const hasInNext = !!(headersList.get('x-user-id') && headersList.get('x-company-id'))
-  const hasInReq = request ? !!(request.headers.get('x-user-id') && request.headers.get('x-company-id')) : false
-  return hasInNext || hasInReq
+  const hasInReq = !!(request?.headers.get('x-user-id') && request?.headers.get('x-company-id'))
+  if (hasInReq) return true
+
+  try {
+    const headersList = await nextHeaders()
+    return !!(headersList.get('x-user-id') && headersList.get('x-company-id'))
+  } catch {
+    return false
+  }
 }
