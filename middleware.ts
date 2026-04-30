@@ -28,6 +28,7 @@ const PUBLIC_ROUTES = [
   '/register',
   '/api/auth',
   '/api/webhooks',
+  '/api/health',
   '/_next',
   '/favicon.ico',
   '/public',
