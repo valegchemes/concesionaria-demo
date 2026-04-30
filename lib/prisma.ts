@@ -347,7 +347,12 @@ export async function withTransaction<T>(
  */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
-    await prismaBypass.$queryRaw`SELECT 1`
+    await Promise.race([
+      prismaBypass.$queryRaw`SELECT 1`,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('DB_TIMEOUT')), 4000)
+      ),
+    ])
     return true
   } catch (error) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error de conexión a base de datos')
