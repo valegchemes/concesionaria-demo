@@ -20,7 +20,7 @@
  *   if (!hasPermission(perms, 'deals', 'manage_all')) throw new ForbiddenError(...)
  */
 
-import { kv } from '@vercel/kv'
+import { kv } from '@/lib/kv-client'
 import { prismaBypass } from '@/lib/shared/prisma'
 import { createLogger } from '@/lib/shared/logger'
 

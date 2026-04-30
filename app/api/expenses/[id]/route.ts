@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
 import { createLogger } from '@/lib/shared/logger'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
-import { kv } from '@vercel/kv'
+import { kv } from '@/lib/kv-client'
 
 const log = createLogger('API:Expenses')
 

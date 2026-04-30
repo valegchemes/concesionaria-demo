@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { kv } from '@vercel/kv'
+import { kv } from '@/lib/kv-client'
 import { head } from '@vercel/blob'
 
 export const dynamic = 'force-dynamic'
@@ -22,7 +22,14 @@ export async function GET(request: NextRequest) {
       VERCEL_ENV: process.env.VERCEL_ENV,
       HAS_DATABASE_URL: !!process.env.DATABASE_URL,
       HAS_NEXTAUTH_SECRET: !!process.env.NEXTAUTH_SECRET,
-      HAS_KV: !!(process.env.KV_URL || process.env.KV_REST_API_URL),
+      HAS_KV: !!(
+        process.env.KV_URL ||
+        process.env.KV_REST_API_URL ||
+        process.env.UPSTASH_REDIS_REST_URL ||
+        process.env.REDIS_REST_API_URL
+      ),
+      HAS_UPSTASH_REDIS_REST_URL: !!process.env.UPSTASH_REDIS_REST_URL,
+      HAS_UPSTASH_REDIS_REST_TOKEN: !!process.env.UPSTASH_REDIS_REST_TOKEN,
       HAS_BLOB: !!process.env.BLOB_READ_WRITE_TOKEN,
     },
     checks: {

@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv'
+import { kv } from '@/lib/kv-client'
 
 // Timeout wrapper: si KV no responde en 2s, fail-open (no bloquear tráfico)
 function withKVTimeout<T>(promise: Promise<T>, ms = 2000): Promise<T> {

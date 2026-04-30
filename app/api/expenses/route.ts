@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
 import { getCurrentUser, getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { z } from 'zod'
-import { kv } from '@vercel/kv'
+import { kv } from '@/lib/kv-client'
 
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),

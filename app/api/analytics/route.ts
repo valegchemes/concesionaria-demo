@@ -11,7 +11,7 @@ export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
-import { kv } from '@vercel/kv'
+import { kv } from '@/lib/kv-client'
 import { prisma } from '@/lib/shared/prisma'
 import { checkDatabaseConnection } from '@/lib/prisma'
 import { getCurrentUser, getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
