@@ -6,7 +6,13 @@ import { applyRateLimit } from '@/lib/rate-limit-kv'
 
 const handler = NextAuth(authOptions)
 
-export { handler as GET }
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ nextauth: string[] }> }
+) {
+  const params = await context.params
+  return handler(request, { params })
+}
 
 export async function POST(
   request: NextRequest,
@@ -17,5 +23,6 @@ export async function POST(
     return blocked
   }
 
-  return handler(request, context)
+  const params = await context.params
+  return handler(request, { params })
 }
