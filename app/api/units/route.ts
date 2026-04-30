@@ -102,7 +102,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     // 1. Autenticación (fast-path: headers del middleware, 0 queries DB)
     const user = await getCurrentUserFromHeaders(request)
-    log.debug({ userId: user.id, companyId: user.companyId, source: hasAuthHeaders(request) ? 'headers' : 'fallback' }, 'GET /api/units - iniciado')
+    log.debug({ userId: user.id, companyId: user.companyId, source: (await hasAuthHeaders(request)) ? 'headers' : 'fallback' }, 'GET /api/units - iniciado')
 
     // 2. Parseo de query params
     const { searchParams } = new URL(request.url)

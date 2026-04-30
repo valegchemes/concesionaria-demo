@@ -135,7 +135,7 @@ import { headers as nextHeaders } from 'next/headers'
  *   // No DB queries! Uses headers from middleware.
  */
 export async function getCurrentUserFromHeaders(request?: Request) {
-  const headersList = nextHeaders()
+  const headersList = await nextHeaders()
 
   const userId = headersList.get('x-user-id') || (request ? request.headers.get('x-user-id') : null)
   const companyId = headersList.get('x-company-id') || (request ? request.headers.get('x-company-id') : null)
@@ -162,8 +162,8 @@ export async function getCurrentUserFromHeaders(request?: Request) {
  * Check if request has auth headers from middleware (fast-path available).
  * Useful to decide between getCurrentUserFromHeaders vs getCurrentUser.
  */
-export function hasAuthHeaders(request?: Request): boolean {
-  const headersList = nextHeaders()
+export async function hasAuthHeaders(request?: Request): Promise<boolean> {
+  const headersList = await nextHeaders()
   const hasInNext = !!(headersList.get('x-user-id') && headersList.get('x-company-id'))
   const hasInReq = request ? !!(request.headers.get('x-user-id') && request.headers.get('x-company-id')) : false
   return hasInNext || hasInReq
