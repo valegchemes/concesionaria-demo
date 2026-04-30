@@ -289,7 +289,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
         log.warn(
           {
-            companyId: user.companyId,
+            companyId,
+            userId,
             type: typeParam,
             timeRange,
             isTimeout,

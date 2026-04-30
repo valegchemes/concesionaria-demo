@@ -38,9 +38,13 @@ interface PrismaLogEvent {
  */
 function getDatabaseUrl(): string {
   const baseUrl = process.env.DATABASE_URL
-  
+
+  // No lanzar durante el build: devolver cadena vacía si no está configurada.
+  // Esto evita que la inicialización de Prisma falle en tiempo de compilación
+  // cuando las variables de entorno de producción no están disponibles.
   if (!baseUrl) {
-    throw new Error('DATABASE_URL no está configurada')
+    log.warn({}, 'DATABASE_URL no está configurada en el entorno actual — inicialización de Prisma diferida')
+    return ''
   }
 
   // En serverless (Vercel), usar Connection Pooler (puerto 6543)
@@ -83,14 +87,15 @@ const globalForPrisma = global as unknown as {
 function createPrismaClient(): PrismaClient {
   const databaseUrl = getDatabaseUrl()
   
-  const client = new PrismaClient({
-    datasources: {
-      db: {
-        url: databaseUrl,
-      },
-    },
-    log: logConfig,
-  })
+  const clientOptions: any = { log: logConfig }
+
+  if (databaseUrl) {
+    clientOptions.datasources = { db: { url: databaseUrl } }
+  } else {
+    log.warn({}, 'Creando PrismaClient sin datasource explícito; se usará DATABASE_URL en tiempo de ejecución si está disponible')
+  }
+
+  const client = new PrismaClient(clientOptions)
 
   // Event listeners para logging estructurado
   client.$on('query' as never, (e: PrismaLogEvent) => {

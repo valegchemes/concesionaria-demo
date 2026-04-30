@@ -72,7 +72,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         // This is called via webhook from Vercel Blob servers
-        log.info({ url: blob.url, userId: tokenPayload }, 'Upload completed via webhook')
+        let parsedPayload: any = tokenPayload
+        try {
+          if (typeof tokenPayload === 'string') {
+            parsedPayload = JSON.parse(tokenPayload)
+          }
+        } catch (e) {
+          // ignore
+        }
+        log.info({ url: blob.url, tokenPayload: parsedPayload }, 'Upload completed via webhook')
       },
     })
 
