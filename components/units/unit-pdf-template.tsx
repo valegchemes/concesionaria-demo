@@ -2,7 +2,6 @@
 
 import React from 'react'
 import { formatPrice } from '@/lib/utils'
-import { Car, Phone, Mail, MapPin } from 'lucide-react'
 
 interface UnitPdfTemplateProps {
   unit: any
@@ -41,59 +40,58 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
         style={{
           width: '794px',
           minHeight: '1123px',
-          padding: '40px',
           boxSizing: 'border-box',
           position: 'relative',
+          padding: 0,
         }}
       >
-        {/* Header */}
-        <div className="flex justify-between items-center border-b-2 border-slate-200 pb-6 mb-8">
+        {/* Full Bleed Dark Header */}
+        <div className="bg-slate-900 text-white px-10 py-8 flex justify-between items-center rounded-b-3xl shadow-lg relative z-10">
           <div className="flex items-center gap-4">
             {company?.logoUrl ? (
-              <img src={company.logoUrl} alt="Logo" className="h-16 w-16 object-contain" crossOrigin="anonymous" />
+              <img src={company.logoUrl} alt="Logo" className="h-16 w-16 bg-white rounded-lg p-1 object-contain shadow-md" crossOrigin="anonymous" />
             ) : (
-              <div className="h-16 w-16 bg-slate-100 rounded-lg flex items-center justify-center">
-                <Car className="h-8 w-8 text-slate-400" />
+              <div className="h-16 w-16 bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-center shadow-inner">
+                <span className="text-2xl font-black text-slate-500">Auto</span>
               </div>
             )}
             <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">{company?.name || 'Concesionaria'}</h1>
-              <p className="text-slate-500 font-medium">Catálogo Oficial de Vehículos</p>
+              <h1 className="text-3xl font-black tracking-tight">{company?.name || 'Concesionaria'}</h1>
+              <p className="text-slate-400 font-medium text-sm tracking-wide uppercase mt-1">Ficha Técnica Oficial</p>
             </div>
           </div>
-          <div className="text-right text-sm text-slate-600 space-y-1">
-            {company?.phone && <div className="flex items-center justify-end gap-2"><Phone className="h-3 w-3" /> {company.phone}</div>}
-            {company?.whatsappCentral && <div className="flex items-center justify-end gap-2"><Phone className="h-3 w-3 text-green-500" /> WhatsApp: {company.whatsappCentral}</div>}
-            {company?.email && <div className="flex items-center justify-end gap-2"><Mail className="h-3 w-3" /> {company.email}</div>}
-            {company?.city && <div className="flex items-center justify-end gap-2"><MapPin className="h-3 w-3" /> {company.city}</div>}
+          <div className="text-right text-sm text-slate-300 space-y-1.5">
+            {company?.phone && <div>Teléfono: <span className="text-white font-semibold">{company.phone}</span></div>}
+            {company?.whatsappCentral && <div>WhatsApp: <span className="text-green-400 font-semibold">{company.whatsappCentral}</span></div>}
+            {company?.email && <div>Email: <span className="text-white font-semibold">{company.email}</span></div>}
           </div>
         </div>
 
-        {/* Main Content */}
-        <div className="space-y-8">
+        {/* Content Body */}
+        <div className="px-10 py-8 space-y-8">
           {/* Title & Price */}
-          <div className="flex justify-between items-end">
-            <div className="max-w-[500px]">
-              <h2 className="text-4xl font-black text-slate-900 leading-tight">{unit.title}</h2>
-              {unit.location && <p className="text-slate-500 mt-2 flex items-center gap-1"><MapPin className="h-4 w-4" /> {unit.location}</p>}
+          <div className="flex justify-between items-start gap-6">
+            <div className="flex-1">
+              <h2 className="text-4xl font-black text-slate-900 leading-tight uppercase tracking-tight">{unit.title}</h2>
+              {unit.location && <p className="text-slate-500 mt-2 font-medium">Ubicación: {unit.location}</p>}
             </div>
-            <div className="text-right bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Precio de Venta</p>
+            <div className="text-right bg-blue-600 text-white p-5 rounded-2xl shadow-xl min-w-[220px]">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-blue-200 mb-1">Precio de Venta</p>
               {unit.priceUsd ? (
                 <div>
-                  <p className="text-4xl font-black text-slate-900">${unit.priceUsd.toLocaleString()} USD</p>
-                  {unit.priceArs && <p className="text-lg text-slate-500 font-medium mt-1">{formatPrice(unit.priceArs, 'ARS')}</p>}
+                  <p className="text-3xl font-black">${unit.priceUsd.toLocaleString()} USD</p>
+                  {unit.priceArs && <p className="text-sm text-blue-200 font-medium mt-1">{formatPrice(unit.priceArs, 'ARS')}</p>}
                 </div>
               ) : unit.priceArs ? (
-                <p className="text-4xl font-black text-slate-900">{formatPrice(unit.priceArs, 'ARS')}</p>
+                <p className="text-3xl font-black">{formatPrice(unit.priceArs, 'ARS')}</p>
               ) : (
-                <p className="text-2xl font-black text-slate-400">Consultar</p>
+                <p className="text-2xl font-black text-blue-200">Consultar</p>
               )}
             </div>
           </div>
 
           {/* Main Photo */}
-          <div className="w-full h-[400px] rounded-2xl overflow-hidden bg-slate-100 shadow-inner">
+          <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-2xl relative border border-slate-100 bg-slate-50">
             {unit.photos && unit.photos.length > 0 ? (
               <img
                 src={unit.photos[0].url}
@@ -103,20 +101,19 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                <Car className="h-20 w-20 mb-4 opacity-50" />
-                <p className="font-medium text-lg">Sin imagen disponible</p>
+                <span className="text-xl font-bold uppercase tracking-widest text-slate-400">Sin Imagen</span>
               </div>
             )}
           </div>
 
           {/* Specs Grid */}
-          <div>
-            <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4">Características Técnicas</h3>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-900 mb-5">Especificaciones Técnicas</h3>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6">
               {specs.map((spec, idx) => (
-                <div key={idx} className="flex justify-between border-b border-slate-100 pb-2">
-                  <span className="text-slate-500 font-medium">{spec.label}</span>
-                  <span className="text-slate-900 font-bold text-right">{spec.value}</span>
+                <div key={idx} className="flex flex-col border-l-4 border-blue-600 pl-4 bg-white py-2 shadow-sm rounded-r-lg">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">{spec.label}</span>
+                  <span className="text-sm font-semibold text-slate-800 mt-1 whitespace-normal break-words">{spec.value}</span>
                 </div>
               ))}
             </div>
@@ -124,9 +121,9 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
 
           {/* Description */}
           {unit.description && (
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 border-b border-slate-200 pb-2 mb-4">Descripción</h3>
-              <p className="text-slate-700 whitespace-pre-wrap leading-relaxed text-sm">
+            <div className="px-2">
+              <h3 className="text-lg font-bold text-slate-900 border-b-2 border-slate-100 pb-2 mb-3">Descripción Adicional</h3>
+              <p className="text-slate-600 whitespace-pre-wrap leading-relaxed text-sm">
                 {unit.description}
               </p>
             </div>
@@ -134,9 +131,9 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-10 left-10 right-10 border-t-2 border-slate-100 pt-6 flex justify-between items-center text-sm text-slate-400 font-medium">
-          <p>Ficha técnica generada automáticamente.</p>
-          <p>Fecha: {new Date().toLocaleDateString('es-AR')}</p>
+        <div className="absolute bottom-0 left-0 right-0 bg-slate-900 text-slate-400 px-10 py-5 flex justify-between items-center text-xs font-medium">
+          <p>Documento generado por {company?.name || 'la Concesionaria'}. Prohibida su alteración.</p>
+          <p>Fecha de emisión: {new Date().toLocaleDateString('es-AR')}</p>
         </div>
       </div>
     )
