@@ -11,6 +11,7 @@ import {
   ArrowLeft, Phone, Mail, User, Car, MessageCircle, 
   Calendar, CheckCircle, Clock, AlertCircle, Handshake
 } from 'lucide-react'
+import { LeadPromissoryNotesTab } from '@/components/leads/lead-promissory-notes-tab'
 
 interface Lead {
   id: string
@@ -125,6 +126,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [newTaskDate, setNewTaskDate] = useState('')
   const [newActivityNote, setNewActivityNote] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState('')
+  const [activeTab, setActiveTab] = useState<'info' | 'notes'>('info')
 
   const fetchLead = useCallback(async () => {
     try {
@@ -282,6 +284,27 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         )}
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {([['info', 'Información y Actividad'], ['notes', 'Pagarés y Cuotas']] as const).map(([tab, label]) => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab ? 'border-slate-900 text-slate-900' : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'notes' && (
+        <LeadPromissoryNotesTab
+          leadId={lead.id}
+          unitId={lead.interestedUnit?.id}
+          unitTitle={lead.interestedUnit?.title}
+        />
+      )}
+
+      {activeTab === 'info' && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column - Contact Info & WhatsApp */}
         <div className="space-y-6">
@@ -553,6 +576,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
         </div>
       </div>
+      )}
     </div>
   )
 }

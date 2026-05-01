@@ -89,6 +89,7 @@ model Lead {
   interestedUnit   Unit?          @relation("LeadInterestedUnit", fields: [interestedUnitId], references: [id])
   activities       LeadActivity[]
   tasks            Task[]
+  promissoryNotes  PromissoryNote[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -223,8 +224,10 @@ model PromissoryNote {
   updatedAt    DateTime       @updatedAt
 
   unitId       String
+  leadId       String
   companyId    String
   unit         Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  lead         Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
   company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   installments Installment[]
