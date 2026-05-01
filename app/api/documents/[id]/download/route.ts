@@ -176,9 +176,9 @@ export async function GET(
     })
   } catch (err) {
     console.error('[document/download]', err)
-    return NextResponse.json({ 
-      error: 'ERROR_PDF_DIAGNOSTIC', 
-      details: err instanceof Error ? err.message : String(err) 
+    return NextResponse.json({
+      error: 'ERROR_PDF_DIAGNOSTIC',
+      details: err instanceof Error ? err.message : String(err)
     }, { status: 500 })
   }
 }

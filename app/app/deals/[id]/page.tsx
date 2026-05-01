@@ -237,26 +237,26 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-center overflow-hidden">
                   <p className="text-sm font-medium text-slate-500 mb-1">Precio Final Pactado</p>
-                  <p className={`font-black text-slate-900 break-words ${getFontSizeClass(`${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice, '')}`)}`}>
-                    {deal.finalPriceCurrency} {formatPrice(deal.finalPrice, '')}
+                  <p className={`font-black text-slate-900 break-words ${getFontSizeClass(formatPrice(deal.finalPrice, deal.finalPriceCurrency))}`}>
+                    {deal.finalPriceCurrency === 'ARS' ? 'ARS ' : ''}{formatPrice(deal.finalPrice, deal.finalPriceCurrency)}
                   </p>
                 </div>
                 
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-center overflow-hidden">
                   <p className="text-sm font-medium text-slate-500 mb-1">Seña / Anticipo</p>
-                  <p className={`font-bold text-blue-600 break-words ${deal.depositAmount ? getFontSizeClass(`${deal.finalPriceCurrency} ${formatPrice(deal.depositAmount, '')}`) : 'text-2xl'}`}>
+                  <p className={`font-bold text-blue-600 break-words ${deal.depositAmount ? getFontSizeClass(formatPrice(deal.depositAmount, deal.finalPriceCurrency)) : 'text-2xl'}`}>
                     {deal.depositAmount 
-                      ? `${deal.finalPriceCurrency} ${formatPrice(deal.depositAmount, '')}` 
+                      ? `${deal.finalPriceCurrency === 'ARS' ? 'ARS ' : ''}${formatPrice(deal.depositAmount, deal.finalPriceCurrency)}` 
                       : '-'}
                   </p>
                 </div>
 
                 <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col justify-center overflow-hidden">
                   <p className="text-sm font-medium text-slate-500 mb-1">Saldo Pendiente</p>
-                  <p className={`font-bold text-slate-700 break-words ${getFontSizeClass(`${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice - (deal.depositAmount || 0), '')}`)}`}>
+                  <p className={`font-bold text-slate-700 break-words ${getFontSizeClass(formatPrice(deal.finalPrice - (deal.depositAmount || 0), deal.finalPriceCurrency))}`}>
                     {deal.depositAmount 
-                      ? `${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice - deal.depositAmount, '')}` 
-                      : `${deal.finalPriceCurrency} ${formatPrice(deal.finalPrice, '')}`}
+                      ? `${deal.finalPriceCurrency === 'ARS' ? 'ARS ' : ''}${formatPrice(deal.finalPrice - deal.depositAmount, deal.finalPriceCurrency)}` 
+                      : `${deal.finalPriceCurrency === 'ARS' ? 'ARS ' : ''}${formatPrice(deal.finalPrice, deal.finalPriceCurrency)}`}
                   </p>
                 </div>
               </div>
