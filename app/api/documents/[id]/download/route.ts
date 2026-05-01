@@ -153,11 +153,16 @@ export async function GET(
           .text('Firma Comprador', W - 230, sigTop + 45, { width: 175, align: 'center' })
 
         // ── Footer ───────────────────────────────────────────────────────────────
+        const oldBottomMargin = pdf.page.margins.bottom;
+        pdf.page.margins.bottom = 0;
+        
         pdf.fontSize(7).fillColor('#94a3b8')
           .text(
             `Documento generado electrónicamente • ${m.companyName} • ${issueDate}`,
-            50, pdf.page.height - 30, { align: 'center', width: W - 100 }
+            50, pdf.page.height - 25, { align: 'center', width: W - 100 }
           )
+          
+        pdf.page.margins.bottom = oldBottomMargin;
 
         pdf.end()
       } catch (e) {
