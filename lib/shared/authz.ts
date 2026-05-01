@@ -175,7 +175,7 @@ export function hasAnyPermission(
 // ============================================================================
 
 function cacheKey(userId: string): string {
-  return `authz:perms:v1:${userId}`
+  return `authz:perms:v2:${userId}`
 }
 
 /**
