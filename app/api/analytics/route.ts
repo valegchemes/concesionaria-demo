@@ -41,7 +41,7 @@ const log = createLogger('API:Analytics')
  */
 // Versión de caché. Incrementar esto invalida TODA la caché de analíticas
 // Útil cuando se hacen cambios en la lógica de cálculo
-const CACHE_VERSION = 'analytics:v6:'
+const CACHE_VERSION = 'analytics:v7:'
 const ANALYTICS_CACHE_TTL_SECONDS = 15 // Reducido a 15 segundos para mayor frescura
 const ANALYTICS_TIMEOUT_MS = 8000 // 8 segundos máximo para computación
 
@@ -949,10 +949,8 @@ async function getCostAnalysis(
   // Costos de unidades en período
   const unitCosts = await prisma.unitCostItem.findMany({
     where: {
-      unit: {
-        companyId,
-        createdAt: { gte: start, lte: end },
-      },
+      date: { gte: start, lte: end },
+      unit: { companyId },
     },
     select: { concept: true, amountArs: true, amountUsd: true },
   })
