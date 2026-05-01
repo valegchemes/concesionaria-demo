@@ -14,6 +14,7 @@ import {
   UsersRound,
   Wallet,
   ChevronRight,
+  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,10 +31,11 @@ const navGroups = [
   {
     label: 'Administración',
     items: [
-      { name: 'Equipo',           href: '/app/team',              icon: UsersRound, color: 'text-sky-400' },
-      { name: 'Costos Mensuales', href: '/app/expenses',          icon: Wallet,     color: 'text-rose-400' },
-      { name: 'Configuración',    href: '/app/settings',          icon: Settings,   color: 'text-slate-400' },
-      { name: 'Suscripción',      href: '/app/settings/billing',  icon: CreditCard, color: 'text-indigo-400' },
+      { name: 'Equipo',           href: '/app/team',              icon: UsersRound,   color: 'text-sky-400' },
+      { name: 'Costos Mensuales', href: '/app/expenses',          icon: Wallet,       color: 'text-rose-400' },
+      { name: 'Configuración',    href: '/app/settings',          icon: Settings,     color: 'text-slate-400' },
+      { name: 'Auditoría',        href: '/app/settings/audit',    icon: ShieldCheck,  color: 'text-indigo-400' },
+      { name: 'Suscripción',      href: '/app/settings/billing',  icon: CreditCard,   color: 'text-indigo-400' },
     ],
   },
 ]

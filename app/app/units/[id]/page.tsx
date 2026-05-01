@@ -85,14 +85,16 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [company, setCompany] = useState<any>(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'costs' | 'docs'>('details')
+  const [userRole, setUserRole] = useState<string>('SELLER')
 
   useEffect(() => { fetchUnit() }, [id])
 
   async function fetchUnit() {
     try {
-      const [unitRes, companyRes] = await Promise.all([
+      const [unitRes, companyRes, meRes] = await Promise.all([
         fetch(`/api/units/${id}`),
-        fetch('/api/settings/company')
+        fetch('/api/settings/company'),
+        fetch('/api/me'),
       ])
       if (unitRes.ok) {
         const json = await unitRes.json()
@@ -103,6 +105,10 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
       if (companyRes.ok) {
         const json = await companyRes.json()
         setCompany(json)
+      }
+      if (meRes.ok) {
+        const json = await meRes.json()
+        setUserRole(json.role)
       }
     } catch (e) {
       console.error(e)
@@ -315,7 +321,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   <p className="text-xl font-semibold">${unit.priceUsd.toLocaleString()}</p>
                 </div>
               )}
-              {marginArs !== null && (
+              {userRole === 'ADMIN' && marginArs !== null && (
                 <div className={`mt-3 p-3 rounded-lg ${marginArs >= 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
                   <p className="text-xs font-medium text-gray-600">Margen estimado (ARS)</p>
                   <p className={`text-lg font-bold ${marginArs >= 0 ? 'text-green-700' : 'text-red-700'}`}>
@@ -368,6 +374,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                       <Input type="number" value={formData.priceUsd || ''} onChange={e => updateField('priceUsd', e.target.value)} />
                     </div>
                   </div>
+                  {userRole === 'ADMIN' && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Costo de Compra ARS</Label>
@@ -378,6 +385,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                       <Input type="number" placeholder="0" value={formData.acquisitionCostUsd || ''} onChange={e => updateField('acquisitionCostUsd', e.target.value)} />
                     </div>
                   </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Descripción</Label>
                     <textarea value={formData.description || ''} onChange={e => updateField('description', e.target.value)} className="w-full min-h-[80px] px-3 py-2 rounded-md border text-sm" />
