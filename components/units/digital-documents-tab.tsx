@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
+import dynamic from 'next/dynamic'
+import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +10,11 @@ import { Label } from '@/components/ui/label'
 import { formatPrice } from '@/lib/utils'
 import {
   FileText, Plus, Download, CheckCircle, Clock, FileSignature, X,
+  PenLine, RotateCcw, MessageCircle,
 } from 'lucide-react'
+
+// Typed wrapper for SignatureCanvas (client-only, safe to import from 'use client' component)
+import SignaturePad, { type SignaturePadHandle } from './signature-pad'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface LeadOption { id: string; name: string; phone: string }
@@ -19,7 +25,7 @@ interface DigitalDoc {
   amount: number | null
   status: string
   createdAt: string
-  lead: { id: string; name: string }
+  lead: { id: string; name: string; phone: string }
 }
 
 // ── Config maps ───────────────────────────────────────────────────────────────
@@ -35,14 +41,28 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; icon: React.Ele
   DRAFT:     { label: 'Borrador',  bg: 'bg-gray-100 text-gray-600',   icon: FileText },
 }
 
+// ── WhatsApp message builder ──────────────────────────────────────────────────
+function buildWhatsAppUrl(phone: string, docType: string, ref: string | null) {
+  const typeLabel = DOC_TYPES.find(t => t.value === docType)?.label ?? docType
+  const refStr = ref ? ` N° ${ref}` : ''
+  const msg = `Hola 👋, te hacemos llegar tu *${typeLabel}${refStr}*. Cualquier consulta, estamos a tu disposición. 🙌`
+  const number = phone.replace(/\D/g, '')
+  return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
-  const [docs, setDocs]         = useState<DigitalDoc[]>([])
-  const [leads, setLeads]       = useState<LeadOption[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [saving, setSaving]     = useState(false)
+  const [docs, setDocs]               = useState<DigitalDoc[]>([])
+  const [leads, setLeads]             = useState<LeadOption[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [showModal, setShowModal]     = useState(false)
+  const [saving, setSaving]           = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
+
+  // Signature state
+  const sigRef = useRef<SignaturePadHandle | null>(null)
+  const [showSig, setShowSig]         = useState(false)
+  const [sigDataUrl, setSigDataUrl]   = useState<string | null>(null)
 
   const emptyForm = {
     type: 'BOLETO_COMPRAVENTA', leadId: '', amount: '', currency: 'ARS',
@@ -69,6 +89,14 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
 
   useEffect(() => { fetchDocs(); fetchLeads() }, [fetchDocs, fetchLeads])
 
+  // ── Signature handlers ─────────────────────────────────────────────────────
+  function clearSig() { sigRef.current?.clear(); setSigDataUrl(null) }
+  function saveSig() {
+    if (!sigRef.current || sigRef.current.isEmpty()) { setSigDataUrl(null); setShowSig(false); return }
+    setSigDataUrl(sigRef.current.toDataURL('image/png'))
+    setShowSig(false)
+  }
+
   // ── Create document ────────────────────────────────────────────────────────
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -88,11 +116,13 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
           paymentMethod: form.paymentMethod || undefined,
           paymentConditions: form.paymentConditions || undefined,
           notes: form.notes || undefined,
+          signatureDataUrl: sigDataUrl || undefined,
         }),
       })
       if (r.ok) {
         setShowModal(false)
         setForm(emptyForm)
+        setSigDataUrl(null)
         fetchDocs()
       } else {
         const e = await r.json()
@@ -186,13 +216,27 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                         {new Date(doc.createdAt).toLocaleDateString('es-AR')}
                       </td>
                       <td className="py-3 px-4">
-                        <Button size="sm" variant="outline"
-                          className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 h-7 text-xs"
-                          disabled={downloading === doc.id}
-                          onClick={() => downloadPdf(doc.id, doc.referenceNumber)}>
-                          <Download className="h-3 w-3 mr-1" />
-                          {downloading === doc.id ? 'Generando...' : 'PDF'}
-                        </Button>
+                        <div className="flex items-center gap-1.5">
+                          <Button size="sm" variant="outline"
+                            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 h-7 text-xs"
+                            disabled={downloading === doc.id}
+                            onClick={() => downloadPdf(doc.id, doc.referenceNumber)}>
+                            <Download className="h-3 w-3 mr-1" />
+                            {downloading === doc.id ? 'Generando...' : 'PDF'}
+                          </Button>
+                          {/* WhatsApp quick-send */}
+                          {doc.lead.phone && (
+                            <a
+                              href={buildWhatsAppUrl(doc.lead.phone, doc.type, doc.referenceNumber)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Enviar aviso por WhatsApp"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-green-200 text-green-600 hover:bg-green-50 transition-colors"
+                            >
+                              <MessageCircle className="h-3 w-3" />
+                            </a>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -209,7 +253,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
           <Card className="w-full max-w-lg shadow-2xl my-4">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-base">Generar Documento</CardTitle>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowModal(false); setSigDataUrl(null) }} className="text-gray-400 hover:text-gray-600">
                 <X className="h-5 w-5" />
               </button>
             </CardHeader>
@@ -290,18 +334,83 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                     placeholder="Cualquier condición adicional..." />
                 </div>
 
+                {/* ── Firma Digital ── */}
+                <div className="space-y-2">
+                  <Label className="text-xs flex items-center gap-1.5">
+                    <PenLine className="h-3.5 w-3.5 text-indigo-500" />
+                    Firma del Comprador (Opcional)
+                  </Label>
+
+                  {sigDataUrl ? (
+                    <div className="relative rounded-lg border border-green-300 bg-green-50 p-2 flex items-center gap-3">
+                      <img src={sigDataUrl} alt="Firma" className="h-14 object-contain" />
+                      <div className="flex-1">
+                        <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                          <CheckCircle className="h-3.5 w-3.5" /> Firma capturada
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => { setSigDataUrl(null) }}
+                        className="text-green-500 hover:text-red-500 transition-colors">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5 w-full border-dashed"
+                      onClick={() => setShowSig(true)}>
+                      <PenLine className="h-4 w-4" />
+                      Agregar Firma
+                    </Button>
+                  )}
+                </div>
+
                 <div className="flex gap-2 pt-1">
                   <Button type="submit" disabled={saving}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white">
                     {saving ? 'Generando...' : 'Generar Documento'}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => setShowModal(false)}>
+                  <Button type="button" variant="ghost" onClick={() => { setShowModal(false); setSigDataUrl(null) }}>
                     Cancelar
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* ── Signature Pad Modal ── */}
+      {showSig && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <PenLine className="h-5 w-5 text-indigo-500" />
+                Firma del Comprador
+              </h3>
+              <button onClick={() => setShowSig(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500">Firmá dentro del recuadro con el dedo o el mouse.</p>
+
+            <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 overflow-hidden">
+              <SignaturePad ref={sigRef} />
+            </div>
+
+            <div className="flex items-center gap-2 justify-between">
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={clearSig}>
+                <RotateCcw className="h-3.5 w-3.5" /> Limpiar
+              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowSig(false)}>
+                  Cancelar
+                </Button>
+                <Button type="button" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5" onClick={saveSig}>
+                  <CheckCircle className="h-3.5 w-3.5" /> Confirmar Firma
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

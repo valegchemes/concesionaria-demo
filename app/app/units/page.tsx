@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Search, Car, Bike, Anchor, Edit, Trash2, Loader2, MapPin, Users, Eye, FileDown, Filter } from 'lucide-react'
+import { Plus, Search, Car, Bike, Anchor, Edit, Trash2, Loader2, MapPin, Users, Eye, FileDown, Filter, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { exportToExcel } from '@/lib/utils/export'
 
@@ -136,6 +136,12 @@ export default function UnitsPage() {
             <FileDown className="h-4 w-4" />
             Exportar
           </Button>
+          <Link href="/app/units/import">
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <Upload className="h-4 w-4" />
+              Importar
+            </Button>
+          </Link>
           <Link href="/app/units/new">
             <Button size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" />
