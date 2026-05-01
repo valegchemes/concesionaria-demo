@@ -46,8 +46,14 @@ export interface UpdateUnitCommand {
   acquisitionCostArs?: number | null
   acquisitionCostUsd?: number | null
   description?: string
+  location?: string
+  year?: number | null
+  vin?: string | null
+  domain?: string | null
+  engineNumber?: string | null
+  frameNumber?: string | null
   notes?: string
-  status?: 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'DISCARDED'
+  status?: 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'DISCARDED' | 'IN_PREP'
   attributes?: Array<{ key: string; value: string }>
 }
 
