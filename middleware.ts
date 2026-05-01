@@ -180,9 +180,6 @@ export default async function middleware(request: NextRequest): Promise<NextResp
   // 1. Verificar rutas públicas
   if (isPublicRoute(pathname)) {
     const response = NextResponse.next()
-    if ((pathname === '/login' || pathname === '/register') && hasNextAuthCookies(request)) {
-      clearNextAuthCookies(response, request)
-    }
     return addSecurityHeaders(response)
   }
 
@@ -207,7 +204,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
         { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' },
         { status: 401 }
       )
-      return addSecurityHeaders(clearNextAuthCookies(response, request))
+      return addSecurityHeaders(response)
     }
 
     // Inyectar headers de tenant
@@ -231,7 +228,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
       const loginUrl = new URL('/login', request.url)
       loginUrl.searchParams.set('callbackUrl', pathname)
       const response = NextResponse.redirect(loginUrl)
-      return addSecurityHeaders(clearNextAuthCookies(response, request))
+      return addSecurityHeaders(response)
     }
 
     const requestHeaders = new Headers(request.headers)
