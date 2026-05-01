@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
         email: true,
         role: true,
         whatsappNumber: true,
+        avatarUrl: true,
       },
       orderBy: { name: 'asc' },
     })
@@ -160,5 +161,81 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error deleting user')
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+
+    const UpdateUserSchema = z.object({
+      id: z.string(),
+      name: NameSchema.optional(),
+      email: EmailSchema.optional(),
+      password: z.string().min(6).optional().or(z.literal('')),
+      role: z.enum(['ADMIN', 'MANAGER', 'SELLER']).optional(),
+      whatsappNumber: PhoneSchema.optional().or(z.literal('')),
+      avatarUrl: z.string().url().optional().or(z.literal('')).nullable(),
+    })
+
+    const parsed = UpdateUserSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues }, { status: 400 })
+    }
+
+    const currentUser = await requirePermission('team', 'manage_all')
+    const { id, name, email, password, role, whatsappNumber, avatarUrl } = parsed.data
+
+    // Check if user exists and belongs to the company
+    const existingUser = await prisma.user.findFirst({
+      where: { id, companyId: currentUser.companyId, isActive: true },
+    })
+
+    if (!existingUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      ...(name && { name }),
+      ...(email && { email }),
+      ...(role && { role }),
+      ...(whatsappNumber !== undefined && { whatsappNumber }),
+      ...(avatarUrl !== undefined && { avatarUrl }),
+    }
+
+    if (password && password.length > 0) {
+      updateData.password = await hashPassword(password)
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        whatsappNumber: true,
+        avatarUrl: true,
+      },
+    })
+
+    await createAuditLog({
+      action: 'update',
+      resource: 'User',
+      resourceId: id,
+      before: existingUser,
+      after: updatedUser,
+      ipAddress: request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      companyId: currentUser.companyId,
+      userId: currentUser.id,
+    })
+
+    return NextResponse.json(updatedUser)
+  } catch (error) {
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating user')
+    return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
   }
 }

@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Users, UserPlus, ShieldCheck, Mail, Phone,
-  Loader2, Trash2, AlertCircle, MessageCircle,
+  Loader2, Trash2, AlertCircle, MessageCircle, Pencil, Camera, X
 } from 'lucide-react'
+import Image from 'next/image'
 
 interface TeamMember {
   id: string
@@ -17,6 +18,7 @@ interface TeamMember {
   email: string
   role: string
   whatsappNumber?: string
+  avatarUrl?: string
 }
 
 interface CurrentUser {
@@ -52,6 +54,15 @@ export default function TeamPage() {
   const [formData, setFormData] = useState({
     name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '',
   })
+
+  // Edit State
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
+  const [editFormData, setEditFormData] = useState({
+    name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '', avatarUrl: ''
+  })
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => { void fetchInitialData() }, [])
 
@@ -109,6 +120,51 @@ export default function TeamPage() {
       }
     } catch {
       alert('Error de conexión al intentar eliminar')
+    }
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingMember) return
+    setEditSubmitting(true)
+    setEditError('')
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingMember.id, ...editFormData }),
+      })
+      if (res.ok) {
+        setEditingMember(null)
+        await fetchInitialData()
+        router.refresh()
+      } else {
+        const data = await res.json()
+        setEditError(data.error || 'Error al actualizar el usuario')
+      }
+    } catch {
+      setEditError('Error de conexión')
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    if (!e.target.files || e.target.files.length === 0) return
+    const file = e.target.files[0]
+    try {
+      setUploadingImage(true)
+      const { upload } = await import('@vercel/blob/client')
+      const blob = await upload(`avatars/${file.name}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/blob',
+      })
+      setEditFormData({ ...editFormData, avatarUrl: blob.url })
+    } catch (err) {
+      console.error('Error uploading image', err)
+      setEditError('Error al subir la imagen')
+    } finally {
+      setUploadingImage(false)
     }
   }
 
@@ -230,10 +286,16 @@ export default function TeamPage() {
                 <CardContent className="pt-6 pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      {/* Avatar con gradiente dinámico */}
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-white text-lg font-bold shadow-md`}>
-                        {member.name.charAt(0).toUpperCase()}
-                      </div>
+                      {/* Avatar con gradiente dinámico o imagen */}
+                      {member.avatarUrl ? (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden shadow-md border-2 border-white/50">
+                          <Image src={member.avatarUrl} alt={member.name} width={48} height={48} className="object-cover w-full h-full" />
+                        </div>
+                      ) : (
+                        <div className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-white text-lg font-bold shadow-md`}>
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-bold text-slate-900 dark:text-white">
@@ -257,15 +319,36 @@ export default function TeamPage() {
                       </div>
                     </div>
 
-                    {/* Eliminar */}
-                    {isAdmin && !isMe && (
-                      <button
-                        onClick={() => deleteMember(member.id, member.name)}
-                        className="rounded-lg p-1.5 text-red-400 opacity-0 transition-all hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 group-hover:opacity-100"
-                        title="Eliminar miembro"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    {/* Acciones */}
+                    {isAdmin && (
+                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          onClick={() => {
+                            setEditingMember(member)
+                            setEditFormData({
+                              name: member.name,
+                              email: member.email,
+                              password: '', // Blank
+                              role: member.role,
+                              whatsappNumber: member.whatsappNumber || '',
+                              avatarUrl: member.avatarUrl || ''
+                            })
+                          }}
+                          className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
+                          title="Editar miembro"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        {!isMe && (
+                          <button
+                            onClick={() => deleteMember(member.id, member.name)}
+                            className="rounded-lg p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                            title="Eliminar miembro"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -299,6 +382,86 @@ export default function TeamPage() {
               </Card>
             )
           })}
+        </div>
+      )}
+
+      {/* Modal de Edición */}
+      {editingMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-200 dark:border-slate-800 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setEditingMember(null)}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h2 className="text-xl font-bold mb-4">Editar Miembro</h2>
+            
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {editError && (
+                <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {editError}
+                </div>
+              )}
+              
+              <div className="flex flex-col items-center gap-4 py-2">
+                <div className="relative group">
+                  <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center">
+                    {editFormData.avatarUrl ? (
+                      <Image src={editFormData.avatarUrl} alt="Avatar" width={80} height={80} className="h-full w-full object-cover" />
+                    ) : (
+                      <Users className="h-8 w-8 text-slate-400" />
+                    )}
+                  </div>
+                  <label className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                    {uploadingImage ? <Loader2 className="h-5 w-5 animate-spin text-white" /> : <Camera className="h-5 w-5 text-white" />}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">Click para subir foto</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-2">
+                  <Label>Nombre Completo</Label>
+                  <Input required value={editFormData.name} onChange={e => setEditFormData({...editFormData, name: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email</Label>
+                  <Input type="email" required value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Nueva Contraseña (Opcional)</Label>
+                  <Input type="password" placeholder="Dejar en blanco para mantener actual" value={editFormData.password} onChange={e => setEditFormData({...editFormData, password: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>WhatsApp</Label>
+                  <Input placeholder="54911..." value={editFormData.whatsappNumber} onChange={e => setEditFormData({...editFormData, whatsappNumber: e.target.value})} />
+                </div>
+                {me?.id !== editingMember.id && (
+                  <div className="space-y-2">
+                    <Label>Rol</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={editFormData.role}
+                      onChange={e => setEditFormData({...editFormData, role: e.target.value})}
+                    >
+                      <option value="SELLER">Vendedor</option>
+                      <option value="ADMIN">Administrador</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setEditingMember(null)}>Cancelar</Button>
+                <Button type="submit" disabled={editSubmitting || uploadingImage}>
+                  {editSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Guardar Cambios
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
