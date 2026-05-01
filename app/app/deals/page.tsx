@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatPrice, formatDate } from '@/lib/utils'
-import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign } from 'lucide-react'
+import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign, FileDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { exportToExcel } from '@/lib/utils/export'
 
 interface Deal {
   id: string
@@ -35,6 +36,7 @@ export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
 
   useEffect(() => { fetchDeals() }, [])
 
@@ -68,11 +70,28 @@ export default function DealsPage() {
   }
 
   const filteredDeals = Array.isArray(deals)
-    ? deals.filter(d =>
-        d.lead.name.toLowerCase().includes(search.toLowerCase()) ||
-        d.unit.title.toLowerCase().includes(search.toLowerCase())
-      )
+    ? deals.filter(d => {
+        const matchSearch =
+          d.lead.name.toLowerCase().includes(search.toLowerCase()) ||
+          d.unit.title.toLowerCase().includes(search.toLowerCase())
+        const matchStatus = statusFilter === 'ALL' || d.status === statusFilter
+        return matchSearch && matchStatus
+      })
     : []
+
+  function handleExport() {
+    const rows = filteredDeals.map(d => ({
+      'Cliente': d.lead.name,
+      'Teléfono': d.lead.phone,
+      'Vehículo': d.unit.title,
+      'Precio': d.finalPrice,
+      'Moneda': d.finalPriceCurrency,
+      'Estado': statusConfig[d.status]?.label ?? d.status,
+      'Vendedor': d.seller.name,
+      'Fecha': formatDate(d.createdAt),
+    }))
+    exportToExcel(rows, `Operaciones_${new Date().toISOString().split('T')[0]}`, 'Operaciones')
+  }
 
   const totalRevenue = deals
     .filter(d => d.status === 'DELIVERED')
@@ -98,12 +117,30 @@ export default function DealsPage() {
             </span> entregadas · {filteredDeals.length} total
           </p>
         </div>
-        <Link href="/app/deals/new">
-          <Button size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            Nueva Operación
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport}>
+            <FileDown className="h-4 w-4" />
+            Exportar
           </Button>
-        </Link>
+          <Link href="/app/deals/new">
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Nueva Operación
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Filtros de estado */}
+      <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50 w-fit">
+        {['ALL', 'NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT', 'DELIVERED', 'CANCELED'].map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
+              statusFilter === s ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            )}>
+            {s === 'ALL' ? 'Todos' : statusConfig[s]?.label ?? s}
+          </button>
+        ))}
       </div>
 
       {/* Buscador */}

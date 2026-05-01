@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Search, Car, Bike, Anchor, Edit, Trash2, Loader2, MapPin, Users, Eye } from 'lucide-react'
+import { Plus, Search, Car, Bike, Anchor, Edit, Trash2, Loader2, MapPin, Users, Eye, FileDown, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { exportToExcel } from '@/lib/utils/export'
 
 interface Unit {
   id: string
@@ -56,6 +57,8 @@ export default function UnitsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [typeFilter, setTypeFilter] = useState('ALL')
 
   useEffect(() => { fetchUnits() }, [])
 
@@ -91,8 +94,25 @@ export default function UnitsPage() {
 
   const filteredUnits = units.filter(u => {
     const q = search.toLowerCase()
-    return u.title.toLowerCase().includes(q) || (u.location?.toLowerCase().includes(q) ?? false)
+    const matchSearch = u.title.toLowerCase().includes(q) || (u.location?.toLowerCase().includes(q) ?? false)
+    const matchStatus = statusFilter === 'ALL' || u.status === statusFilter
+    const matchType = typeFilter === 'ALL' || u.type === typeFilter
+    return matchSearch && matchStatus && matchType
   })
+
+  function handleExport() {
+    const rows = filteredUnits.map(u => ({
+      'Título': u.title,
+      'Tipo': u.type,
+      'Estado': u.status,
+      'Precio ARS': u.priceArs ?? '',
+      'Precio USD': u.priceUsd ?? '',
+      'Ubicación': u.location ?? '',
+      'Leads': u._count?.interestedLeads ?? 0,
+      'Operaciones': u._count?.deals ?? 0,
+    }))
+    exportToExcel(rows, `Inventario_${new Date().toISOString().split('T')[0]}`, 'Inventario')
+  }
 
   const available = units.filter(u => u.status === 'AVAILABLE').length
   const reserved = units.filter(u => u.status === 'RESERVED').length
@@ -111,12 +131,42 @@ export default function UnitsPage() {
             {' '}· {units.length} total
           </p>
         </div>
-        <Link href="/app/units/new">
-          <Button size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            Nueva Unidad
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport}>
+            <FileDown className="h-4 w-4" />
+            Exportar
           </Button>
-        </Link>
+          <Link href="/app/units/new">
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Nueva Unidad
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Filtros rápidos */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50">
+          {['ALL','AVAILABLE','IN_PREP','RESERVED','SOLD'].map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)}
+              className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
+                statusFilter === s ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              )}>
+              {s === 'ALL' ? 'Todos' : s === 'AVAILABLE' ? 'Disponible' : s === 'IN_PREP' ? 'En prep.' : s === 'RESERVED' ? 'Reservado' : 'Vendido'}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50">
+          {['ALL','CAR','MOTORCYCLE','BOAT'].map(t => (
+            <button key={t} onClick={() => setTypeFilter(t)}
+              className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
+                typeFilter === t ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              )}>
+              {t === 'ALL' ? 'Tipo' : t === 'CAR' ? '🚗 Autos' : t === 'MOTORCYCLE' ? '🏍 Motos' : '⛵ Náutica'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Buscador */}
