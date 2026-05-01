@@ -46,7 +46,17 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
         <div className="bg-slate-900 text-white px-8 py-5 flex justify-between items-center rounded-b-2xl shadow-sm relative z-10">
           <div className="flex items-center gap-3">
             {company?.logoUrl ? (
-              <img src={company.logoUrl} alt="Logo" className="h-12 w-12 bg-white rounded-md p-1 object-contain" crossOrigin="anonymous" />
+              <div 
+                className="h-12 w-12 bg-white rounded-md shadow-sm"
+                style={{
+                  backgroundImage: `url(${company.logoUrl})`,
+                  backgroundSize: 'contain',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  backgroundOrigin: 'content-box',
+                  padding: '4px'
+                }}
+              />
             ) : (
               <div className="h-12 w-12 bg-slate-800 border border-slate-700 rounded-md flex items-center justify-center">
                 <span className="text-sm font-black text-slate-500">Auto</span>
