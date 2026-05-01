@@ -69,7 +69,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
               alt={user.companyName}
               width={30}
               height={30}
-              className="h-7 w-7 rounded-md bg-white object-contain"
+              className="h-7 w-7 rounded-md bg-white object-cover"
               unoptimized
             />
           ) : (
