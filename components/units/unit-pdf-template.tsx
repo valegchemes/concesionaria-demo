@@ -47,14 +47,12 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
           <div className="flex items-center gap-3">
             {company?.logoUrl ? (
               <div 
-                className="h-12 w-12 bg-white rounded-md shadow-sm"
+                className="h-12 w-12 bg-white rounded-md shadow-sm overflow-hidden"
                 style={{
                   backgroundImage: `url(${company.logoUrl})`,
-                  backgroundSize: 'contain',
+                  backgroundSize: 'cover',
                   backgroundPosition: 'center',
-                  backgroundRepeat: 'no-repeat',
-                  backgroundOrigin: 'content-box',
-                  padding: '4px'
+                  backgroundRepeat: 'no-repeat'
                 }}
               />
             ) : (
