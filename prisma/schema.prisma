@@ -142,6 +142,7 @@ model Unit {
   type               UnitType
   title              String
   description        String?
+  year               Int?
   status             UnitStatus      @default(AVAILABLE)
   location           String?
   tags               String[]

@@ -36,6 +36,7 @@ interface Unit {
   tags: string[]
   priceArs: number | null
   priceUsd: number | null
+  year: number | null
   vin: string | null
   domain: string | null
   engineNumber: string | null
@@ -123,6 +124,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           priceUsd: formData.priceUsd != null ? Number(formData.priceUsd) : null,
           acquisitionCostArs: formData.acquisitionCostArs != null ? Number(formData.acquisitionCostArs) : null,
           acquisitionCostUsd: formData.acquisitionCostUsd != null ? Number(formData.acquisitionCostUsd) : null,
+          year: formData.year ? Number(formData.year) : null,
           attributes: attributesForm.filter(a => a.key.trim() !== '' && a.value.trim() !== ''),
         }),
       })
@@ -383,6 +385,32 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   <div className="space-y-2">
                     <Label>Ubicación</Label>
                     <Input value={formData.location || ''} onChange={e => updateField('location', e.target.value)} />
+                  </div>
+                  
+                  <div className="space-y-3 pt-4 border-t">
+                    <Label className="text-base font-semibold text-gray-800">Detalles Técnicos y Legales (Documentación)</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Año</Label>
+                        <Input type="number" placeholder="Ej: 2024" value={formData.year || ''} onChange={e => updateField('year', e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Patente / Dominio</Label>
+                        <Input placeholder="Ej: AB123CD" value={formData.domain || ''} onChange={e => updateField('domain', e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>VIN</Label>
+                        <Input value={formData.vin || ''} onChange={e => updateField('vin', e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>N° de Chasis</Label>
+                        <Input value={formData.frameNumber || ''} onChange={e => updateField('frameNumber', e.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>N° de Motor</Label>
+                        <Input value={formData.engineNumber || ''} onChange={e => updateField('engineNumber', e.target.value)} />
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-3 pt-4 border-t">
                     <div className="flex items-center justify-between">

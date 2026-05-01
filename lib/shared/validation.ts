@@ -137,6 +137,7 @@ export const CreateUnitSchema = z.object({
   acquisitionCostArs: CurrencySchema.optional().nullable(),
   acquisitionCostUsd: CurrencySchema.optional().nullable(),
   description: z.string().max(2000).optional().or(z.literal("")).nullable(),
+  year: z.number().int().min(1800).max(2100).optional().nullable(),
   location: z.string().max(200).optional().or(z.literal("")).nullable(),
   status: UnitStatusEnum.default('AVAILABLE'),
   vin: z.string().optional().or(z.literal("")).nullable(),
