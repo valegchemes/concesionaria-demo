@@ -34,6 +34,7 @@ model Company {
   users              User[]
   whatsappTemplates  WhatsAppTemplate[]
   expenses           CompanyExpense[]
+  promissoryNotes    PromissoryNote[]
 
   @@map("Company")
 }
@@ -164,6 +165,7 @@ model Unit {
   attributes         UnitAttribute[]
   costItems          UnitCostItem[]
   photos             UnitPhoto[]
+  promissoryNotes    PromissoryNote[]
 
   @@index([companyId])
   @@index([companyId, status])
@@ -208,6 +210,67 @@ model UnitCostItem {
   @@index([unitId])
   @@map("UnitCostItem")
 }
+
+model PromissoryNote {
+  id           String         @id @default(cuid())
+  amount       Decimal        @db.Decimal(12, 2)
+  currency     Currency       @default(ARS)
+  issueDate    DateTime
+  dueDate      DateTime
+  notes        String?
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  unitId       String
+  companyId    String
+  unit         Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  company      Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  installments Installment[]
+
+  @@index([unitId])
+  @@index([companyId])
+  @@index([companyId, dueDate])
+  @@map("PromissoryNote")
+}
+
+model Installment {
+  id                 String              @id @default(cuid())
+  installmentNumber  Int
+  amount             Decimal             @db.Decimal(12, 2)
+  dueDate            DateTime
+  status             InstallmentStatus   @default(PENDING)
+  notes              String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  promissoryNoteId   String
+  promissoryNote     PromissoryNote      @relation(fields: [promissoryNoteId], references: [id], onDelete: Cascade)
+
+  payments           InstallmentPayment[]
+
+  @@index([promissoryNoteId])
+  @@index([dueDate, status])
+  @@map("Installment")
+}
+
+model InstallmentPayment {
+  id            String        @id @default(cuid())
+  amount        Decimal       @db.Decimal(12, 2)
+  date          DateTime      @default(now())
+  method        PaymentMethod @default(CASH)
+  notes         String?
+  createdAt     DateTime      @default(now())
+
+  installmentId String
+  installment   Installment   @relation(fields: [installmentId], references: [id], onDelete: Cascade)
+
+  @@index([installmentId])
+  @@map("InstallmentPayment")
+}
+
+
 
 model Deal {
   id                 String         @id @default(cuid())
@@ -454,6 +517,12 @@ model CompanyExpense {
   @@index([companyId, date])
   @@index([companyId, isActive])
   @@map("CompanyExpense")
+}
+
+enum InstallmentStatus {
+  PENDING
+  PAID
+  OVERDUE
 }
 
 enum UserRole {

@@ -15,6 +15,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import { useRef } from 'react'
 import { UnitPdfTemplate } from '@/components/units/unit-pdf-template'
+import { PromissoryNotesTab } from '@/components/units/promissory-notes-tab'
 
 interface CostItem {
   id: string
@@ -81,6 +82,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const pdfRef = useRef<HTMLDivElement>(null)
   const [company, setCompany] = useState<any>(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'costs'>('details')
 
   useEffect(() => { fetchUnit() }, [id])
 
@@ -237,6 +239,23 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           }`}>{statuses[unit.status]}</span>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {([['details', 'Detalles'], ['notes', 'Pagarés y Cuotas'], ['costs', 'Costos']] as const).map(([tab, label]) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab
+                ? 'border-slate-900 text-slate-900'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="space-y-6">
@@ -318,8 +337,10 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Right column */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Edit form / Details */}
-          {isEditing ? (
+
+          {activeTab === 'notes' && <PromissoryNotesTab unitId={unit.id} />}
+
+          {activeTab === 'details' && isEditing ? (
             <form onSubmit={onSubmit}>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -433,7 +454,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
             </Card>
           )}
 
-          {/* ===================== COST SECTION ===================== */}
+          {(activeTab === 'details' || activeTab === 'costs') && (
           <Card className="border-2 border-orange-100">
             <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
               <div className="flex items-center justify-between">
@@ -572,7 +593,9 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </CardContent>
           </Card>
+          )}
 
+          {activeTab === 'details' && (<>
           {/* Interested Leads */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -605,6 +628,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
               )}
             </CardContent>
           </Card>
+          </>)}
         </div>
       </div>
 

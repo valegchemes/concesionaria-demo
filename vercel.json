@@ -4,5 +4,11 @@
   "buildCommand": "next build",
   "env": {
     "NEXTAUTH_URL": "https://$VERCEL_URL"
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/check-installments",
+      "schedule": "0 8 * * *"
+    }
+  ]
 }
