@@ -176,7 +176,7 @@ export const UpdateCompanySchema = z.object({
   whatsappCentral: z.string().optional().or(z.literal('')),
   address: z.string().max(300).optional().or(z.literal('')),
   city: z.string().max(100).optional().or(z.literal('')),
-  currencyPreference: z.enum(['ARS', 'USD']).optional(),
+  currencyPreference: z.enum(['ARS', 'USD', 'BOTH']).optional(),
   logoUrl: z.string().optional().or(z.literal('')),
 })
 

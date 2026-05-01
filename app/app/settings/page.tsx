@@ -109,7 +109,10 @@ export default function SettingsPage() {
         router.refresh()
       } else {
         const data = await res.json().catch(() => null)
-        alert(data?.error || 'No se pudo guardar la configuracion de empresa')
+        const errMsg = Array.isArray(data?.error)
+          ? data.error.map((e: any) => e.message || e.path?.join('.')).join(', ')
+          : data?.error
+        alert(errMsg || 'No se pudo guardar la configuracion de empresa')
       }
     } catch {
       alert('Error guardando empresa')
@@ -165,7 +168,10 @@ export default function SettingsPage() {
         router.refresh()
       } else {
         const data = await res.json().catch(() => null)
-        alert(data?.error || 'No se pudo actualizar el perfil')
+        const errMsg = Array.isArray(data?.error)
+          ? data.error.map((e: any) => e.message || e.path?.join('.')).join(', ')
+          : data?.error
+        alert(errMsg || 'No se pudo actualizar el perfil')
       }
     } catch {
       alert('Error guardando usuario')
