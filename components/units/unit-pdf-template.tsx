@@ -39,7 +39,8 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
         className="bg-white text-slate-900"
         style={{
           width: '794px',
-          minHeight: '1123px',
+          height: '1123px',
+          overflow: 'hidden',
           boxSizing: 'border-box',
           position: 'relative',
           padding: 0,
@@ -91,7 +92,7 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
           </div>
 
           {/* Main Photo */}
-          <div className="w-full h-[400px] rounded-2xl overflow-hidden shadow-2xl relative border border-slate-100 bg-slate-50">
+          <div className="w-full h-[340px] rounded-2xl overflow-hidden shadow-2xl relative border border-slate-100 bg-slate-50">
             {unit.photos && unit.photos.length > 0 ? (
               <img
                 src={unit.photos[0].url}
@@ -120,12 +121,14 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
           </div>
 
           {/* Description */}
-          {unit.description && (
+          {unit.description?.trim() && (
             <div className="px-2">
               <h3 className="text-lg font-bold text-slate-900 border-b-2 border-slate-100 pb-2 mb-3">Descripción Adicional</h3>
-              <p className="text-slate-600 whitespace-pre-wrap leading-relaxed text-sm">
-                {unit.description}
-              </p>
+              <div className="text-slate-600 leading-relaxed text-sm">
+                {unit.description.trim().split('\n').map((line: string, i: number) => (
+                  <p key={i} className="mb-1 min-h-[1.5rem]">{line}</p>
+                ))}
+              </div>
             </div>
           )}
         </div>
