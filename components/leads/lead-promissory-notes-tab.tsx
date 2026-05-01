@@ -19,6 +19,7 @@ interface Note {
   unit: { id: string; title: string }
   installments: Installment[]
 }
+interface UnitOption { id: string; title: string; domain?: string; priceArs?: number }
 
 const statusConfig = {
   PAID:    { label: 'Pagada',   bg: 'bg-green-100 text-green-800',  icon: CheckCircle  },
@@ -48,6 +49,7 @@ interface Props {
 export function LeadPromissoryNotesTab({ leadId, unitId, unitTitle }: Props) {
   const [notes, setNotes] = useState<Note[]>([])
   const [loading, setLoading] = useState(true)
+  const [units, setUnits] = useState<UnitOption[]>([])
   const [showForm, setShowForm] = useState(false)
   const [expandedNote, setExpandedNote] = useState<string | null>(null)
   const [payingInstallment, setPayingInstallment] = useState<Installment | null>(null)
@@ -69,7 +71,20 @@ export function LeadPromissoryNotesTab({ leadId, unitId, unitTitle }: Props) {
     } finally { setLoading(false) }
   }, [leadId])
 
-  useEffect(() => { fetchNotes() }, [fetchNotes])
+  const fetchUnits = useCallback(async () => {
+    try {
+      const res = await fetch('/api/units?status=AVAILABLE')
+      if (res.ok) {
+        const d = await res.json()
+        setUnits(d.data || [])
+      }
+    } catch (e) { console.error(e) }
+  }, [])
+
+  useEffect(() => { 
+    fetchNotes()
+    fetchUnits()
+  }, [fetchNotes, fetchUnits])
 
   useEffect(() => {
     const amt = parseFloat(form.amount)
@@ -152,19 +167,27 @@ export function LeadPromissoryNotesTab({ leadId, unitId, unitTitle }: Props) {
           <CardHeader><CardTitle className="text-base text-indigo-800">Nuevo Pagaré</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={createNote} className="space-y-4">
-              {/* Unit selector — only show if not pre-filled */}
-              {!unitId && (
-                <div className="space-y-1">
-                  <Label className="text-xs">ID de Unidad *</Label>
-                  <Input placeholder="ID de la unidad relacionada" value={form.unitId}
-                    onChange={e => setForm(p => ({ ...p, unitId: e.target.value }))} />
-                </div>
-              )}
-              {unitId && (
-                <div className="p-2 bg-indigo-100 rounded text-sm text-indigo-800 font-medium">
-                  Unidad: {unitTitle}
-                </div>
-              )}
+              <div className="space-y-1">
+                <Label className="text-xs">Unidad Relacionada *</Label>
+                <select 
+                  value={form.unitId} 
+                  onChange={e => setForm(p => ({ ...p, unitId: e.target.value }))}
+                  className="w-full h-10 px-3 rounded-md border text-sm bg-white"
+                  required
+                >
+                  <option value="">Seleccioná un vehículo...</option>
+                  {/* Option for the current interested unit if it's not in the list */}
+                  {unitId && !units.find(u => u.id === unitId) && (
+                    <option value={unitId}>{unitTitle} (Unidad de interés)</option>
+                  )}
+                  {units.map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.title} {u.domain ? `(${u.domain})` : ''} — {u.priceArs ? formatPrice(u.priceArs, 'ARS') : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-gray-400">Solo aparecen unidades con estado "Disponible".</p>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
