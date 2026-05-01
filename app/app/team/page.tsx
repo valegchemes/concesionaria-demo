@@ -24,6 +24,7 @@ interface TeamMember {
 interface CurrentUser {
   id: string
   role: string
+  companySlug?: string
 }
 
 function getAvatarGradient(name: string): string {
@@ -72,7 +73,7 @@ export default function TeamPage() {
         fetch('/api/me', { cache: 'no-store' }),
         fetch('/api/users', { cache: 'no-store' }),
       ])
-      if (meRes.ok) { const d = await meRes.json(); setMe({ id: d.id, role: d.role }) }
+      if (meRes.ok) { const d = await meRes.json(); setMe({ id: d.id, role: d.role, companySlug: d.companySlug }) }
       if (teamRes.ok) { const d = await teamRes.json(); setMembers(d) }
     } catch (err) {
       console.error('Error fetching team:', err)
@@ -255,11 +256,19 @@ export default function TeamPage() {
                 </div>
               </div>
               <div className="flex justify-end pt-2">
-                <Button type="submit" disabled={submitting} className="gap-1.5">
+                <Button type="submit" disabled={submitting} className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
                   Crear Cuenta
                 </Button>
               </div>
+
+              {me?.companySlug && (
+                <div className="mt-4 rounded-md bg-blue-50/50 dark:bg-blue-900/20 p-3 border border-blue-100 dark:border-blue-800/50">
+                  <p className="text-xs text-blue-800 dark:text-blue-300">
+                    <strong>Importante:</strong> Para ingresar al sistema, este usuario necesitará su <strong>Email</strong>, la <strong>Contraseña</strong> que le asignaste arriba, y el Identificador de la Concesionaria: <code className="font-mono bg-white dark:bg-blue-950 px-1.5 py-0.5 rounded border">{me.companySlug}</code>
+                  </p>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
