@@ -9,8 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatPrice } from '@/lib/utils'
 import {
   ArrowLeft, ExternalLink, Users, Plus, Trash2, TrendingUp,
-  ShoppingCart, Wrench, DollarSign, AlertCircle
+  ShoppingCart, Wrench, DollarSign, AlertCircle, FileText, Loader2
 } from 'lucide-react'
+import { jsPDF } from 'jspdf'
+import html2canvas from 'html2canvas'
+import { useRef } from 'react'
+import { UnitPdfTemplate } from '@/components/units/unit-pdf-template'
 
 interface CostItem {
   id: string
@@ -64,6 +68,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState<Partial<Unit>>({})
+  const [attributesForm, setAttributesForm] = useState<{key: string, value: string}[]>([])
   const [activePhotoIdx, setActivePhotoIdx] = useState(0)
 
   // Cost form
@@ -72,15 +77,28 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [costSaving, setCostSaving] = useState(false)
   const [costError, setCostError] = useState('')
 
+  // PDF Generation
+  const pdfRef = useRef<HTMLDivElement>(null)
+  const [company, setCompany] = useState<any>(null)
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+
   useEffect(() => { fetchUnit() }, [id])
 
   async function fetchUnit() {
     try {
-      const res = await fetch(`/api/units/${id}`)
-      if (res.ok) {
-        const json = await res.json()
+      const [unitRes, companyRes] = await Promise.all([
+        fetch(`/api/units/${id}`),
+        fetch('/api/settings/company')
+      ])
+      if (unitRes.ok) {
+        const json = await unitRes.json()
         setUnit(json.data)
         setFormData(json.data)
+        setAttributesForm(json.data.attributes || [])
+      }
+      if (companyRes.ok) {
+        const json = await companyRes.json()
+        setCompany(json)
       }
     } catch (e) {
       console.error(e)
@@ -102,6 +120,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           priceUsd: formData.priceUsd != null ? Number(formData.priceUsd) : null,
           acquisitionCostArs: formData.acquisitionCostArs != null ? Number(formData.acquisitionCostArs) : null,
           acquisitionCostUsd: formData.acquisitionCostUsd != null ? Number(formData.acquisitionCostUsd) : null,
+          attributes: attributesForm.filter(a => a.key.trim() !== '' && a.value.trim() !== ''),
         }),
       })
       if (res.ok) {
@@ -163,6 +182,31 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
+  async function generatePdf() {
+    if (!pdfRef.current || !unit) return
+    setIsGeneratingPdf(true)
+    try {
+      const canvas = await html2canvas(pdfRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      })
+      const imgData = canvas.toDataURL('image/jpeg', 1.0)
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [794, 1123],
+      })
+      pdf.addImage(imgData, 'JPEG', 0, 0, 794, 1123)
+      pdf.save(`Ficha_${unit.title.replace(/\s+/g, '_')}.pdf`)
+    } catch (err) {
+      console.error('Error generating PDF:', err)
+      alert('Hubo un error al generar el PDF. Revisa la consola.')
+    } finally {
+      setIsGeneratingPdf(false)
+    }
+  }
+
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Cargando...</div>
   if (!unit) return <div className="flex items-center justify-center h-64 text-gray-500">Unidad no encontrada</div>
 
@@ -183,6 +227,10 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
         <h1 className="text-2xl font-bold flex-1">{unit.title}</h1>
+        <Button onClick={generatePdf} disabled={isGeneratingPdf} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-sm">
+          {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+          {isGeneratingPdf ? 'Generando...' : 'Descargar Ficha'}
+        </Button>
         <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{unitTypes[unit.type]}</span>
         <span className={`px-3 py-1 rounded-full text-sm ${unit.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' :
             unit.status === 'SOLD' ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800'
@@ -314,6 +362,36 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                     <Label>Ubicación</Label>
                     <Input value={formData.location || ''} onChange={e => updateField('location', e.target.value)} />
                   </div>
+                  <div className="space-y-3 pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-base font-semibold text-gray-800">Características Adicionales</Label>
+                        <p className="text-xs text-gray-500">Estos datos aparecerán en la Ficha Técnica PDF.</p>
+                      </div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setAttributesForm([...attributesForm, { key: '', value: '' }])}>
+                        <Plus className="h-4 w-4 mr-1" /> Agregar
+                      </Button>
+                    </div>
+                    {attributesForm.map((attr, idx) => (
+                      <div key={idx} className="flex gap-2 items-start">
+                        <Input placeholder="Ej: Kilómetros, Color" value={attr.key} onChange={e => {
+                          const newAttr = [...attributesForm];
+                          newAttr[idx].key = e.target.value;
+                          setAttributesForm(newAttr);
+                        }} className="flex-1" />
+                        <Input placeholder="Ej: 45.000 km, Gris Plata" value={attr.value} onChange={e => {
+                          const newAttr = [...attributesForm];
+                          newAttr[idx].value = e.target.value;
+                          setAttributesForm(newAttr);
+                        }} className="flex-1" />
+                        <Button type="button" size="icon" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
+                          setAttributesForm(attributesForm.filter((_, i) => i !== idx));
+                        }}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             </form>
@@ -336,6 +414,19 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                 {unit.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {unit.tags.map(tag => <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">{tag}</span>)}
+                  </div>
+                )}
+                {unit.attributes && unit.attributes.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <span className="text-gray-500 text-sm font-semibold block mb-2">Características Adicionales (Ficha Técnica):</span>
+                    <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100">
+                      {unit.attributes.map(attr => (
+                        <div key={attr.id || attr.key}>
+                          <span className="text-gray-500 block text-xs uppercase tracking-wider">{attr.key}</span>
+                          <p className="font-medium text-gray-900">{attr.value}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </CardContent>
@@ -515,6 +606,11 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Hidden PDF Template */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
+        <UnitPdfTemplate ref={pdfRef} unit={unit} company={company} />
       </div>
     </div>
   )

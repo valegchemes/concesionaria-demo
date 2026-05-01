@@ -147,6 +147,7 @@ export const CreateUnitSchema = z.object({
   registrationNumber: z.string().optional().or(z.literal("")),
   tags: z.array(z.string()).optional(),
   photos: z.array(z.object({ url: z.string(), order: z.number() })).optional(),
+  attributes: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
 })
 
 export const UpdateUnitSchema = CreateUnitSchema.partial().extend({

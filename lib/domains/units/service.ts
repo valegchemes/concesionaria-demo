@@ -83,6 +83,14 @@ export class UnitService {
             }))
           }
         }),
+        ...(command.attributes && command.attributes.length > 0 && {
+          attributes: {
+            create: command.attributes.map(a => ({
+              key: a.key,
+              value: a.value,
+            }))
+          }
+        }),
       },
       include: {
         photos: true,
@@ -231,6 +239,19 @@ export class UnitService {
     // Validate prices
     if (command.priceArs && command.priceArs <= 0) {
       throw new ValidationError('Price ARS must be greater than 0')
+    }
+
+    if (command.attributes !== undefined) {
+      await prisma.unitAttribute.deleteMany({ where: { unitId: id } })
+      if (command.attributes.length > 0) {
+        await prisma.unitAttribute.createMany({
+          data: command.attributes.map(a => ({
+            unitId: id,
+            key: a.key,
+            value: a.value,
+          }))
+        })
+      }
     }
 
     // Update unit

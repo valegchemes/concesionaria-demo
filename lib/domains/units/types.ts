@@ -33,6 +33,7 @@ export interface CreateUnitCommand {
   registrationNumber?: string
   tags?: string[]
   photos?: Array<{ url: string; order: number }>
+  attributes?: Array<{ key: string; value: string }>
   notes?: string
   companyId: string
   createdById: string
@@ -47,6 +48,7 @@ export interface UpdateUnitCommand {
   description?: string
   notes?: string
   status?: 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'DISCARDED'
+  attributes?: Array<{ key: string; value: string }>
 }
 
 export interface SearchUnitsFilter {
