@@ -45,6 +45,7 @@ export default function NewLeadPage() {
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [units, setUnits] = useState<Unit[]>([])
+  const [currentUser, setCurrentUser] = useState<any>(null)
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -59,7 +60,23 @@ export default function NewLeadPage() {
   useEffect(() => {
     fetchUsers()
     fetchUnits()
+    fetchMe()
   }, [])
+
+  async function fetchMe() {
+    try {
+      const res = await fetch('/api/me', { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setCurrentUser(data)
+        if (data.role === 'SELLER') {
+          setFormData(prev => ({ ...prev, assignedToId: data.id }))
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error)
+    }
+  }
 
   async function fetchUsers() {
     try {
@@ -215,20 +232,22 @@ export default function NewLeadPage() {
               <CardTitle>Asignación</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="assignedToId">Asignar a vendedor</Label>
-                <select
-                  id="assignedToId"
-                  value={formData.assignedToId}
-                  onChange={(e) => updateField('assignedToId', e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border"
-                >
-                  <option value="">Sin asignar</option>
-                  {users.map(u => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
-              </div>
+              {currentUser?.role !== 'SELLER' && (
+                <div className="space-y-2">
+                  <Label htmlFor="assignedToId">Asignar a vendedor</Label>
+                  <select
+                    id="assignedToId"
+                    value={formData.assignedToId}
+                    onChange={(e) => updateField('assignedToId', e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border bg-white"
+                  >
+                    <option value="">Sin asignar</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="interestedUnitId">Unidad de interés</Label>
