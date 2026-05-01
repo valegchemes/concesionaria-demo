@@ -36,6 +36,7 @@ interface SalesProfitChartProps {
   data: ChartDataPoint[]
   isLoading: boolean
   showDetailed?: boolean
+  isSeller?: boolean
 }
 
 // ── Formateo de ejes ──────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ const COLORS = {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export function SalesProfitChart({ data, isLoading, showDetailed = false }: SalesProfitChartProps) {
+export function SalesProfitChart({ data, isLoading, showDetailed = false, isSeller = false }: SalesProfitChartProps) {
   if (isLoading) {
     return <Skeleton className="h-full w-full rounded-xl" />
   }
@@ -196,9 +197,9 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false }: Sale
           <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
           <Legend wrapperStyle={{ paddingTop: '16px' }} formatter={legendFormatter} />
           <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} name="sales" />
-          <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="profit" />
-          <Bar dataKey="unitCosts" fill="#f97316" radius={[4, 4, 0, 0]} name="unitCosts" />
-          <Bar dataKey="operationalCosts" fill="#ef4444" radius={[4, 4, 0, 0]} name="operationalCosts" />
+          {!isSeller && <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="profit" />}
+          {!isSeller && <Bar dataKey="unitCosts" fill="#f97316" radius={[4, 4, 0, 0]} name="unitCosts" />}
+          {!isSeller && <Bar dataKey="operationalCosts" fill="#ef4444" radius={[4, 4, 0, 0]} name="operationalCosts" />}
         </BarChart>
       </ResponsiveContainer>
     )
@@ -258,38 +259,44 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false }: Sale
           activeDot={{ r: 5, fill: COLORS.sales.stroke, stroke: 'white', strokeWidth: 2 }}
           name="sales"
         />
-        <Area
-          type="monotone"
-          dataKey="profit"
-          stroke={COLORS.profit.stroke}
-          strokeWidth={2.5}
-          fill={COLORS.profit.fill}
-          dot={false}
-          activeDot={{ r: 5, fill: COLORS.profit.stroke, stroke: 'white', strokeWidth: 2 }}
-          name="profit"
-        />
-        <Area
-          type="monotone"
-          dataKey="unitCosts"
-          stroke={COLORS.unitCosts.stroke}
-          strokeWidth={2}
-          fill={COLORS.unitCosts.fill}
-          dot={false}
-          activeDot={{ r: 4, fill: COLORS.unitCosts.stroke, stroke: 'white', strokeWidth: 2 }}
-          name="unitCosts"
-          strokeDasharray="5 3"
-        />
-        <Area
-          type="monotone"
-          dataKey="operationalCosts"
-          stroke={COLORS.operationalCosts.stroke}
-          strokeWidth={2}
-          fill={COLORS.operationalCosts.fill}
-          dot={false}
-          activeDot={{ r: 4, fill: COLORS.operationalCosts.stroke, stroke: 'white', strokeWidth: 2 }}
-          name="operationalCosts"
-          strokeDasharray="3 3"
-        />
+        {!isSeller && (
+          <Area
+            type="monotone"
+            dataKey="profit"
+            stroke={COLORS.profit.stroke}
+            strokeWidth={2.5}
+            fill={COLORS.profit.fill}
+            dot={false}
+            activeDot={{ r: 5, fill: COLORS.profit.stroke, stroke: 'white', strokeWidth: 2 }}
+            name="profit"
+          />
+        )}
+        {!isSeller && (
+          <Area
+            type="monotone"
+            dataKey="unitCosts"
+            stroke={COLORS.unitCosts.stroke}
+            strokeWidth={2}
+            fill={COLORS.unitCosts.fill}
+            dot={false}
+            activeDot={{ r: 4, fill: COLORS.unitCosts.stroke, stroke: 'white', strokeWidth: 2 }}
+            name="unitCosts"
+            strokeDasharray="5 3"
+          />
+        )}
+        {!isSeller && (
+          <Area
+            type="monotone"
+            dataKey="operationalCosts"
+            stroke={COLORS.operationalCosts.stroke}
+            strokeWidth={2}
+            fill={COLORS.operationalCosts.fill}
+            dot={false}
+            activeDot={{ r: 4, fill: COLORS.operationalCosts.stroke, stroke: 'white', strokeWidth: 2 }}
+            name="operationalCosts"
+            strokeDasharray="3 3"
+          />
+        )}
       </AreaChart>
     </ResponsiveContainer>
   )

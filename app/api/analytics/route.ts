@@ -59,9 +59,9 @@ function addNoCacheHeaders(response: NextResponse): NextResponse {
 /**
  * Construye la clave de caché única por tenant, tipo y rango temporal.
  */
-function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string): string {
+function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string, userId?: string): string {
   // CACHE_VERSION se usa como prefijo para invalidar todas las claves al hacer un bump de versión
-  return `${CACHE_VERSION}${companyId}:${type}:${timeRange}`
+  return `${CACHE_VERSION}${companyId}:${type}:${timeRange}${userId ? ':' + userId : ''}`
 }
 
 /**
@@ -244,7 +244,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       })
     }
 
-    const cacheKey = getAnalyticsCacheKey(companyId, typeParam, timeRange)
+    const isSeller = user?.role === 'SELLER'
+    const sellerId = isSeller ? userId : undefined
+
+    const cacheKey = getAnalyticsCacheKey(companyId, typeParam, timeRange, sellerId)
     let cacheHit = false
     let result: unknown
 
@@ -267,14 +270,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         switch (typeParam) {
           case 'dashboard':
             result = await withTimeout(
-              getDashboardSummary(companyId, timeRange, dateRange),
+              getDashboardSummary(companyId, timeRange, dateRange, sellerId),
               ANALYTICS_TIMEOUT_MS,
               'dashboard'
             )
             break
           case 'sales-profit':
             result = await withTimeout(
-              getSalesVsProfit(companyId, timeRange, dateRange),
+              getSalesVsProfit(companyId, timeRange, dateRange, sellerId),
               ANALYTICS_TIMEOUT_MS,
               'sales-profit'
             )
@@ -389,7 +392,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 async function getDashboardSummary(
   companyId: string,
   timeRange: TimeRange,
-  dateRange: { start: Date; end: Date; label: string }
+  dateRange: { start: Date; end: Date; label: string },
+  sellerId?: string
 ): Promise<DashboardSummary> {
   const { start, end, label } = dateRange
 
@@ -401,6 +405,7 @@ async function getDashboardSummary(
         companyId,
         status: 'DELIVERED',
         updatedAt: { gte: start, lte: end },
+        ...(sellerId && { sellerId }),
       },
       select: {
         id: true,
@@ -451,11 +456,11 @@ async function getDashboardSummary(
     createExactMoneyAmount(0, 0, 0)
   )
 
-  // Costo de compra: acquisitionCost de cada unidad vendida
-  const totalAcquisitionCostArs = dealsWithUnits.reduce(
+  // Costo de compra: acquisitionCost de cada unidad vendida (los vendedores no ven estos costos)
+  const totalAcquisitionCostArs = sellerId ? 0 : dealsWithUnits.reduce(
     (sum, d) => sum + decimalToNumber(d.unit?.acquisitionCostArs), 0
   )
-  const totalAcquisitionCostUsd = dealsWithUnits.reduce(
+  const totalAcquisitionCostUsd = sellerId ? 0 : dealsWithUnits.reduce(
     (sum, d) => sum + decimalToNumber(d.unit?.acquisitionCostUsd), 0
   )
 
@@ -470,13 +475,13 @@ async function getDashboardSummary(
     : { _sum: { amountArs: null, amountUsd: null } }
 
   // Cálculo correcto de costos totales
-  const totalCostsArs =
+  const totalCostsArs = sellerId ? 0 :
     totalAcquisitionCostArs +
     decimalToNumber(dealCosts._sum?.amountArs) +
     decimalToNumber(unitCosts._sum?.amountArs) +
     decimalToNumber(companyExpenses._sum?.amountArs)
 
-  const totalCostsUsd =
+  const totalCostsUsd = sellerId ? 0 :
     totalAcquisitionCostUsd +
     decimalToNumber(dealCosts._sum?.amountUsd) +
     decimalToNumber(unitCosts._sum?.amountUsd) +
@@ -526,7 +531,8 @@ async function getDashboardSummary(
 async function getSalesVsProfit(
   companyId: string,
   timeRange: TimeRange,
-  dateRange: { start: Date; end: Date; label: string }
+  dateRange: { start: Date; end: Date; label: string },
+  sellerId?: string
 ): Promise<SalesVsProfitAnalytics> {
   const { start, end } = dateRange
 
@@ -535,6 +541,7 @@ async function getSalesVsProfit(
       companyId,
       status: 'DELIVERED',
       updatedAt: { gte: start, lte: end },
+      ...(sellerId && { sellerId }),
     },
     select: {
       finalPrice: true,
@@ -596,13 +603,13 @@ async function getSalesVsProfit(
     }
 
     const saleAmount = createDealRevenueAmount(deal)
-    const acquisitionArs = decimalToNumber(deal.unit?.acquisitionCostArs)
-    const acquisitionUsd = decimalToNumber(deal.unit?.acquisitionCostUsd)
-    const extraCostsArs = deal.closingCosts.reduce(
+    const acquisitionArs = sellerId ? 0 : decimalToNumber(deal.unit?.acquisitionCostArs)
+    const acquisitionUsd = sellerId ? 0 : decimalToNumber(deal.unit?.acquisitionCostUsd)
+    const extraCostsArs = sellerId ? 0 : deal.closingCosts.reduce(
       (sum, c) => sum + decimalToNumber(c.amountArs),
       0
     )
-    const extraCostsUsd = deal.closingCosts.reduce(
+    const extraCostsUsd = sellerId ? 0 : deal.closingCosts.reduce(
       (sum, c) => sum + decimalToNumber(c.amountUsd),
       0
     )
@@ -664,8 +671,8 @@ async function getSalesVsProfit(
       date: existingDate,
     }
 
-    const costArs = decimalToNumber(exp.amountArs)
-    const costUsd = decimalToNumber(exp.amountUsd)
+    const costArs = sellerId ? 0 : decimalToNumber(exp.amountArs)
+    const costUsd = sellerId ? 0 : decimalToNumber(exp.amountUsd)
     const totalExpense = createMoneyAmount(costArs, costUsd)
 
     byPeriod.set(key, {
@@ -700,8 +707,8 @@ async function getSalesVsProfit(
       date: existingDate,
     }
 
-    const costArs = decimalToNumber(uc.amountArs)
-    const costUsd = decimalToNumber(uc.amountUsd)
+    const costArs = sellerId ? 0 : decimalToNumber(uc.amountArs)
+    const costUsd = sellerId ? 0 : decimalToNumber(uc.amountUsd)
     const totalCost = createMoneyAmount(costArs, costUsd)
 
     byPeriod.set(key, {

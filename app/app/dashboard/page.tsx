@@ -9,22 +9,26 @@ import {
 } from 'lucide-react'
 import { AnalyticsDashboardLazy } from '@/components/dashboard/analytics-dashboard-lazy'
 
-async function getDashboardData(companyId: string) {
+async function getDashboardData(companyId: string, userId: string, role: string) {
+  const isSeller = role === 'SELLER'
+  const leadWhere = isSeller ? { companyId, assignedToId: userId } : { companyId }
+  const dealWhere = isSeller ? { companyId, sellerId: userId } : { companyId }
+
   const [
     totalLeads, activeLeads, newLeads, lostLeads,
     totalUnits, availableUnits, soldUnits,
     activeDeals, completedDeals, canceledDeals,
   ] = await prisma.$transaction([
-    prisma.lead.count({ where: { companyId } }),
-    prisma.lead.count({ where: { companyId, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } } }),
-    prisma.lead.count({ where: { companyId, status: 'NEW' } }),
-    prisma.lead.count({ where: { companyId, status: 'LOST' } }),
+    prisma.lead.count({ where: leadWhere }),
+    prisma.lead.count({ where: { ...leadWhere, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } } }),
+    prisma.lead.count({ where: { ...leadWhere, status: 'NEW' } }),
+    prisma.lead.count({ where: { ...leadWhere, status: 'LOST' } }),
     prisma.unit.count({ where: { companyId, isActive: true } }),
     prisma.unit.count({ where: { companyId, isActive: true, status: 'AVAILABLE' } }),
     prisma.unit.count({ where: { companyId, isActive: true, status: 'SOLD' } }),
-    prisma.deal.count({ where: { companyId, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } } }),
-    prisma.deal.count({ where: { companyId, status: 'DELIVERED' } }),
-    prisma.deal.count({ where: { companyId, status: 'CANCELED' } }),
+    prisma.deal.count({ where: { ...dealWhere, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } } }),
+    prisma.deal.count({ where: { ...dealWhere, status: 'DELIVERED' } }),
+    prisma.deal.count({ where: { ...dealWhere, status: 'CANCELED' } }),
   ])
 
   return {
@@ -140,7 +144,7 @@ export default async function DashboardPage() {
 
   try {
     const [data, company] = await Promise.all([
-      getDashboardData(session.user.companyId),
+      getDashboardData(session.user.companyId, session.user.id, session.user.role),
       prisma.company.findUnique({
         where: { id: session.user.companyId },
         select: { name: true },

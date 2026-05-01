@@ -145,16 +145,17 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5" />
-                      Ventas vs Ganancias
+                      {isSeller ? "Mis Ventas" : "Ventas vs Ganancias"}
                     </CardTitle>
                     <CardDescription>
-                      Comparativa temporal de ingresos y márgenes
+                      {isSeller ? "Evolución temporal de tus ingresos" : "Comparativa temporal de ingresos y márgenes"}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="h-[300px]">
                     <SalesProfitChart 
                       data={salesProfit.chartData} 
                       isLoading={salesProfit.isLoading}
+                      isSeller={isSeller}
                     />
                   </CardContent>
                 </Card>
@@ -195,6 +196,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                     data={salesProfit.chartData}
                     isLoading={salesProfit.isLoading}
                     showDetailed
+                    isSeller={isSeller}
                   />
                 </CardContent>
               </Card>
