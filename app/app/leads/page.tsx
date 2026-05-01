@@ -219,9 +219,33 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('ALL')
   const [view, setView] = useState<'list' | 'kanban'>('list')
+  const [me, setMe] = useState<{ id: string, role: string } | null>(null)
+  const [team, setTeam] = useState<{ id: string, name: string }[]>([])
+  const [selectedSeller, setSelectedSeller] = useState<string>('ALL')
   const dragId = useRef<string | null>(null)
 
-  useEffect(() => { fetchLeads() }, [])
+  useEffect(() => { 
+    fetchLeads()
+    fetchMeAndTeam()
+  }, [])
+
+  async function fetchMeAndTeam() {
+    try {
+      const meRes = await fetch('/api/me')
+      if (meRes.ok) {
+        const meData = await meRes.json()
+        setMe(meData)
+        if (meData.role === 'ADMIN' || meData.role === 'MANAGER') {
+          const teamRes = await fetch('/api/users')
+          if (teamRes.ok) {
+            setTeam(await teamRes.json())
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
 
   async function fetchLeads() {
     try {
@@ -283,7 +307,11 @@ export default function LeadsPage() {
           filter === 'ALL' ? true :
           filter === 'ACTIVE' ? activeStatuses.includes(l.status) :
           l.status === filter
-        return matchSearch && matchFilter
+        const matchSeller = 
+          selectedSeller === 'ALL' ? true :
+          selectedSeller === 'UNASSIGNED' ? !l.assignedTo :
+          l.assignedTo?.name === team.find(t => t.id === selectedSeller)?.name
+        return matchSearch && matchFilter && matchSeller
       })
     : []
 
@@ -366,6 +394,21 @@ export default function LeadsPage() {
               )
             })}
           </div>
+          
+          {(me?.role === 'ADMIN' || me?.role === 'MANAGER') && team.length > 0 && (
+            <select
+              className="h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-300"
+              value={selectedSeller}
+              onChange={(e) => setSelectedSeller(e.target.value)}
+            >
+              <option value="ALL">Todos los Vendedores</option>
+              <option value="UNASSIGNED">Sin Asignar</option>
+              {team.map(member => (
+                <option key={member.id} value={member.id}>{member.name}</option>
+              ))}
+            </select>
+          )}
+
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -381,15 +424,31 @@ export default function LeadsPage() {
       {/* ── KANBAN VIEW ───────────────────────────────────────────────────── */}
       {view === 'kanban' && (
         <div>
-          {/* Search bar for kanban */}
-          <div className="relative mb-4 max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar lead…"
-              className="pl-9 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          {/* Search bar & filter for kanban */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative w-full sm:w-64 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar lead…"
+                className="pl-9 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            
+            {(me?.role === 'ADMIN' || me?.role === 'MANAGER') && team.length > 0 && (
+              <select
+                className="h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm px-3 py-2 text-sm text-slate-700 dark:text-slate-300"
+                value={selectedSeller}
+                onChange={(e) => setSelectedSeller(e.target.value)}
+              >
+                <option value="ALL">Todos los Vendedores</option>
+                <option value="UNASSIGNED">Sin Asignar</option>
+                {team.map(member => (
+                  <option key={member.id} value={member.id}>{member.name}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="flex gap-3 overflow-x-auto pb-4">
             {kanbanColumns.map(status => (

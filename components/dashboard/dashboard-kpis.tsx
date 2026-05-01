@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 interface DashboardKPIsProps {
   data: DashboardSummary | undefined
   isLoading: boolean
+  userRole?: string
 }
 
 interface KPICardProps {
@@ -100,7 +101,7 @@ function KPICard({
 // Componente principal
 // ============================================================================
 
-export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
+export function DashboardKPIs({ data, isLoading, userRole }: DashboardKPIsProps) {
   if (isLoading || !data) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -133,16 +134,18 @@ export function DashboardKPIs({ data, isLoading }: DashboardKPIsProps) {
         isLoading={false}
       />
 
-      <KPICard
-        title="Ganancia Neta"
-        value={formatCurrencyCompact(kpis.netProfit.totalConverted)}
-        subtitle={`Margen: ${formatPercentage(kpis.profitMargin)}`}
-        detail={formatCurrency(kpis.netProfit.totalConverted)}
-        trend={kpis.profitMargin > 0 ? 'up' : 'down'}
-        icon={Percent}
-        iconBg="bg-emerald-50 dark:bg-emerald-950/40"
-        isLoading={false}
-      />
+      {userRole !== 'SELLER' && (
+        <KPICard
+          title="Ganancia Neta"
+          value={formatCurrencyCompact(kpis.netProfit.totalConverted)}
+          subtitle={`Margen: ${formatPercentage(kpis.profitMargin)}`}
+          detail={formatCurrency(kpis.netProfit.totalConverted)}
+          trend={kpis.profitMargin > 0 ? 'up' : 'down'}
+          icon={Percent}
+          iconBg="bg-emerald-50 dark:bg-emerald-950/40"
+          isLoading={false}
+        />
+      )}
 
       <KPICard
         title="Operaciones"

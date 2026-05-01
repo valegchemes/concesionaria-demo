@@ -85,7 +85,12 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
       {/* Navegación agrupada */}
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-        {navGroups.map((group) => (
+        {navGroups
+          .filter(group => {
+            if (group.label === 'Administración' && user.role === 'SELLER') return false
+            return true
+          })
+          .map((group) => (
           <div key={group.label}>
             <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               {group.label}

@@ -210,7 +210,7 @@ export class DealService {
         : { status: { not: 'CANCELED' } } // Exclude CANCELED deals by default
       ),
       ...(soldById && { sellerId: soldById }),
-      ...(!hasPermission(requestingUser.permissions, 'deals', 'manage_all') && { sellerId: requestingUser.id }),
+      ...(!hasPermission(requestingUser.permissions, 'deals', 'manage_all') && requestingUser.role !== 'ADMIN' && requestingUser.role !== 'MANAGER' && { sellerId: requestingUser.id }),
     }
 
     const [total, rawDeals] = await Promise.all([

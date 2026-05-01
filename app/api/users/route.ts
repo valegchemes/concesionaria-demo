@@ -20,6 +20,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (session.user.role === 'SELLER') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
     const users = await prisma.user.findMany({
       where: {
         companyId: session.user.companyId,

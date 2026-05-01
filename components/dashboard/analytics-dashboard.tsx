@@ -21,6 +21,7 @@ import { DashboardKPIs } from './dashboard-kpis'
 import { DashboardSkeleton } from './loading-skeleton'
 import { EmptyState } from './empty-state'
 import { AlertCircle, TrendingUp, Users, DollarSign, Package } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 
 // ============================================================================
@@ -31,15 +32,18 @@ interface AnalyticsDashboardProps {
   companyId: string | undefined
   companyName?: string
   hideHeader?: boolean
+  userRole?: string
 }
 
 // ============================================================================
 // Componente Principal
 // ============================================================================
 
-export function AnalyticsDashboard({ companyId, companyName, hideHeader = false }: AnalyticsDashboardProps) {
+export function AnalyticsDashboard({ companyId, companyName, hideHeader = false, userRole }: AnalyticsDashboardProps) {
   const { timeRange, setTimeRange, options } = useTimeRange('30d')
   const { dashboard, salesProfit, topSellers, costs, isLoadingAny, hasError } = useAllAnalytics(timeRange, companyId)
+  
+  const isSeller = userRole === 'SELLER'
 
   // Si no hay companyId, mostrar error
   if (!companyId) {
@@ -124,14 +128,14 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
 
       {/* KPIs — siempre visibles (muestran 0 si no hay datos) */}
       <>
-          <DashboardKPIs data={dashboard.summary} isLoading={dashboard.isLoading} />
+          <DashboardKPIs data={dashboard.summary} isLoading={dashboard.isLoading} userRole={userRole} />
 
           {/* Tabs con gráficos */}
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+            <TabsList className={cn("grid w-full", isSeller ? "grid-cols-2 lg:w-[260px]" : "grid-cols-3 lg:w-[400px]")}>
               <TabsTrigger value="overview">Resumen</TabsTrigger>
               <TabsTrigger value="sales">Ventas</TabsTrigger>
-              <TabsTrigger value="costs">Costos</TabsTrigger>
+              {!isSeller && <TabsTrigger value="costs">Costos</TabsTrigger>}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-4">
@@ -156,23 +160,25 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
                 </Card>
 
                 {/* Top Vendedores */}
-                <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      Top Vendedores
-                    </CardTitle>
-                    <CardDescription>
-                      Ranking por volumen de ventas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[300px]">
-                    <TopSellersChart 
-                      data={topSellers.chartData}
-                      isLoading={topSellers.isLoading}
-                    />
-                  </CardContent>
-                </Card>
+                {!isSeller && (
+                  <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Top Vendedores
+                      </CardTitle>
+                      <CardDescription>
+                        Ranking por volumen de ventas
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                      <TopSellersChart 
+                        data={topSellers.chartData}
+                        isLoading={topSellers.isLoading}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </TabsContent>
 
@@ -194,78 +200,80 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
               </Card>
             </TabsContent>
 
-            <TabsContent value="costs" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      Distribución de Costos
-                    </CardTitle>
-                    <CardDescription>
-                      Desglose por categoría
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="h-[350px]">
-                    <CostBreakdownChart 
-                      data={costs.pieData}
-                      isLoading={costs.isLoading}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Resumen de Costos</CardTitle>
-                    <CardDescription>
-                      Totales por tipo de gasto
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {costs.isLoading ? (
-                      <div className="space-y-2">
-                        <div className="h-4 bg-muted rounded animate-pulse" />
-                        <div className="h-4 bg-muted rounded animate-pulse" />
-                        <div className="h-4 bg-muted rounded animate-pulse" />
-                      </div>
-                    ) : costs.analytics ? (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Operativos</span>
-                          <span className="font-medium">
-                            {formatCurrency(costs.analytics.byType.operational.totalConverted)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Mantenimiento</span>
-                          <span className="font-medium">
-                            {formatCurrency(costs.analytics.byType.maintenance.totalConverted)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Comisiones</span>
-                          <span className="font-medium">
-                            {formatCurrency(costs.analytics.byType.commissions.totalConverted)}
-                          </span>
-                        </div>
-                        <div className="border-t pt-4 flex justify-between items-center">
-                          <span className="font-semibold">Total</span>
-                          <span className="font-bold text-lg">
-                            {formatCurrency(costs.analytics.totalCosts.totalConverted)}
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <EmptyState 
-                        title="Sin datos de costos"
-                        description="No se registraron costos en este período"
-                        compact
+            {!isSeller && (
+              <TabsContent value="costs" className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        Distribución de Costos
+                      </CardTitle>
+                      <CardDescription>
+                        Desglose por categoría
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-[350px]">
+                      <CostBreakdownChart 
+                        data={costs.pieData}
+                        isLoading={costs.isLoading}
                       />
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Resumen de Costos</CardTitle>
+                      <CardDescription>
+                        Totales por tipo de gasto
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {costs.isLoading ? (
+                        <div className="space-y-2">
+                          <div className="h-4 bg-muted rounded animate-pulse" />
+                          <div className="h-4 bg-muted rounded animate-pulse" />
+                          <div className="h-4 bg-muted rounded animate-pulse" />
+                        </div>
+                      ) : costs.analytics ? (
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Operativos</span>
+                            <span className="font-medium">
+                              {formatCurrency(costs.analytics.byType.operational.totalConverted)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Mantenimiento</span>
+                            <span className="font-medium">
+                              {formatCurrency(costs.analytics.byType.maintenance.totalConverted)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Comisiones</span>
+                            <span className="font-medium">
+                              {formatCurrency(costs.analytics.byType.commissions.totalConverted)}
+                            </span>
+                          </div>
+                          <div className="border-t pt-4 flex justify-between items-center">
+                            <span className="font-semibold">Total</span>
+                            <span className="font-bold text-lg">
+                              {formatCurrency(costs.analytics.totalCosts.totalConverted)}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <EmptyState 
+                          title="Sin datos de costos"
+                          description="No se registraron costos en este período"
+                          compact
+                        />
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
         </>
     </div>

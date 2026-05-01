@@ -183,7 +183,7 @@ export class LeadService {
       isActive: true,
       ...(status && { status: status as LeadStatus }),
       ...(assignedToId && { assignedToId }),
-      ...(!hasPermission(requestingUser.permissions, 'leads', 'manage_all') && {
+      ...(!hasPermission(requestingUser.permissions, 'leads', 'manage_all') && requestingUser.role !== 'ADMIN' && requestingUser.role !== 'MANAGER' && {
         OR: [
           { assignedToId: requestingUser.id },
           { createdById: requestingUser.id },
@@ -410,7 +410,7 @@ export class LeadService {
           { phone: { contains: query.replace(/\D/g, '') } },
           { email: { contains: query, mode: 'insensitive' } },
         ],
-        ...(!hasPermission(requestingUser.permissions, 'leads', 'manage_all') && {
+        ...(!hasPermission(requestingUser.permissions, 'leads', 'manage_all') && requestingUser.role !== 'ADMIN' && requestingUser.role !== 'MANAGER' && {
           AND: [
             {
               OR: [

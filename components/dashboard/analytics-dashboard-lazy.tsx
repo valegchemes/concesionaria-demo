@@ -6,6 +6,7 @@ interface AnalyticsDashboardLazyProps {
   companyId: string
   companyName?: string
   hideHeader?: boolean
+  userRole?: string
 }
 
 export function AnalyticsDashboardLazy(props: AnalyticsDashboardLazyProps) {

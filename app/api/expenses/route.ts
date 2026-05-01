@@ -18,9 +18,12 @@ const ExpenseSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // Fast-path: headers del middleware (0 queries DB)
     const user = await getCurrentUserFromHeaders(request)
     const companyId = user.companyId
+
+    if (user.role === 'SELLER') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    }
 
     const { searchParams } = new URL(request.url)
     const month = searchParams.get('month') // e.g. "2024-05"
@@ -53,6 +56,10 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser()
     const companyId = user.companyId
+
+    if (user.role === 'SELLER') {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+    }
 
     const body = await request.json()
 

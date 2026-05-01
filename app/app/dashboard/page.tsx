@@ -245,6 +245,7 @@ export default async function DashboardPage() {
             companyId={session.user.companyId}
             companyName={companyName}
             hideHeader
+            userRole={session.user.role}
           />
         ) : (
           <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
