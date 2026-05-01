@@ -3,7 +3,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
-  serverExternalPackages: ['@prisma/client', 'bcrypt', 'pino', 'pino-pretty'],
+  serverExternalPackages: ['@prisma/client', 'bcrypt', 'pino', 'pino-pretty', 'pdfkit'],
   images: {
     remotePatterns: [
       {
