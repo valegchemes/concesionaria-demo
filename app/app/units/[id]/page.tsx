@@ -16,6 +16,7 @@ import html2canvas from 'html2canvas'
 import { useRef } from 'react'
 import { UnitPdfTemplate } from '@/components/units/unit-pdf-template'
 import { PromissoryNotesTab } from '@/components/units/promissory-notes-tab'
+import { DigitalDocumentsTab } from '@/components/units/digital-documents-tab'
 
 interface CostItem {
   id: string
@@ -82,7 +83,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const pdfRef = useRef<HTMLDivElement>(null)
   const [company, setCompany] = useState<any>(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
-  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'costs'>('details')
+  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'costs' | 'docs'>('details')
 
   useEffect(() => { fetchUnit() }, [id])
 
@@ -241,7 +242,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Tab Navigation */}
       <div className="flex gap-1 border-b border-gray-200">
-        {([['details', 'Detalles'], ['notes', 'Pagarés y Cuotas'], ['costs', 'Costos']] as const).map(([tab, label]) => (
+        {([['details', 'Detalles'], ['notes', 'Pagarés y Cuotas'], ['costs', 'Costos'], ['docs', 'Documentación']] as const).map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -636,6 +637,11 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
       <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
         <UnitPdfTemplate ref={pdfRef} unit={unit} company={company} />
       </div>
+
+      {/* Documentación Digital tab */}
+      {activeTab === 'docs' && (
+        <DigitalDocumentsTab unitId={unit.id} />
+      )}
     </div>
   )
 }
