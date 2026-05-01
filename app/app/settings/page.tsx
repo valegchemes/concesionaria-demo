@@ -29,6 +29,8 @@ export default function SettingsPage() {
   const [companyName, setCompanyName] = useState('')
   const [companyPhone, setCompanyPhone] = useState('')
   const [companyEmail, setCompanyEmail] = useState('')
+  const [companyCuit, setCompanyCuit] = useState('')
+  const [companyAddress, setCompanyAddress] = useState('')
   const [whatsappCentral, setWhatsappCentral] = useState('')
   const [currencyPref, setCurrencyPref] = useState('BOTH')
   const [logoUrl, setLogoUrl] = useState('')
@@ -62,6 +64,8 @@ export default function SettingsPage() {
           setCompanyName(companyData.name || '')
           setCompanyPhone(companyData.phone || '')
           setCompanyEmail(companyData.email || '')
+          setCompanyCuit(companyData.cuit || '')
+          setCompanyAddress(companyData.address || '')
           setWhatsappCentral(companyData.whatsappCentral || '')
           setCurrencyPref(companyData.currencyPreference || 'BOTH')
           setLogoUrl(companyData.logoUrl || '')
@@ -97,6 +101,8 @@ export default function SettingsPage() {
           name: companyName,
           phone: companyPhone,
           email: companyEmail,
+          cuit: companyCuit,
+          address: companyAddress,
           whatsappCentral,
           currencyPreference: currencyPref,
           logoUrl: finalLogoUrl,
@@ -252,6 +258,26 @@ export default function SettingsPage() {
                   placeholder="5491112345678 (Sin '+')"
                   value={whatsappCentral}
                   onChange={e => setWhatsappCentral(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="companyCuit">CUIT / DNI Comercial</Label>
+                <Input
+                  id="companyCuit"
+                  placeholder="Ej: 30-12345678-9"
+                  value={companyCuit}
+                  onChange={e => setCompanyCuit(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2 lg:col-span-2">
+                <Label htmlFor="companyAddress">Domicilio Comercial (Aparece en Documentos)</Label>
+                <Input
+                  id="companyAddress"
+                  placeholder="Ej: Av. del Libertador 1234, CABA"
+                  value={companyAddress}
+                  onChange={e => setCompanyAddress(e.target.value)}
                 />
               </div>
 

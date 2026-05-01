@@ -12,6 +12,7 @@ datasource db {
 model Company {
   id                 String             @id @default(cuid())
   name               String
+  cuit               String?
   slug               String             @unique
   customDomain       String?            @unique
   email              String
