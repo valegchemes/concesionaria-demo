@@ -137,7 +137,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
             <TabsContent value="overview" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {/* Gráfico de Ventas vs Ganancias */}
-                <Card className="col-span-2">
+                <Card className="col-span-2 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <TrendingUp className="h-5 w-5" />
@@ -156,7 +156,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
                 </Card>
 
                 {/* Top Vendedores */}
-                <Card>
+                <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5" />
@@ -177,7 +177,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false 
             </TabsContent>
 
             <TabsContent value="sales" className="space-y-4">
-              <Card>
+              <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <DollarSign className="h-5 w-5" />

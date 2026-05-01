@@ -10,14 +10,18 @@ export function GlobalBackground({ avatarUrl }: GlobalBackgroundProps) {
 
   return (
     <>
+      {/* Imagen de fondo — escalada para evitar bordes en blur */}
       <div
         className="fixed inset-0 z-[-10] bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url(${bgImage})`,
-          transform: 'scale(1.05)',
+          transform: 'scale(1.08)',
         }}
       />
-      <div className="fixed inset-0 z-[-9] bg-white/55 backdrop-blur-sm transition-colors duration-500 dark:bg-slate-950/70" />
+      {/* Overlay premium: gradiente oscuro desde abajo + blur más fuerte */}
+      <div className="fixed inset-0 z-[-9] bg-gradient-to-br from-white/65 via-white/50 to-slate-100/60 backdrop-blur-[6px] transition-colors duration-500 dark:from-slate-950/80 dark:via-slate-950/70 dark:to-slate-900/75" />
+      {/* Vignette sutil para profundidad */}
+      <div className="fixed inset-0 z-[-8] bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.12)_100%)]" />
     </>
   )
 }

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatPrice, formatDate } from '@/lib/utils'
-import { Handshake, Plus, Search, Loader2, Trash2 } from 'lucide-react'
+import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Deal {
@@ -21,13 +21,13 @@ interface Deal {
   seller: { name: string }
 }
 
-const statusConfig: Record<string, { label: string; classes: string }> = {
-  NEGOTIATION: { label: 'Negociación', classes: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' },
-  RESERVED:    { label: 'Reservado',   classes: 'bg-pink-50 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300' },
-  APPROVED:    { label: 'Aprobado',    classes: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300' },
-  IN_PAYMENT:  { label: 'En Pago',    classes: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' },
-  DELIVERED:   { label: 'Entregado',  classes: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' },
-  CANCELED:    { label: 'Cancelado',  classes: 'bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400' },
+const statusConfig: Record<string, { label: string; classes: string; dot: string; icon: any }> = {
+  NEGOTIATION: { label: 'Negociación', classes: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300',     dot: 'bg-blue-400',    icon: TrendingUp },
+  RESERVED:    { label: 'Reservado',   classes: 'bg-pink-50 text-pink-700 dark:bg-pink-950/50 dark:text-pink-300',     dot: 'bg-pink-400',    icon: Clock },
+  APPROVED:    { label: 'Aprobado',    classes: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300', dot: 'bg-violet-400', icon: CheckCircle },
+  IN_PAYMENT:  { label: 'En Pago',     classes: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300', dot: 'bg-amber-400',   icon: DollarSign },
+  DELIVERED:   { label: 'Entregado',   classes: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300', dot: 'bg-emerald-400', icon: CheckCircle },
+  CANCELED:    { label: 'Cancelado',   classes: 'bg-slate-100 text-slate-500 dark:bg-slate-800/60 dark:text-slate-400', dot: 'bg-slate-300',  icon: XCircle },
 }
 
 export default function DealsPage() {
@@ -74,6 +74,10 @@ export default function DealsPage() {
       )
     : []
 
+  const totalRevenue = deals
+    .filter(d => d.status === 'DELIVERED')
+    .reduce((sum, d) => sum + (d.finalPriceCurrency === 'ARS' ? d.finalPrice : 0), 0)
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -87,14 +91,16 @@ export default function DealsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-foreground">Operaciones</h1>
+          <h1 className="text-xl font-bold text-foreground">Operaciones</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {filteredDeals.length} operación{filteredDeals.length !== 1 ? 'es' : ''}
+            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+              {deals.filter(d => d.status === 'DELIVERED').length}
+            </span> entregadas · {filteredDeals.length} total
           </p>
         </div>
         <Link href="/app/deals/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-1.5" />
+          <Button size="sm" className="gap-1.5">
+            <Plus className="h-4 w-4" />
             Nueva Operación
           </Button>
         </Link>
@@ -105,23 +111,23 @@ export default function DealsPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por cliente o vehículo…"
-          className="pl-9"
+          className="pl-9 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
       {filteredDeals.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center text-muted-foreground">
-            <Handshake className="h-10 w-10 mx-auto mb-3 opacity-20" />
-            <p className="font-medium text-sm">No se encontraron operaciones.</p>
+        <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+          <CardContent className="py-16 text-center">
+            <Handshake className="h-12 w-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+            <p className="font-semibold text-slate-600 dark:text-slate-300">No se encontraron operaciones.</p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
           {/* Cabecera de columnas */}
-          <div className="hidden md:grid grid-cols-[1fr_1.4fr_1.4fr_0.8fr_auto_auto] gap-x-4 px-4 py-2.5 bg-muted/50 border-b border-border text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="hidden md:grid grid-cols-[1fr_1.4fr_1.4fr_0.8fr_auto_auto] gap-x-4 px-5 py-3 bg-slate-50/80 dark:bg-slate-800/40 border-b border-border text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
             <span>Estado / Fecha</span>
             <span>Cliente</span>
             <span>Unidad</span>
@@ -131,35 +137,43 @@ export default function DealsPage() {
           </div>
 
           {/* Filas */}
-          <div className="divide-y divide-border">
-            {filteredDeals.map((deal) => {
-              const status = statusConfig[deal.status] ?? { label: deal.status, classes: 'bg-slate-100 text-slate-600' }
+          <div className="divide-y divide-border/50">
+            {filteredDeals.map((deal, idx) => {
+              const status = statusConfig[deal.status] ?? { label: deal.status, classes: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400', icon: Clock }
+              const StatusIcon = status.icon
+              const isDelivered = deal.status === 'DELIVERED'
 
               return (
                 <div
                   key={deal.id}
-                  className="group grid grid-cols-1 md:grid-cols-[1fr_1.4fr_1.4fr_0.8fr_auto_auto] gap-x-4 gap-y-2 px-4 py-3.5 hover:bg-muted/30 cursor-pointer transition-colors duration-100 items-center"
+                  className={cn(
+                    'group grid grid-cols-1 md:grid-cols-[1fr_1.4fr_1.4fr_0.8fr_auto_auto] gap-x-4 gap-y-2 px-5 py-4 cursor-pointer transition-colors duration-100 items-center',
+                    idx % 2 !== 0 && 'bg-muted/15',
+                    'hover:bg-blue-50/30 dark:hover:bg-blue-950/20'
+                  )}
                   onClick={() => router.push(`/app/deals/${deal.id}`)}
                 >
                   {/* Estado + Fecha */}
                   <div className="flex flex-wrap md:flex-col gap-1.5 md:gap-1">
-                    <span className={cn('badge text-[11px]', status.classes)}>
+                    <span className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold', status.classes)}>
+                      <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
                       {status.label}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
                       {formatDate(deal.createdAt)}
                     </span>
                   </div>
 
                   {/* Cliente */}
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{deal.lead.name}</p>
+                    <p className="text-sm font-semibold text-foreground truncate">{deal.lead.name}</p>
                     <p className="text-xs text-muted-foreground truncate">{deal.lead.phone}</p>
                   </div>
 
                   {/* Unidad */}
                   <div className="min-w-0">
-                    <p className="text-sm text-foreground truncate">{deal.unit.title}</p>
+                    <p className="text-sm font-medium text-foreground truncate">{deal.unit.title}</p>
                     <p className="text-xs text-muted-foreground capitalize">{deal.unit.type.toLowerCase()}</p>
                   </div>
 
@@ -168,9 +182,12 @@ export default function DealsPage() {
                     <p className="text-sm text-foreground truncate">{deal.seller.name}</p>
                   </div>
 
-                  {/* Precio */}
+                  {/* Precio — verde si entregado */}
                   <div className="text-right">
-                    <p className="text-sm font-bold text-foreground tabular-nums whitespace-nowrap">
+                    <p className={cn(
+                      'text-sm font-bold tabular-nums whitespace-nowrap',
+                      isDelivered ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
+                    )}>
                       {deal.finalPriceCurrency} {formatPrice(deal.finalPrice, '')}
                     </p>
                   </div>

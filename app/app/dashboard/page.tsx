@@ -3,34 +3,26 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Car, Handshake, TrendingUp, AlertCircle, Clock, CheckCircle, XCircle } from 'lucide-react'
+import {
+  Users, Car, Handshake, TrendingUp, AlertCircle, Clock,
+  CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, Minus,
+} from 'lucide-react'
 import { AnalyticsDashboardLazy } from '@/components/dashboard/analytics-dashboard-lazy'
 
 async function getDashboardData(companyId: string) {
   const [
-    totalLeads,
-    activeLeads,
-    newLeads,
-    lostLeads,
-    totalUnits,
-    availableUnits,
-    soldUnits,
-    activeDeals,
-    completedDeals,
-    canceledDeals,
+    totalLeads, activeLeads, newLeads, lostLeads,
+    totalUnits, availableUnits, soldUnits,
+    activeDeals, completedDeals, canceledDeals,
   ] = await prisma.$transaction([
     prisma.lead.count({ where: { companyId } }),
-    prisma.lead.count({
-      where: { companyId, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } },
-    }),
+    prisma.lead.count({ where: { companyId, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } } }),
     prisma.lead.count({ where: { companyId, status: 'NEW' } }),
     prisma.lead.count({ where: { companyId, status: 'LOST' } }),
     prisma.unit.count({ where: { companyId, isActive: true } }),
     prisma.unit.count({ where: { companyId, isActive: true, status: 'AVAILABLE' } }),
     prisma.unit.count({ where: { companyId, isActive: true, status: 'SOLD' } }),
-    prisma.deal.count({
-      where: { companyId, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } },
-    }),
+    prisma.deal.count({ where: { companyId, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } } }),
     prisma.deal.count({ where: { companyId, status: 'DELIVERED' } }),
     prisma.deal.count({ where: { companyId, status: 'CANCELED' } }),
   ])
@@ -44,6 +36,91 @@ async function getDashboardData(companyId: string) {
 
 function formatNumber(n: number) {
   return new Intl.NumberFormat('es-AR').format(n)
+}
+
+interface KpiCardProps {
+  title: string
+  value: string | number
+  subtitle: string
+  icon: React.ComponentType<{ className?: string }>
+  accentColor: string
+  iconColor: string
+  trend?: { value: number; label: string }
+}
+
+function KpiCard({ title, value, subtitle, icon: Icon, accentColor, iconColor, trend }: KpiCardProps) {
+  return (
+    <Card className={`relative overflow-hidden border-l-4 ${accentColor} bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30 hover:shadow-lg hover:shadow-black/10 transition-all duration-300`}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
+        <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+          {title}
+        </CardTitle>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconColor}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-4">
+        <div className="text-2xl font-black text-foreground tabular-nums">{value}</div>
+        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        {trend && (
+          <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.value > 0 ? 'text-emerald-600' : trend.value < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+            {trend.value > 0 ? <ArrowUpRight className="h-3 w-3" /> : trend.value < 0 ? <ArrowDownRight className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
+            {trend.label}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+interface StatPillProps {
+  label: string
+  value: number
+  sublabel: string
+  icon: React.ComponentType<{ className?: string }>
+  color: 'blue' | 'green' | 'red'
+}
+
+function StatPill({ label, value, sublabel, icon: Icon, color }: StatPillProps) {
+  const colorMap = {
+    blue: {
+      card: 'border-blue-100/50 bg-blue-50/40 dark:border-blue-900/30 dark:bg-blue-950/30',
+      label: 'text-blue-700 dark:text-blue-300',
+      value: 'text-blue-800 dark:text-blue-100',
+      sub: 'text-blue-600/70 dark:text-blue-400/70',
+      icon: 'text-blue-300 dark:text-blue-600',
+    },
+    green: {
+      card: 'border-emerald-100/50 bg-emerald-50/40 dark:border-emerald-900/30 dark:bg-emerald-950/30',
+      label: 'text-emerald-700 dark:text-emerald-300',
+      value: 'text-emerald-800 dark:text-emerald-100',
+      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
+      icon: 'text-emerald-300 dark:text-emerald-600',
+    },
+    red: {
+      card: 'border-red-100/50 bg-red-50/40 dark:border-red-900/30 dark:bg-red-950/30',
+      label: 'text-red-700 dark:text-red-300',
+      value: 'text-red-800 dark:text-red-100',
+      sub: 'text-red-600/70 dark:text-red-400/70',
+      icon: 'text-red-300 dark:text-red-600',
+    },
+  }
+  const c = colorMap[color]
+
+  return (
+    <Card className={`${c.card} backdrop-blur-sm border`}>
+      <CardContent className="py-4 px-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className={`text-[10px] font-bold uppercase tracking-widest ${c.label}`}>{label}</p>
+            <p className={`mt-1 text-3xl font-black ${c.value}`}>{formatNumber(value)}</p>
+            <p className={`mt-0.5 text-xs ${c.sub}`}>{sublabel}</p>
+          </div>
+          <Icon className={`h-10 w-10 ${c.icon}`} />
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 export default async function DashboardPage() {
@@ -82,111 +159,86 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Dashboard</h1>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Dashboard</h1>
         {companyName && (
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-300">{companyName}</p>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{companyName}</p>
         )}
       </div>
 
+      {/* Resumen Operacional */}
       <div className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
           Resumen Operacional
         </h2>
 
+        {/* KPI Cards con borde de color */}
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Leads Activos</CardTitle>
-              <Users className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatNumber(stats.leads.active)}</div>
-              <p className="text-xs text-muted-foreground">de {formatNumber(stats.leads.total)} total</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Leads Nuevos</CardTitle>
-              <AlertCircle className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatNumber(stats.leads.new)}</div>
-              <p className="text-xs text-muted-foreground">sin contactar</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unidades Disponibles</CardTitle>
-              <Car className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatNumber(stats.units.available)}</div>
-              <p className="text-xs text-muted-foreground">
-                {formatNumber(stats.deals.completed)} vendidas · {formatNumber(stats.units.total)} total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tasa de Conversion</CardTitle>
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{conversionRate}%</div>
-              <p className="text-xs text-muted-foreground">leads → ventas cerradas</p>
-            </CardContent>
-          </Card>
+          <KpiCard
+            title="Leads Activos"
+            value={formatNumber(stats.leads.active)}
+            subtitle={`de ${formatNumber(stats.leads.total)} total`}
+            icon={Users}
+            accentColor="border-l-blue-500"
+            iconColor="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400"
+          />
+          <KpiCard
+            title="Leads Nuevos"
+            value={formatNumber(stats.leads.new)}
+            subtitle="sin contactar"
+            icon={AlertCircle}
+            accentColor="border-l-orange-500"
+            iconColor="bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400"
+          />
+          <KpiCard
+            title="Unidades Disponibles"
+            value={formatNumber(stats.units.available)}
+            subtitle={`${formatNumber(stats.deals.completed)} vendidas · ${formatNumber(stats.units.total)} total`}
+            icon={Car}
+            accentColor="border-l-emerald-500"
+            iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+          />
+          <KpiCard
+            title="Tasa de Conversión"
+            value={`${conversionRate}%`}
+            subtitle="leads → ventas cerradas"
+            icon={TrendingUp}
+            accentColor="border-l-violet-500"
+            iconColor="bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400"
+          />
         </div>
 
+        {/* Pills de operaciones */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className="border-blue-100 bg-blue-50/40 dark:border-blue-900/50 dark:bg-blue-950/40">
-            <CardContent className="pb-4 pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-blue-700 dark:text-blue-300">En Curso</p>
-                  <p className="mt-1 text-3xl font-black text-blue-800 dark:text-blue-100">{formatNumber(stats.deals.active)}</p>
-                  <p className="mt-1 text-xs text-blue-600 dark:text-blue-400">negociaciones activas</p>
-                </div>
-                <Clock className="h-10 w-10 text-blue-300 dark:text-blue-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-green-100 bg-green-50/40 dark:border-green-900/50 dark:bg-green-950/40">
-            <CardContent className="pb-4 pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-green-700 dark:text-green-300">Completadas</p>
-                  <p className="mt-1 text-3xl font-black text-green-800 dark:text-green-100">{formatNumber(stats.deals.completed)}</p>
-                  <p className="mt-1 text-xs text-green-600 dark:text-green-400">operaciones entregadas</p>
-                </div>
-                <CheckCircle className="h-10 w-10 text-green-300 dark:text-green-400" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-red-100 bg-red-50/40 dark:border-red-900/50 dark:bg-red-950/40">
-            <CardContent className="pb-4 pt-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-red-700 dark:text-red-300">Canceladas</p>
-                  <p className="mt-1 text-3xl font-black text-red-800 dark:text-red-100">{formatNumber(stats.deals.canceled)}</p>
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">operaciones canceladas</p>
-                </div>
-                <XCircle className="h-10 w-10 text-red-300 dark:text-red-400" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatPill
+            label="En Curso"
+            value={stats.deals.active}
+            sublabel="negociaciones activas"
+            icon={Clock}
+            color="blue"
+          />
+          <StatPill
+            label="Completadas"
+            value={stats.deals.completed}
+            sublabel="operaciones entregadas"
+            icon={CheckCircle}
+            color="green"
+          />
+          <StatPill
+            label="Canceladas"
+            value={stats.deals.canceled}
+            sublabel="operaciones canceladas"
+            icon={XCircle}
+            color="red"
+          />
         </div>
       </div>
 
-      <div className="border-t pt-2 dark:border-slate-800">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">
-          Analiticas de Ventas
+      {/* Analytics de Ventas */}
+      <div className="border-t border-white/20 dark:border-slate-800/50 pt-4">
+        <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+          Analíticas de Ventas
         </h2>
         {stats.deals.completed > 0 ? (
           <AnalyticsDashboardLazy
@@ -195,12 +247,12 @@ export default async function DashboardPage() {
             hideHeader
           />
         ) : (
-          <Card>
-            <CardContent className="py-10 text-center text-gray-400 dark:text-gray-300">
-              <Handshake className="mx-auto mb-3 h-10 w-10 opacity-30" />
-              <p className="font-medium text-gray-500 dark:text-gray-200">Sin ventas completadas aun</p>
+          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+            <CardContent className="py-12 text-center text-gray-400 dark:text-gray-300">
+              <Handshake className="mx-auto mb-3 h-10 w-10 opacity-20" />
+              <p className="font-semibold text-gray-500 dark:text-gray-200">Sin ventas completadas aún</p>
               <p className="mt-1 text-sm">
-                Los graficos de ventas, ganancias y costos apareceran cuando marques tu primera operacion como <strong>Entregada</strong>.
+                Los gráficos aparecerán cuando marques tu primera operación como <strong>Entregada</strong>.
               </p>
             </CardContent>
           </Card>
