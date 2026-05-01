@@ -90,11 +90,14 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
           {/* Main Photo */}
           <div className="w-full h-[300px] rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-slate-50 relative">
             {unit.photos && unit.photos.length > 0 ? (
-              <img
-                src={unit.photos[0].url}
-                alt={unit.title}
-                className="w-full h-full object-cover"
-                crossOrigin="anonymous"
+              <div 
+                className="w-full h-full"
+                style={{ 
+                  backgroundImage: `url(${unit.photos[0].url})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat'
+                }}
               />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
