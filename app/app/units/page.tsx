@@ -21,6 +21,7 @@ interface Unit {
   tags: string[]
   createdAt: string
   photos: Array<{ url: string }>
+  createdBy?: string | null
   _count?: { interestedLeads: number; deals: number }
 }
 
@@ -108,6 +109,7 @@ export default function UnitsPage() {
       'Precio ARS': u.priceArs ?? '',
       'Precio USD': u.priceUsd ?? '',
       'Ubicación': u.location ?? '',
+      'Cargado por': u.createdBy ?? 'Desconocido',
       'Leads': u._count?.interestedLeads ?? 0,
       'Operaciones': u._count?.deals ?? 0,
     }))
@@ -326,6 +328,14 @@ export default function UnitsPage() {
                       <span className="text-sm text-muted-foreground italic">Sin precio</span>
                     )}
                   </div>
+                  
+                  {/* Creador de la unidad */}
+                  {unit.createdBy && (
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Users className="h-3 w-3" />
+                      Cargado por <span className="font-medium text-foreground">{unit.createdBy}</span>
+                    </div>
+                  )}
 
                   {/* Footer: Tags + interesados */}
                   <div className="mt-3 flex items-center justify-between gap-2">

@@ -56,6 +56,7 @@ interface Unit {
     phone: string
     assignedTo: { name: string } | null
   }[]
+  createdBy: { name: string } | null
 }
 
 const unitTypes: Record<string, string> = { CAR: 'Auto', MOTORCYCLE: 'Moto', BOAT: 'Lancha' }
@@ -467,6 +468,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   {unit.domain && <div><span className="text-gray-500">Patente:</span><p className="font-medium">{unit.domain}</p></div>}
                   {unit.engineNumber && <div><span className="text-gray-500">N° Motor:</span><p className="font-medium">{unit.engineNumber}</p></div>}
                   {unit.frameNumber && <div><span className="text-gray-500">N° Cuadro:</span><p className="font-medium">{unit.frameNumber}</p></div>}
+                  {unit.createdBy && <div><span className="text-gray-500 flex items-center gap-1"><Users className="h-3 w-3"/>Cargado por:</span><p className="font-medium">{unit.createdBy.name}</p></div>}
                 </div>
                 {unit.description && <div><span className="text-gray-500 text-sm">Descripción:</span><p className="mt-1 text-sm">{unit.description}</p></div>}
                 {unit.tags.length > 0 && (

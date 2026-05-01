@@ -26,6 +26,7 @@ import {
   isAppError
 } from '@/lib/shared/errors'
 import { createLogger } from '@/lib/shared/logger'
+import { requirePermission } from '@/lib/shared/authz'
 import type { UnitStatus, UnitType, Prisma } from '@prisma/client'
 
 const log = createLogger('API:Units')
@@ -50,9 +51,9 @@ interface ListUnitsQuery {
   maxPrice?: number
 }
 
-function canManageUnits(role: string): boolean {
-  return role === 'ADMIN' || role === 'MANAGER'
-}
+// function canManageUnits(role: string): boolean {
+//   return role === 'ADMIN' || role === 'MANAGER'
+// }
 
 // ============================================================================
 // UTILIDADES DE AUTENTICACIÓN
@@ -145,6 +146,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           domain: true,
           createdAt: true,
           updatedAt: true,
+          createdBy: { select: { name: true } },
           _count: { select: { deals: true, interestedLeads: true } },
           photos: { orderBy: { order: 'asc' }, select: { url: true, order: true } },
         },
@@ -165,7 +167,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       'GET /api/units - completado'
     )
 
-    return paginatedResponse(units, total, filters.page, filters.limit)
+    const mappedUnits = units.map(u => ({
+      ...u,
+      createdBy: u.createdBy?.name || null
+    }))
+
+    return paginatedResponse(mappedUnits, total, filters.page, filters.limit)
 
   } catch (error) {
     log.error(
@@ -199,9 +206,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const user = await getCurrentUser()
     log.debug({ userId: user.id, companyId: user.companyId }, 'POST /api/units - iniciado')
 
-    if (!canManageUnits(user.role)) {
-      throw new ForbiddenError('Solo administradores o managers pueden crear unidades')
-    }
+    // Verify permission
+    await requirePermission(user.id, user.companyId, 'units', 'manage_all')
 
     // 2. Validación del body con Zod
     const body = await request.json()
@@ -273,6 +279,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           registrationNumber: data.registrationNumber ?? null,
           tags: data.tags ?? [],
           companyId: user.companyId, // 🔒 Multi-tenancy
+          createdById: user.id,
         },
       })
 

@@ -61,6 +61,7 @@ model User {
   tasks          Task[]         @relation("AssignedTasks")
   company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customRoles    Role[]         @relation("UserRoles")
+  createdUnits   Unit[]         @relation("CreatedUnits")
 
   @@unique([email, companyId])
   @@index([companyId])
@@ -164,9 +165,11 @@ model Unit {
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
   companyId          String
+  createdById        String?
   deals              Deal[]
   interestedLeads    Lead[]          @relation("LeadInterestedUnit")
   company            Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy          User?           @relation("CreatedUnits", fields: [createdById], references: [id])
   attributes         UnitAttribute[]
   costItems          UnitCostItem[]
   photos             UnitPhoto[]

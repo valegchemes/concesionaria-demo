@@ -71,10 +71,10 @@ export class UnitService {
         domain: command.domain?.trim(),
         engineNumber: command.engineNumber?.trim(),
         frameNumber: command.frameNumber?.trim(),
-        hin: command.hin?.trim(),
         registrationNumber: command.registrationNumber?.trim(),
         tags: command.tags || [],
         companyId: command.companyId,
+        createdById: command.createdById,
         ...(command.photos && command.photos.length > 0 && {
           photos: {
             create: command.photos.map(p => ({
@@ -126,6 +126,7 @@ export class UnitService {
           },
         },
         deals: { orderBy: { createdAt: 'desc' }, take: 5 },
+        createdBy: { select: { name: true } },
       },
     })
 
@@ -182,6 +183,7 @@ export class UnitService {
           createdAt: true,
           // Solo la foto de portada en listados — el detalle carga todas las imágenes
           photos: { select: { url: true }, orderBy: { order: 'asc' }, take: 1 },
+          createdBy: { select: { name: true } },
           _count: { select: { photos: true, interestedLeads: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -206,6 +208,7 @@ export class UnitService {
         createdAt: u.createdAt,
         status: u.status as string,
         photoUrl: u.photos[0]?.url ?? null,
+        createdBy: u.createdBy?.name ?? null,
         _count: u._count,
       })),
       pagination: {

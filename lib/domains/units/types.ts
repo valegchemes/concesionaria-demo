@@ -11,6 +11,7 @@ export type UnitWithRelations = Unit & {
   attributes?: UnitAttribute[]
   costItems?: UnitCostItem[]
   interestedLeads?: Array<{ id: string; name: string; status: string; phone: string; assignedTo: { name: string } | null }>
+  createdBy?: { name: string } | null
 }
 
 export type UnitDTO = Omit<Unit, 'id' | 'createdAt' | 'updatedAt'>
@@ -80,6 +81,7 @@ export interface UnitListResult {
     createdAt: Date
     status: string
     photoUrl?: string | null
+    createdBy?: string | null
     _count?: { photos: number; interestedLeads: number }
   }>
   pagination: {
