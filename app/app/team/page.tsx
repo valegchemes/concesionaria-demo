@@ -99,7 +99,12 @@ export default function TeamPage() {
         router.refresh()
       } else {
         const data = await res.json()
-        setError(data.error || 'Error al crear el usuario')
+        const errorMsg = typeof data.error === 'string' 
+          ? data.error 
+          : Array.isArray(data.error) 
+            ? data.error[0]?.message || 'Error de validación'
+            : 'Error al crear el usuario'
+        setError(errorMsg)
       }
     } catch {
       setError('Error de conexión')
@@ -141,7 +146,12 @@ export default function TeamPage() {
         router.refresh()
       } else {
         const data = await res.json()
-        setEditError(data.error || 'Error al actualizar el usuario')
+        const errorMsg = typeof data.error === 'string' 
+          ? data.error 
+          : Array.isArray(data.error) 
+            ? data.error[0]?.message || 'Error de validación'
+            : 'Error al actualizar el usuario'
+        setEditError(errorMsg)
       }
     } catch {
       setEditError('Error de conexión')
