@@ -92,7 +92,7 @@ export default function RegisterPage() {
                 <Building2 className="h-5 w-5 text-gray-400" />
                 Datos de la Concesionaria
               </h3>
-              
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="companyName">Nombre visible</Label>
@@ -119,7 +119,7 @@ export default function RegisterPage() {
                 <User className="h-5 w-5 text-gray-400" />
                 Cuenta de Administrador
               </h3>
-              
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <Label htmlFor="adminName">Tu Nombre Completo</Label>

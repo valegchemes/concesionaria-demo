@@ -6,7 +6,7 @@ import { dealService } from '@/lib/domains/deals/service'
 import { createLogger } from '@/lib/shared/logger'
 import { createAuditLog } from '@/lib/shared/audit-log'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
-import { UpdateDealSchema } from '@/lib/shared/validation'
+import { UpdateDealSchema, RecordPaymentSchema } from '@/lib/shared/validation'
 import { hasAnyPermission } from '@/lib/shared/authz'
 
 const log = createLogger('DealDetailRoutes')
@@ -95,7 +95,17 @@ export const POST = withErrorHandling(
 
     const { id } = await params
     const json = await request.json()
-    const { amount, method, reference, notes } = json
+    
+    // ✅ TAREA 2: Validar input con Zod
+    const { data: validData, error: validationError } = RecordPaymentSchema.safeParse(json)
+    if (validationError) {
+      return new Response(
+        JSON.stringify({ error: 'Validation failed', details: validationError.flatten().fieldErrors }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const { amount, method, reference, notes } = validData
 
     log.info({ dealId: id, amount, method }, 'Recording payment')
 

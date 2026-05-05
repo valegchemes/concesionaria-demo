@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
+import { env } from './env'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 const isConfigured = supabaseUrl.startsWith('http') && supabaseAnonKey.length > 10
 
@@ -10,7 +11,7 @@ export const supabase = isConfigured
   : null
 
 export const createServerClient = () => {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY || ''
   
   if (!serviceRoleKey || !isConfigured) {
     throw new Error('Missing Supabase configuration')

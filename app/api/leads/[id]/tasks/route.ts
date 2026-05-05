@@ -6,6 +6,7 @@ import { authOptions } from '../../../auth/[...nextauth]/auth-options'
 import { z } from 'zod'
 import { createLogger } from '@/lib/shared/logger'
 import { ValidationError } from '@/lib/shared/errors'
+import { UpdateTaskSchema } from '@/lib/shared/validation'
 
 const log = createLogger('API:Tasks')
 
@@ -109,7 +110,17 @@ export async function PATCH(
     const { id } = await params
 
     const body = await request.json()
-    const { isCompleted } = body
+    
+    // ✅ TAREA 2: Validar input con Zod
+    const validationResult = UpdateTaskSchema.safeParse(body)
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const { isCompleted } = validationResult.data
 
     const lead = await prisma.lead.findFirst({
       where: {

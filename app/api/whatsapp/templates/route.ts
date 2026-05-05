@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '../../auth/[...nextauth]/auth-options'
 import { createLogger } from '@/lib/shared/logger'
+import { WhatsAppTemplateSchema } from '@/lib/shared/validation'
 
 const log = createLogger('API:WhatsAppTemplates')
 
@@ -34,7 +35,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, template, isDefault = false } = body
+    
+    // ✅ TAREA 2: Validar input con Zod
+    const validationResult = WhatsAppTemplateSchema.safeParse(body)
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: validationResult.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const { name, template, isDefault } = validationResult.data
 
     const created = await prisma.whatsAppTemplate.create({
       data: {

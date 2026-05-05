@@ -222,3 +222,53 @@ export type LeadSource = z.infer<typeof LeadSourceEnum>
 export type UnitType = z.infer<typeof UnitTypeEnum>
 export type UnitStatus = z.infer<typeof UnitStatusEnum>
 export type DealStatus = z.infer<typeof DealStatusEnum>
+
+// ============================================================================
+// Payment Schemas (for /api/deals/[id] POST - Record Payment)
+// ============================================================================
+
+export const PaymentMethodEnum = z.enum(['CASH', 'BANK_TRANSFER', 'CHECK', 'CARD', 'FINANCING'])
+
+export const RecordPaymentSchema = z.object({
+  amount: z.number().positive('Amount must be greater than 0').finite(),
+  method: PaymentMethodEnum,
+  reference: z.string().max(100).optional().or(z.literal('')),
+  notes: z.string().max(500).optional().or(z.literal('')),
+})
+
+export type RecordPaymentInput = z.infer<typeof RecordPaymentSchema>
+
+// ============================================================================
+// WhatsApp Template Schemas (for /api/whatsapp/templates POST)
+// ============================================================================
+
+export const WhatsAppTemplateSchema = z.object({
+  name: NameSchema,
+  template: z.string().min(1, 'Template content is required').max(2000),
+  isDefault: z.boolean().default(false),
+})
+
+export type WhatsAppTemplateInput = z.infer<typeof WhatsAppTemplateSchema>
+
+// ============================================================================
+// Task Schemas (for /api/leads/[id]/tasks POST/PATCH)
+// ============================================================================
+
+export const CreateTaskSchema = z.object({
+  title: StringSchema,
+  description: z.string().max(500).optional().or(z.literal('')),
+  dueDate: z.string().datetime().optional(),
+  assignedToId: z.string().optional(),
+  isCompleted: z.boolean().default(false),
+})
+
+export const UpdateTaskSchema = z.object({
+  isCompleted: z.boolean().optional(),
+  title: StringSchema.optional(),
+  description: z.string().max(500).optional().or(z.literal('')),
+  dueDate: z.string().datetime().optional(),
+  assignedToId: z.string().optional(),
+})
+
+export type CreateTaskInput = z.infer<typeof CreateTaskSchema>
+export type UpdateTaskInput = z.infer<typeof UpdateTaskSchema>

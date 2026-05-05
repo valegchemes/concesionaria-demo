@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { stripe } from '@/lib/domains/billing/stripe'
 import { billingService } from '@/lib/domains/billing/service'
+import { computedEnv } from '@/lib/env'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,8 +21,8 @@ export async function POST(request: NextRequest) {
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
-      success_url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/app/settings/billing?success=true`,
-      cancel_url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/app/settings/billing?canceled=true`,
+      success_url: `${computedEnv.PUBLIC_URL}/app/settings/billing?success=true`,
+      cancel_url: `${computedEnv.PUBLIC_URL}/app/settings/billing?canceled=true`,
       metadata: {
         companyId: user.companyId
       }

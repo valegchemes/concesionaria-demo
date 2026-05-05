@@ -9,6 +9,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { env } from '@/lib/env'
 
 // Inline logger — safe for Edge Runtime
 const log = {
@@ -65,11 +66,10 @@ interface RequestMetadata {
 // ============================================================================
 
 /**
- * Resuelve NEXTAUTH_URL de forma robusta, manejando el error común de Vercel
- * donde se guarda el literal "https://$VERCEL_URL" en el dashboard.
+ * Resuelve NEXTAUTH_SECRET de forma robusta
  */
-function getResolvedSecret(): string | undefined {
-  return process.env.NEXTAUTH_SECRET
+function getResolvedSecret(): string {
+  return env.NEXTAUTH_SECRET
 }
 
 /**
@@ -141,7 +141,7 @@ function clearNextAuthCookies(response: NextResponse, request?: NextRequest): Ne
       path: '/',
       expires: new Date(0),
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: env.NODE_ENV === 'production',
     })
   }
   return response
@@ -162,7 +162,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('Expires', '0')
   response.headers.set('Surrogate-Control', 'no-store')
 
-  if (process.env.NODE_ENV === 'production') {
+  if (env.NODE_ENV === 'production') {
     response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
   }
 

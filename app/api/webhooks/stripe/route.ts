@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/domains/billing/stripe'
 import { billingService } from '@/lib/domains/billing/service'
 import { createLogger } from '@/lib/shared/logger'
+import { env } from '@/lib/env'
 
 const log = createLogger('StripeWebhook')
 
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      env.STRIPE_WEBHOOK_SECRET
     )
   } catch (err: any) {
     log.error({ err }, 'Webhook signature verification failed')

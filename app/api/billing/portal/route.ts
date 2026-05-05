@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { stripe } from '@/lib/domains/billing/stripe'
 import { billingService } from '@/lib/domains/billing/service'
+import { computedEnv } from '@/lib/env'
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      return_url: `${process.env.PUBLIC_URL || 'http://localhost:3000'}/app/settings/billing`,
+      return_url: `${computedEnv.PUBLIC_URL}/app/settings/billing`,
     })
 
     return NextResponse.json({ url: session.url })

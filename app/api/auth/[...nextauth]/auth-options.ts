@@ -3,6 +3,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { z } from 'zod'
 import { verifyCredentials } from '@/lib/auth'
 import { EmailSchema, SlugSchema } from '@/lib/shared/validation'
+import { env } from '@/lib/env'
 
 const LoginInputSchema = z.object({
   email: EmailSchema,
@@ -79,46 +80,46 @@ export const authOptions: NextAuthOptions = {
       return session
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: env.NEXTAUTH_SECRET,
   cookies: {
     sessionToken: {
       name:
-        process.env.NODE_ENV === 'production'
+        env.NODE_ENV === 'production'
           ? '__Secure-next-auth.session-token'
           : 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: env.NODE_ENV === 'production',
       },
     },
     callbackUrl: {
       name:
-        process.env.NODE_ENV === 'production'
+        env.NODE_ENV === 'production'
           ? '__Secure-next-auth.callback-url'
           : 'next-auth.callback-url',
       options: {
         httpOnly: false,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: env.NODE_ENV === 'production',
       },
     },
     csrfToken: {
       name:
-        process.env.NODE_ENV === 'production'
+        env.NODE_ENV === 'production'
           ? '__Secure-next-auth.csrf-token'
           : 'next-auth.csrf-token',
       options: {
         httpOnly: false,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production',
+        secure: env.NODE_ENV === 'production',
       },
     },
   },
-  useSecureCookies: process.env.NODE_ENV === 'production',
+  useSecureCookies: env.NODE_ENV === 'production',
   pages: {
     signIn: '/login',
   },
