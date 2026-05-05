@@ -11,9 +11,16 @@ import { env } from './env'
 export async function createClient() {
   const cookieStore = await cookies()
 
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase configuration (URL or Anon Key)')
+  }
+
   return createServerClient<Database>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {

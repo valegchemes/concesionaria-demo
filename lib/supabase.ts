@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { env } from './env'
 
-const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-const isConfigured = supabaseUrl.startsWith('http') && supabaseAnonKey.length > 10
+const isConfigured = supabaseUrl && supabaseUrl.startsWith('http') && supabaseAnonKey.length > 10
 
 export const supabase = isConfigured 
   ? createClient(supabaseUrl, supabaseAnonKey)

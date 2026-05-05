@@ -8,9 +8,16 @@ import type { Database } from '@/types/supabase'
 import { env } from './env'
 
 export function createClient() {
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase configuration (URL or Anon Key)')
+  }
+  
   return createBrowserClient<Database>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    supabaseUrl,
+    supabaseAnonKey
   )
 }
 

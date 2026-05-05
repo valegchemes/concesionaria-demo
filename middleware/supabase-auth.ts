@@ -14,9 +14,17 @@ export async function middleware(request: NextRequest) {
     },
   })
 
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const supabaseAnonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Return next response if Supabase not configured
+    return response
+  }
+
   const supabase = createServerClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         get(name: string) {

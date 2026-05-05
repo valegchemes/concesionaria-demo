@@ -11,12 +11,18 @@ export async function POST(req: NextRequest) {
   const body = await req.text()
   const signature = req.headers.get('stripe-signature') as string
 
+  const secret = env.STRIPE_WEBHOOK_SECRET
+  if (!secret) {
+    log.error({}, 'STRIPE_WEBHOOK_SECRET is not configured')
+    return new NextResponse('Webhook Error: Stripe webhook secret not configured', { status: 500 })
+  }
+
   let event
   try {
     event = stripe.webhooks.constructEvent(
       body,
       signature,
-      env.STRIPE_WEBHOOK_SECRET
+      secret
     )
   } catch (err: any) {
     log.error({ err }, 'Webhook signature verification failed')
