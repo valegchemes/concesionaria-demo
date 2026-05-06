@@ -16,6 +16,7 @@ const CreateDocSchema = z.object({
   buyerAddress: z.string().optional(),
   paymentMethod: z.string().optional(),
   paymentConditions: z.string().optional(),
+  signatureDataUrl: z.string().optional(),
 })
 
 /** Prefix map for auto-reference numbers */
@@ -112,6 +113,7 @@ export const POST = withErrorHandling(
       notes: data.notes ?? '',
       issuedAt: new Date().toISOString(),
       issuedBy: (user as any).name ?? user.companyId,
+      signatureDataUrl: data.signatureDataUrl ?? '',
     }
 
     const doc = await prisma.digitalDocument.create({

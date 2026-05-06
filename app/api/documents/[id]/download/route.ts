@@ -148,6 +148,16 @@ export async function GET(
         pdf.fontSize(8).font('Helvetica').fillColor(muted)
           .text('Firma Vendedor / Concesionaria', 55, sigTop + 45, { width: 175, align: 'center' })
         // Comprador
+        if (m.signatureDataUrl && typeof m.signatureDataUrl === 'string' && m.signatureDataUrl.startsWith('data:image')) {
+          try {
+            const base64Data = m.signatureDataUrl.replace(/^data:image\/\w+;base64,/, '')
+            const imageBuffer = Buffer.from(base64Data, 'base64')
+            pdf.image(imageBuffer, W - 230, sigTop - 10, { fit: [175, 45], align: 'center' })
+          } catch (e) {
+            console.error('Failed to embed signature image', e)
+          }
+        }
+        
         pdf.moveTo(W - 230, sigTop + 40).lineTo(W - 55, sigTop + 40).strokeColor(dark).lineWidth(0.8).stroke()
         pdf.fontSize(8).font('Helvetica').fillColor(muted)
           .text('Firma Comprador', W - 230, sigTop + 45, { width: 175, align: 'center' })
