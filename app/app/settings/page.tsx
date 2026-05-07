@@ -90,9 +90,10 @@ export default function SettingsPage() {
 
       if (logoFile) {
         const { upload } = await import('@vercel/blob/client')
+        const uploadUrl = `${window.location.origin}/api/blob`
         const newBlob = await upload(`logos/${logoFile.name}`, logoFile, {
           access: 'public',
-          handleUploadUrl: '/api/blob',
+          handleUploadUrl: uploadUrl,
         })
         finalLogoUrl = newBlob.url
       }
@@ -118,13 +119,19 @@ export default function SettingsPage() {
         router.refresh()
       } else {
         const data = await res.json().catch(() => null)
+        console.error('Company settings save failed:', data)
+
         const errMsg = Array.isArray(data?.error)
           ? data.error.map((e: any) => e.message || e.path?.join('.')).join(', ')
-          : data?.error
-        alert(errMsg || 'No se pudo guardar la configuracion de empresa')
+          : data?.error || data?.message || JSON.stringify(data)
+        alert(errMsg || `No se pudo guardar la configuracion de empresa (${res.status})`)
       }
-    } catch {
-      alert('Error guardando empresa')
+    } catch (error) {
+      console.error('Company settings save error:', error)
+      alert(
+        'Error guardando empresa: ' +
+          (error instanceof Error ? error.message : String(error))
+      )
     } finally {
       setLoading(false)
     }
@@ -139,9 +146,10 @@ export default function SettingsPage() {
 
       if (avatarFile) {
         const { upload } = await import('@vercel/blob/client')
+        const uploadUrl = `${window.location.origin}/api/blob`
         const newBlob = await upload(`avatars/${avatarFile.name}`, avatarFile, {
           access: 'public',
-          handleUploadUrl: '/api/blob',
+          handleUploadUrl: uploadUrl,
         })
         finalAvatarUrl = newBlob.url
       }
@@ -187,13 +195,18 @@ export default function SettingsPage() {
         router.refresh()
       } else {
         const data = await res.json().catch(() => null)
+        console.error('User settings save failed:', data)
         const errMsg = Array.isArray(data?.error)
           ? data.error.map((e: any) => e.message || e.path?.join('.')).join(', ')
-          : data?.error
-        alert(errMsg || 'No se pudo actualizar el perfil')
+          : data?.error || data?.message || JSON.stringify(data)
+        alert(errMsg || `No se pudo actualizar el perfil (${res.status})`)
       }
-    } catch {
-      alert('Error guardando usuario')
+    } catch (error) {
+      console.error('User settings save error:', error)
+      alert(
+        'Error guardando usuario: ' +
+          (error instanceof Error ? error.message : String(error))
+      )
     } finally {
       setLoading(false)
     }

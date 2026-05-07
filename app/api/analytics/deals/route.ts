@@ -75,8 +75,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             })
           }
 
-          const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0, 0, 0)
-          const end = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 23, 59, 59, 999)
+          const year = selectedDate.getUTCFullYear()
+          const month = selectedDate.getUTCMonth()
+          const day = selectedDate.getUTCDate()
+
+          const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0))
+          const end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999))
 
           return {
             start,
