@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { requireAuth } from '@/lib/shared/auth-helpers'
 import { compare, hash } from 'bcryptjs'
 import { createLogger } from '@/lib/shared/logger'
+import { successResponse, errorResponse } from '@/lib/shared/api-response'
 import { z } from 'zod'
 
 const log = createLogger('API:UserSettings')
@@ -90,12 +91,12 @@ export async function PATCH(request: NextRequest) {
       select: { id: true, name: true, email: true, role: true, exchangeRateArsPerUsd: true } // Excluir password en la respuesta
     })
 
-    return NextResponse.json(updatedUser, { status: 200 })
+    return successResponse(updatedUser)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues }, { status: 400 })
+      return errorResponse(error)
     }
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Settings Update Error')
-    return NextResponse.json({ error: 'Failed to update user settings' }, { status: 500 })
+    return errorResponse(new Error('Failed to update user settings'))
   }
 }

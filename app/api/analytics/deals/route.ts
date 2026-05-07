@@ -54,6 +54,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       timeRange: searchParams.get('timeRange'),
       type: searchParams.get('type'),
       sellerId: searchParams.get('sellerId'),
+      date: searchParams.get('date'),
       limit: searchParams.get('limit'),
     })
 
