@@ -55,7 +55,7 @@ function KPICard({
 }: KPICardProps) {
   if (isLoading) {
     return (
-      <Card className="p-5">
+      <Card className="card-dashboard">
         <div className="flex items-center justify-between mb-4">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-8 w-8 rounded-lg" />
@@ -80,8 +80,8 @@ function KPICard({
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={cn(
-        'p-5 transition-all duration-200',
-        onClick ? 'hover:shadow-lg hover:scale-105 cursor-pointer hover:bg-muted/50 focus:ring-2 focus:ring-blue-500/30 focus:outline-none' : 'hover:shadow-md'
+        'card-dashboard transition-all duration-200',
+        onClick ? 'hover:shadow-adaptive cursor-pointer hover:scale-105 focus:ring-2 focus:ring-blue-500/30 focus:outline-none' : 'hover:shadow-adaptive'
       )}
       onClick={onClick}
       onKeyDown={onClick ? (event) => {
@@ -92,7 +92,7 @@ function KPICard({
       } : undefined}
     >
       <div className="flex items-start justify-between mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wider text-adaptive-secondary">
           {title}
         </p>
         <div className={cn('p-2 rounded-lg', iconBg)}>
@@ -101,13 +101,13 @@ function KPICard({
       </div>
 
       {/* Valor principal — formato compacto */}
-      <p className="text-2xl font-bold text-foreground tabular-nums leading-none">
+      <p className="text-2xl font-bold text-adaptive-primary tabular-nums leading-none">
         {value}
       </p>
 
       {/* Detalle completo en tooltip visual */}
       {detail && (
-        <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">{detail}</p>
+        <p className="text-[11px] text-adaptive-secondary mt-0.5 tabular-nums">{detail}</p>
       )}
 
       {/* Subtítulo con trend */}
@@ -118,7 +118,7 @@ function KPICard({
 
       {/* Indicador visual de que es clickeable */}
       {onClick && (
-        <p className="text-[10px] text-muted-foreground mt-2 italic">Haz click para ver detalles</p>
+        <p className="text-[10px] text-adaptive-secondary mt-2 italic">Haz click para ver detalles</p>
       )}
     </Card>
   )
@@ -169,19 +169,12 @@ export function DashboardKPIs({
     .filter(Boolean)
     .join(' · ')
 
-  const profitValue =
-    kpis.netProfit.ars > 0 && kpis.netProfit.usd > 0
-      ? `${formatCurrencyCompact(kpis.netProfit.ars, 'ARS')} / ${formatCurrencyCompact(kpis.netProfit.usd, 'USD')}`
-      : kpis.netProfit.usd > 0
-      ? formatCurrencyCompact(kpis.netProfit.usd, 'USD')
-      : formatCurrencyCompact(kpis.netProfit.ars, 'ARS')
+  const profitValue = `${formatCurrencyCompact(kpis.netProfit.ars, 'ARS')} / ${formatCurrencyCompact(kpis.netProfit.usd, 'USD')}`
 
   const profitDetail = [
-    kpis.netProfit.ars !== 0 ? formatCurrency(kpis.netProfit.ars, 'ARS') : null,
-    kpis.netProfit.usd !== 0 ? formatCurrency(kpis.netProfit.usd, 'USD') : null,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+    formatCurrency(kpis.netProfit.ars, 'ARS'),
+    formatCurrency(kpis.netProfit.usd, 'USD'),
+  ].join(' · ')
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

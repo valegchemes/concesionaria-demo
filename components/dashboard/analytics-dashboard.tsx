@@ -49,7 +49,9 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
   const [revenueModalOpen, setRevenueModalOpen] = useState(false)
   const [profitModalOpen, setProfitModalOpen] = useState(false)
   const [dealsModalOpen, setDealsModalOpen] = useState(false)
-  
+  const [daySummaryOpen, setDaySummaryOpen] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<{ date: string; label: string } | null>(null)
+
   // Fetch detalles de deals cuando se abren los modales
   const { deals: revenueDeal, period: revenuePeriod, isLoading: revenueLoading } = useAnalyticsDealDetails(
     timeRange,
@@ -57,19 +59,27 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
     undefined,
     revenueModalOpen
   )
-  
+
   const { deals: profitDeal, period: profitPeriod, isLoading: profitLoading } = useAnalyticsDealDetails(
     timeRange,
     'revenue',
     undefined,
     profitModalOpen
   )
-  
+
   const { deals: allDeal, period: allPeriod, isLoading: dealsLoading } = useAnalyticsDealDetails(
     timeRange,
     'all',
     undefined,
     dealsModalOpen
+  )
+
+  const { deals: dayDeals, period: dayPeriod, isLoading: dayLoading } = useAnalyticsDealDetails(
+    timeRange,
+    'all',
+    undefined,
+    daySummaryOpen && !!selectedDay,
+    selectedDay?.date
   )
   
   const isSeller = userRole === 'SELLER'
@@ -178,13 +188,13 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             <TabsContent value="overview" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {/* Gráfico de Ventas vs Ganancias */}
-                <Card className="col-span-2 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+                <Card className="col-span-2 surface-primary">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-adaptive-primary">
                       <TrendingUp className="h-5 w-5" />
                       {isSeller ? "Mis Ventas" : "Ventas vs Ganancias"}
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-adaptive-secondary">
                       {isSeller ? "Evolución temporal de tus ingresos" : "Comparativa temporal de ingresos y márgenes"}
                     </CardDescription>
                   </CardHeader>
@@ -193,19 +203,23 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                       data={salesProfit.chartData} 
                       isLoading={salesProfit.isLoading}
                       isSeller={isSeller}
+                      onPointClick={(point) => {
+                        setSelectedDay({ date: point.date, label: point.name })
+                        setDaySummaryOpen(true)
+                      }}
                     />
                   </CardContent>
                 </Card>
 
                 {/* Top Vendedores */}
                 {!isSeller && (
-                  <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+                  <Card className="surface-primary">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 text-adaptive-primary">
                         <Users className="h-5 w-5" />
                         Top Vendedores
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-adaptive-secondary">
                         Ranking por volumen de ventas
                       </CardDescription>
                     </CardHeader>
@@ -221,9 +235,9 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             </TabsContent>
 
             <TabsContent value="sales" className="space-y-4">
-              <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+              <Card className="surface-primary">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-adaptive-primary">
                     <DollarSign className="h-5 w-5" />
                     Análisis Detallado de Ventas
                   </CardTitle>
@@ -242,13 +256,13 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             {!isSeller && (
               <TabsContent value="costs" className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Card>
+                  <Card className="surface-primary">
                     <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex items-center gap-2 text-adaptive-primary">
                         <Package className="h-5 w-5" />
                         Distribución de Costos
                       </CardTitle>
-                      <CardDescription>
+                      <CardDescription className="text-adaptive-secondary">
                         Desglose por categoría
                       </CardDescription>
                     </CardHeader>
@@ -314,6 +328,15 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
               </TabsContent>
             )}
           </Tabs>
+
+          <DealDetailsModal
+            isOpen={daySummaryOpen}
+            onOpenChange={setDaySummaryOpen}
+            title={selectedDay ? `Detalles del ${selectedDay.label}` : 'Detalles del día'}
+            deals={dayDeals}
+            isLoading={dayLoading}
+            period={dayPeriod}
+          />
         </>
     </div>
   )

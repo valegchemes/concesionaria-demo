@@ -25,6 +25,7 @@ const QuerySchema = z.object({
   timeRange: z.enum(['7d', '30d', '90d', '1y', 'all']).default('30d'),
   type: z.enum(['revenue', 'all']).default('all'),
   sellerId: z.string().optional(),
+  date: z.string().optional(),
   limit: z.string().default('50').transform(Number),
 })
 
@@ -60,10 +61,34 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       throw new ValidationError('Parámetros de consulta inválidos', queryParse.error.flatten().fieldErrors)
     }
 
-    const { timeRange, type, sellerId, limit } = queryParse.data
-    const dateRange = getDateRangeFromTimeRange(timeRange)
+    const { timeRange, type, sellerId, date, limit } = queryParse.data
     const isSeller = user.role === 'SELLER'
     const queryUserId = isSeller ? user.id : sellerId
+
+    const dateRange = date
+      ? (() => {
+          const selectedDate = new Date(date)
+          if (Number.isNaN(selectedDate.getTime())) {
+            throw new ValidationError('Parámetros de consulta inválidos', {
+              date: ['Fecha no válida'],
+            })
+          }
+
+          const start = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 0, 0, 0, 0)
+          const end = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 23, 59, 59, 999)
+
+          return {
+            start,
+            end,
+            label: selectedDate.toLocaleDateString('es-AR', {
+              weekday: 'long',
+              day: '2-digit',
+              month: 'long',
+              year: 'numeric',
+            }),
+          }
+        })()
+      : getDateRangeFromTimeRange(timeRange)
 
     // Obtener deals con todos los detalles
     const deals = await prisma.deal.findMany({

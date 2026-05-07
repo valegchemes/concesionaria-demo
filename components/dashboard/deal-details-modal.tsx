@@ -58,10 +58,10 @@ export function DealDetailsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+    <div className="modal-overlay p-4">
+      <div className="modal-content">
         {/* Header */}
-        <div className="bg-slate-900 text-white px-5 py-4 flex justify-between items-center">
+        <div className="bg-slate-900 text-white px-5 py-4 flex justify-between items-center border-b border-adaptive">
           <div>
             <h3 className="font-bold text-lg flex items-center gap-2">
               <DollarSign className="h-5 w-5" />
@@ -227,7 +227,7 @@ export function DealDetailsModal({
 
         {/* Footer con contador */}
         {deals && (
-          <div className="border-t px-5 py-3 flex items-center justify-between text-sm text-muted-foreground bg-slate-50 dark:bg-slate-900">
+          <div className="border-t border-adaptive px-5 py-3 flex items-center justify-between text-sm text-adaptive-secondary bg-slate-50 dark:bg-slate-900">
             <span>Total de operaciones: {deals.length}</span>
           </div>
         )}

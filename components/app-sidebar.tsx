@@ -61,9 +61,9 @@ export function AppSidebar({ user }: AppSidebarProps) {
     user.role === 'MANAGER' ? 'Manager' : 'Vendedor'
 
   return (
-    <aside className="flex w-56 flex-col border-r border-white/10 bg-slate-900/70 text-white backdrop-blur-xl">
+    <aside className="sidebar-surface flex w-56 flex-col text-adaptive-primary">
       {/* Logo / Empresa */}
-      <div className="border-b border-white/10 px-4 py-4">
+      <div className="border-b border-adaptive px-4 py-4">
         <div className="flex items-center gap-2.5">
           {user.logoUrl ? (
             <Image
@@ -92,7 +92,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           })
           .map((group) => (
           <div key={group.label}>
-            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-adaptive-secondary">
               {group.label}
             </p>
             <div className="space-y-0.5">

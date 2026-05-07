@@ -35,12 +35,14 @@ export function useAnalyticsDealDetails(
   timeRange: string = '30d',
   type: string = 'all',
   sellerId?: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  date?: string
 ) {
   const queryParams = new URLSearchParams()
   queryParams.set('timeRange', timeRange)
   queryParams.set('type', type)
   if (sellerId) queryParams.set('sellerId', sellerId)
+  if (date) queryParams.set('date', date)
 
   const { data, error, isLoading } = useSWR<AnalyticsDealResponse>(
     enabled ? `/api/analytics/deals?${queryParams.toString()}` : null,

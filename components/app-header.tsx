@@ -12,13 +12,13 @@ interface AppHeaderProps {
 
 export function AppHeader({ user }: AppHeaderProps) {
   return (
-    <header className="relative z-50 flex h-16 items-center justify-between border-b border-gray-200/50 bg-white/60 px-6 backdrop-blur-md transition-colors duration-500 dark:border-slate-800/50 dark:bg-slate-950/60">
+    <header className="relative z-50 flex h-16 items-center justify-between border-b border-adaptive surface-primary px-6 backdrop-blur-md transition-colors duration-500">
       <AppHeaderActions />
 
       <div className="flex items-center gap-3">
         <div className="text-right text-sm">
           <p className="font-medium">{user.name}</p>
-          <p className="text-gray-500">{user.email}</p>
+          <p className="text-adaptive-secondary">{user.email}</p>
         </div>
         {user.avatarUrl ? (
           <Image

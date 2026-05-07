@@ -124,11 +124,23 @@ interface UseSalesProfitAnalyticsReturn {
   error: Error | undefined
   chartData: Array<{
     name: string
+    date: string
     sales: number
     profit: number
     costs: number
     unitCosts: number
     operationalCosts: number
+    salesArs: number
+    salesUsd: number
+    profitArs: number
+    profitUsd: number
+    costsArs: number
+    costsUsd: number
+    unitCostsArs: number
+    unitCostsUsd: number
+    operationalCostsArs: number
+    operationalCostsUsd: number
+    dealCount: number
   }>
 }
 
@@ -152,11 +164,23 @@ export function useSalesProfitAnalytics(
     
     return data.timeSeries.map((point: TimeSeriesDataPoint) => ({
       name: point.label,
+      date: point.date,
       sales: point.sales.totalConverted,
       profit: point.profit.totalConverted,
       costs: point.costs.totalConverted,
       unitCosts: point.unitCosts.totalConverted,
       operationalCosts: point.operationalCosts.totalConverted,
+      salesArs: point.sales.ars,
+      salesUsd: point.sales.usd,
+      profitArs: point.profit.ars,
+      profitUsd: point.profit.usd,
+      costsArs: point.costs.ars,
+      costsUsd: point.costs.usd,
+      unitCostsArs: point.unitCosts.ars,
+      unitCostsUsd: point.unitCosts.usd,
+      operationalCostsArs: point.operationalCosts.ars,
+      operationalCostsUsd: point.operationalCosts.usd,
+      dealCount: point.dealCount,
     }))
   }, [data])
 

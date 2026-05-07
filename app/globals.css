@@ -2,6 +2,180 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Sistema de superficies adaptativas para fondos variables */
+  /* Se aplica automáticamente basado en data-background-theme */
+
+  /* Superficies principales */
+  .surface-primary {
+    @apply backdrop-blur-xl border transition-all duration-300;
+  }
+
+  .surface-secondary {
+    @apply backdrop-blur-lg border transition-all duration-300;
+  }
+
+  .surface-muted {
+    @apply backdrop-blur-md border transition-all duration-300;
+  }
+
+  .surface-accent {
+    @apply backdrop-blur-xl border transition-all duration-300;
+  }
+
+  /* Tema claro (fondo oscuro) */
+  [data-background-theme="dark"] .surface-primary {
+    @apply bg-white/90 text-slate-900 border-white/20 shadow-2xl;
+  }
+
+  [data-background-theme="dark"] .surface-secondary {
+    @apply bg-white/75 text-slate-800 border-white/15 shadow-lg;
+  }
+
+  [data-background-theme="dark"] .surface-muted {
+    @apply bg-white/60 text-slate-700 border-white/10;
+  }
+
+  [data-background-theme="dark"] .surface-accent {
+    @apply bg-blue-50/80 text-blue-900 border-blue-200/30;
+  }
+
+  /* Tema oscuro (fondo claro) */
+  [data-background-theme="light"] .surface-primary {
+    @apply bg-slate-900/90 text-slate-100 border-slate-700/50 shadow-2xl;
+  }
+
+  [data-background-theme="light"] .surface-secondary {
+    @apply bg-slate-800/80 text-slate-200 border-slate-600/40 shadow-lg;
+  }
+
+  [data-background-theme="light"] .surface-muted {
+    @apply bg-slate-700/70 text-slate-300 border-slate-500/30;
+  }
+
+  [data-background-theme="light"] .surface-accent {
+    @apply bg-blue-950/80 text-blue-100 border-blue-800/40;
+  }
+
+  /* Tema neutral (fondo intermedio) */
+  [data-background-theme="neutral"] .surface-primary {
+    @apply bg-slate-50/85 text-slate-900 border-slate-200/40 shadow-xl backdrop-blur-2xl;
+  }
+
+  [data-background-theme="neutral"] .surface-secondary {
+    @apply bg-slate-100/80 text-slate-800 border-slate-300/30 shadow-lg;
+  }
+
+  [data-background-theme="neutral"] .surface-muted {
+    @apply bg-slate-200/70 text-slate-700 border-slate-400/25;
+  }
+
+  [data-background-theme="neutral"] .surface-accent {
+    @apply bg-blue-100/75 text-blue-900 border-blue-300/35;
+  }
+
+  /* Sidebar específico */
+  .sidebar-surface {
+    @apply backdrop-blur-xl border-r transition-all duration-300;
+  }
+
+  [data-background-theme="dark"] .sidebar-surface {
+    @apply bg-slate-900/90 text-white border-white/10;
+  }
+
+  [data-background-theme="light"] .sidebar-surface {
+    @apply bg-white/95 text-slate-900 border-slate-200/50;
+  }
+
+  [data-background-theme="neutral"] .sidebar-surface {
+    @apply bg-slate-100/90 text-slate-900 border-slate-300/40;
+  }
+
+  /* Texto adaptativo */
+  .text-adaptive-primary {
+    @apply transition-colors duration-300;
+  }
+
+  [data-background-theme="dark"] .text-adaptive-primary {
+    @apply text-slate-900;
+  }
+
+  [data-background-theme="light"] .text-adaptive-primary {
+    @apply text-slate-100;
+  }
+
+  [data-background-theme="neutral"] .text-adaptive-primary {
+    @apply text-slate-900;
+  }
+
+  .text-adaptive-secondary {
+    @apply transition-colors duration-300;
+  }
+
+  [data-background-theme="dark"] .text-adaptive-secondary {
+    @apply text-slate-600;
+  }
+
+  [data-background-theme="light"] .text-adaptive-secondary {
+    @apply text-slate-300;
+  }
+
+  [data-background-theme="neutral"] .text-adaptive-secondary {
+    @apply text-slate-500;
+  }
+
+  /* Bordes adaptativos */
+  .border-adaptive {
+    @apply transition-colors duration-300;
+  }
+
+  [data-background-theme="dark"] .border-adaptive {
+    @apply border-white/20;
+  }
+
+  [data-background-theme="light"] .border-adaptive {
+    @apply border-slate-700/50;
+  }
+
+  [data-background-theme="neutral"] .border-adaptive {
+    @apply border-slate-300/40;
+  }
+
+  /* Cards del dashboard */
+  .card-dashboard {
+    @apply backdrop-blur-xl border rounded-lg p-5 transition-all duration-300 shadow-lg;
+  }
+
+  [data-background-theme="dark"] .card-dashboard {
+    @apply bg-white/85 text-slate-900 border-white/25;
+  }
+
+  [data-background-theme="light"] .card-dashboard {
+    @apply bg-slate-900/85 text-slate-100 border-slate-700/40;
+  }
+
+  [data-background-theme="neutral"] .card-dashboard {
+    @apply bg-slate-50/80 text-slate-900 border-slate-200/35;
+  }
+
+  /* Modal overlay */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 backdrop-blur-sm transition-all duration-300;
+  }
+
+  [data-background-theme="dark"] .modal-overlay {
+    @apply bg-black/20;
+  }
+
+  [data-background-theme="light"] .modal-overlay {
+    @apply bg-white/10;
+  }
+
+  [data-background-theme="neutral"] .modal-overlay {
+    @apply bg-slate-500/15;
+  }
+}
+
 @layer base {
   :root {
     /* Paleta corporativa — modo claro */

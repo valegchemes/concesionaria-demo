@@ -25,11 +25,23 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 interface ChartDataPoint {
   name: string
+  date: string
   sales: number
   profit: number
   costs: number
   unitCosts: number
   operationalCosts: number
+  salesArs: number
+  salesUsd: number
+  profitArs: number
+  profitUsd: number
+  costsArs: number
+  costsUsd: number
+  unitCostsArs: number
+  unitCostsUsd: number
+  operationalCostsArs: number
+  operationalCostsUsd: number
+  dealCount: number
 }
 
 interface SalesProfitChartProps {
@@ -37,6 +49,7 @@ interface SalesProfitChartProps {
   isLoading: boolean
   showDetailed?: boolean
   isSeller?: boolean
+  onPointClick?: (point: ChartDataPoint) => void
 }
 
 // ── Formateo de ejes ──────────────────────────────────────────────────────────
@@ -66,17 +79,16 @@ interface CustomTooltipPayload {
 function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
   if (!active || !payload || payload.length === 0) return null
 
-  const items: CustomTooltipPayload[] = (payload as CustomTooltipPayload[]).filter(
-    (p) => p.value > 0 || (payload as CustomTooltipPayload[]).some((x) => x.value > 0)
-  )
+  const payloadData = (payload[0] as any)?.payload
+  if (!payloadData) return null
 
-  const labelMap: Record<string, string> = {
-    sales: 'Ingresos Totales',
-    profit: 'Ganancia Neta',
-    unitCosts: 'Costo de Unidades',
-    operationalCosts: 'Gastos Operativos',
-    costs: 'Costo Total',
-  }
+  const formattedAmount = (value: number, currency: 'ARS' | 'USD') =>
+    new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value)
 
   return (
     <div
@@ -86,7 +98,7 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
         borderRadius: '12px',
         padding: '12px 16px',
         boxShadow: '0 8px 24px -4px rgba(0,0,0,0.12)',
-        minWidth: '180px',
+        minWidth: '220px',
       }}
     >
       <p
@@ -101,36 +113,35 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
       >
         {label}
       </p>
-      {items.map((entry) => (
-        <div
-          key={entry.dataKey}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '16px',
-            marginBottom: '4px',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div
-              style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                backgroundColor: entry.color,
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: '13px', color: '#374151' }}>
-              {labelMap[entry.dataKey] ?? entry.dataKey}
-            </span>
-          </div>
-          <span style={{ fontSize: '13px', fontWeight: 700, color: '#111827' }}>
-            {formatCurrencyFull(entry.value)}
-          </span>
+
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
+          <span style={{ fontSize: '12px', color: '#475569' }}>Ingresos ARS</span>
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.salesArs, 'ARS')}</span>
         </div>
-      ))}
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
+          <span style={{ fontSize: '12px', color: '#475569' }}>Ingresos USD</span>
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.salesUsd, 'USD')}</span>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
+          <span style={{ fontSize: '12px', color: '#475569' }}>Ganancia ARS</span>
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.profitArs, 'ARS')}</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+          <span style={{ fontSize: '12px', color: '#475569' }}>Ganancia USD</span>
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.profitUsd, 'USD')}</span>
+        </div>
+      </div>
+
+      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
+          <span style={{ fontSize: '12px', color: '#475569' }}>Operaciones</span>
+          <span style={{ fontSize: '13px', fontWeight: 700 }}>{payloadData.dealCount}</span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -158,7 +169,7 @@ const COLORS = {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 
-export function SalesProfitChart({ data, isLoading, showDetailed = false, isSeller = false }: SalesProfitChartProps) {
+export function SalesProfitChart({ data, isLoading, showDetailed = false, isSeller = false, onPointClick }: SalesProfitChartProps) {
   if (isLoading) {
     return <Skeleton className="h-full w-full rounded-xl" />
   }
@@ -176,10 +187,27 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false, isSell
   }
 
   // Análisis detallado → BarChart (más legible con pocos datos)
+  const handlePointClick = (event: any) => {
+    if (!onPointClick || !event?.activePayload || event.activePayload.length === 0) {
+      return
+    }
+
+    const payload = event.activePayload[0].payload as ChartDataPoint | undefined
+    if (!payload) return
+
+    onPointClick(payload)
+  }
+
   if (showDetailed) {
     return (
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 0 }} barCategoryGap="25%" barGap={3}>
+        <BarChart
+          data={data}
+          margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
+          barCategoryGap="25%"
+          barGap={3}
+          onClick={handlePointClick}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
           <XAxis
             dataKey="name"
@@ -208,7 +236,7 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false, isSell
   // Vista resumen → AreaChart con gradientes (muestra todos los meses del rango)
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 0 }} onClick={handlePointClick}>
         <defs>
           <linearGradient id="gradSales" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
