@@ -1,6 +1,9 @@
+'use client'
+
 /**
  * Dashboard KPIs - Tarjetas de métricas clave
  * Estilo SaaS corporativo — jerarquía visual clara
+ * Clickeable para abrir detalles de operaciones
  */
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -18,6 +21,9 @@ interface DashboardKPIsProps {
   data: DashboardSummary | undefined
   isLoading: boolean
   userRole?: string
+  onRevenueClick?: () => void
+  onProfitClick?: () => void
+  onDealsClick?: () => void
 }
 
 interface KPICardProps {
@@ -29,6 +35,7 @@ interface KPICardProps {
   icon: React.ElementType
   iconBg?: string
   isLoading: boolean
+  onClick?: () => void
 }
 
 // ============================================================================
@@ -44,6 +51,7 @@ function KPICard({
   icon: Icon,
   iconBg = 'bg-blue-50 dark:bg-blue-950/40',
   isLoading,
+  onClick,
 }: KPICardProps) {
   if (isLoading) {
     return (
@@ -68,7 +76,13 @@ function KPICard({
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : null
 
   return (
-    <Card className="p-5 hover:shadow-md transition-shadow duration-200">
+    <Card
+      className={cn(
+        'p-5 transition-all duration-200',
+        onClick ? 'hover:shadow-lg hover:scale-105 cursor-pointer hover:bg-muted/50' : 'hover:shadow-md'
+      )}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between mb-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
@@ -93,6 +107,11 @@ function KPICard({
         {TrendIcon && <TrendIcon className="h-3 w-3" />}
         <span>{subtitle}</span>
       </div>
+
+      {/* Indicador visual de que es clickeable */}
+      {onClick && (
+        <p className="text-[10px] text-muted-foreground mt-2 italic">Haz click para ver detalles</p>
+      )}
     </Card>
   )
 }
@@ -101,7 +120,14 @@ function KPICard({
 // Componente principal
 // ============================================================================
 
-export function DashboardKPIs({ data, isLoading, userRole }: DashboardKPIsProps) {
+export function DashboardKPIs({
+  data,
+  isLoading,
+  userRole,
+  onRevenueClick,
+  onProfitClick,
+  onDealsClick,
+}: DashboardKPIsProps) {
   if (isLoading || !data) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -132,6 +158,7 @@ export function DashboardKPIs({ data, isLoading, userRole }: DashboardKPIsProps)
         icon={DollarSign}
         iconBg="bg-blue-50 dark:bg-blue-950/40"
         isLoading={false}
+        onClick={onRevenueClick}
       />
 
       {userRole !== 'SELLER' && (
@@ -144,6 +171,7 @@ export function DashboardKPIs({ data, isLoading, userRole }: DashboardKPIsProps)
           icon={Percent}
           iconBg="bg-emerald-50 dark:bg-emerald-950/40"
           isLoading={false}
+          onClick={onProfitClick}
         />
       )}
 
@@ -154,6 +182,7 @@ export function DashboardKPIs({ data, isLoading, userRole }: DashboardKPIsProps)
         icon={Users}
         iconBg="bg-purple-50 dark:bg-purple-950/40"
         isLoading={false}
+        onClick={onDealsClick}
       />
 
       <KPICard

@@ -13,11 +13,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useTimeRange, useAllAnalytics, formatCurrency, formatPercentage } from '@/lib/domains/analytics/hooks'
+import { useAnalyticsDealDetails } from '@/lib/domains/analytics/use-deal-details'
 import type { TimeRange } from '@/lib/domains/analytics/types'
 import { SalesProfitChart } from './charts/sales-profit-chart'
 import { TopSellersChart } from './charts/top-sellers-chart'
 import { CostBreakdownChart } from './charts/cost-breakdown-chart'
 import { DashboardKPIs } from './dashboard-kpis'
+import { DealDetailsModal } from './deal-details-modal'
 import { DashboardSkeleton } from './loading-skeleton'
 import { EmptyState } from './empty-state'
 import { AlertCircle, TrendingUp, Users, DollarSign, Package } from 'lucide-react'
@@ -43,6 +45,33 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
   const { timeRange, setTimeRange, options } = useTimeRange('30d')
   const { dashboard, salesProfit, topSellers, costs, isLoadingAny, hasError } = useAllAnalytics(timeRange, companyId)
   
+  // Estados para modales de detalles
+  const [revenueModalOpen, setRevenueModalOpen] = useState(false)
+  const [profitModalOpen, setProfitModalOpen] = useState(false)
+  const [dealsModalOpen, setDealsModalOpen] = useState(false)
+  
+  // Fetch detalles de deals cuando se abren los modales
+  const { deals: revenueDeal, period: revenuePeriod, isLoading: revenueLoading } = useAnalyticsDealDetails(
+    timeRange,
+    'revenue',
+    undefined,
+    revenueModalOpen
+  )
+  
+  const { deals: profitDeal, period: profitPeriod, isLoading: profitLoading } = useAnalyticsDealDetails(
+    timeRange,
+    'revenue',
+    undefined,
+    profitModalOpen
+  )
+  
+  const { deals: allDeal, period: allPeriod, isLoading: dealsLoading } = useAnalyticsDealDetails(
+    timeRange,
+    'all',
+    undefined,
+    dealsModalOpen
+  )
+  
   const isSeller = userRole === 'SELLER'
 
   // Si no hay companyId, mostrar error
@@ -64,6 +93,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
   if (isLoadingAny && !dashboard.summary) {
     return <DashboardSkeleton />
   }
+
 
   return (
     <div className="space-y-6">
@@ -128,7 +158,14 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
 
       {/* KPIs — siempre visibles (muestran 0 si no hay datos) */}
       <>
-          <DashboardKPIs data={dashboard.summary} isLoading={dashboard.isLoading} userRole={userRole} />
+          <DashboardKPIs
+            data={dashboard.summary}
+            isLoading={dashboard.isLoading}
+            userRole={userRole}
+            onRevenueClick={() => setRevenueModalOpen(true)}
+            onProfitClick={() => setProfitModalOpen(true)}
+            onDealsClick={() => setDealsModalOpen(true)}
+          />
 
           {/* Tabs con gráficos */}
           <Tabs defaultValue="overview" className="space-y-4">
