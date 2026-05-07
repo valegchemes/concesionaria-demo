@@ -206,9 +206,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // El tipo de cambio puede ser personalizado por usuario, por lo que
     // necesitamos resolver el valor real desde la DB cuando esté disponible.
     let user = null as null | { id: string; companyId: string; role?: string; exchangeRateArsPerUsd?: Prisma.Decimal | null }
+    let authPath = 'none'
+
     try {
       const headerUser = await getCurrentUserFromHeaders(request)
+
       if (headerUser?.id && headerUser.companyId) {
+        authPath = 'headers'
         const dbUser = await prisma.user.findUnique({
           where: { id: headerUser.id },
           select: {
@@ -225,8 +229,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           user = dbUser
         }
       }
+
+      if (!user) {
+        const currentUser = await getCurrentUser()
+        authPath = 'session'
+        const dbUser = await prisma.user.findUnique({
+          where: { id: currentUser.id },
+          select: {
+            id: true,
+            companyId: true,
+            role: true,
+            exchangeRateArsPerUsd: true,
+            isActive: true,
+            company: { select: { isActive: true } },
+          },
+        })
+
+        if (dbUser?.isActive && dbUser.company?.isActive) {
+          user = dbUser
+        }
+      }
     } catch (authErr) {
-      log.warn({ error: String(authErr) }, 'Error extrayendo usuario de headers/DB')
+      log.warn({ error: String(authErr), authPath }, 'Error extrayendo usuario de headers/DB')
     }
 
     const companyId = user?.companyId
