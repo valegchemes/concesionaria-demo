@@ -293,28 +293,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         switch (typeParam) {
           case 'dashboard':
             result = await withTimeout(
-              getDashboardSummary(companyId, timeRange, dateRange, sellerId),
+              getDashboardSummary(companyId, timeRange, dateRange, userExchangeRate, sellerId),
               ANALYTICS_TIMEOUT_MS,
               'dashboard'
             )
             break
           case 'sales-profit':
             result = await withTimeout(
-              getSalesVsProfit(companyId, timeRange, dateRange, sellerId),
+              getSalesVsProfit(companyId, timeRange, dateRange, userExchangeRate, sellerId),
               ANALYTICS_TIMEOUT_MS,
               'sales-profit'
             )
             break
           case 'top-sellers':
             result = await withTimeout(
-              getTopSellers(companyId, timeRange, dateRange),
+              getTopSellers(companyId, timeRange, dateRange, userExchangeRate),
               ANALYTICS_TIMEOUT_MS,
               'top-sellers'
             )
             break
           case 'costs':
             result = await withTimeout(
-              getCostAnalysis(companyId, timeRange, dateRange),
+              getCostAnalysis(companyId, timeRange, dateRange, userExchangeRate),
               ANALYTICS_TIMEOUT_MS,
               'costs'
             )
@@ -416,6 +416,7 @@ async function getDashboardSummary(
   companyId: string,
   timeRange: TimeRange,
   dateRange: { start: Date; end: Date; label: string },
+  userExchangeRate: number,
   sellerId?: string
 ): Promise<DashboardSummary> {
   const { start, end, label } = dateRange
@@ -469,7 +470,7 @@ async function getDashboardSummary(
 
   const totalRevenue = dealsWithUnits.reduce(
     (acc, deal) => {
-      const revenue = createDealRevenueAmount(deal)
+      const revenue = createDealRevenueAmount(deal, userExchangeRate)
       return createExactMoneyAmount(
         acc.ars + revenue.ars,
         acc.usd + revenue.usd,
@@ -555,6 +556,7 @@ async function getSalesVsProfit(
   companyId: string,
   timeRange: TimeRange,
   dateRange: { start: Date; end: Date; label: string },
+  userExchangeRate: number,
   sellerId?: string
 ): Promise<SalesVsProfitAnalytics> {
   const { start, end } = dateRange
@@ -625,7 +627,7 @@ async function getSalesVsProfit(
       date: existingDate,
     }
 
-    const saleAmount = createDealRevenueAmount(deal)
+    const saleAmount = createDealRevenueAmount(deal, userExchangeRate)
     const acquisitionArs = sellerId ? 0 : decimalToNumber(deal.unit?.acquisitionCostArs)
     const acquisitionUsd = sellerId ? 0 : decimalToNumber(deal.unit?.acquisitionCostUsd)
     const extraCostsArs = sellerId ? 0 : deal.closingCosts.reduce(
@@ -871,7 +873,8 @@ async function getSalesVsProfit(
 async function getTopSellers(
   companyId: string,
   _timeRange: TimeRange,
-  dateRange: { start: Date; end: Date; label: string }
+  dateRange: { start: Date; end: Date; label: string },
+  userExchangeRate: number
 ): Promise<TopSellersAnalytics> {
   const { start, end } = dateRange
 
@@ -902,7 +905,7 @@ async function getTopSellers(
   >()
 
   for (const deal of deliveredDeals) {
-    const revenue = createDealRevenueAmount(deal)
+    const revenue = createDealRevenueAmount(deal, userExchangeRate)
     const existing = metricsBySeller.get(deal.sellerId) || {
       ars: 0,
       usd: 0,
@@ -955,7 +958,8 @@ async function getTopSellers(
 async function getCostAnalysis(
   companyId: string,
   timeRange: TimeRange,
-  dateRange: { start: Date; end: Date; label: string }
+  dateRange: { start: Date; end: Date; label: string },
+  userExchangeRate: number
 ): Promise<CostAnalysisAnalytics> {
   const { start, end } = dateRange
 
