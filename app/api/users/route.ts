@@ -14,8 +14,9 @@ export const maxDuration = 30
 export async function GET() {
   try {
     const currentUser = await getCurrentUser()
-    await requirePermission('team', 'read_all')
 
+    // Todos los usuarios pueden ver otros usuarios de su empresa
+    // Esto es necesario para asignar vendedores a deals, leads, etc.
     const users = await prisma.user.findMany({
       where: {
         companyId: currentUser.companyId,

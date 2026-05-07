@@ -213,40 +213,77 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       if (headerUser?.id && headerUser.companyId) {
         authPath = 'headers'
-        const dbUser = await prisma.user.findUnique({
-          where: { id: headerUser.id },
-          select: {
-            id: true,
-            companyId: true,
-            role: true,
-            exchangeRateArsPerUsd: true,
-            isActive: true,
-            company: { select: { isActive: true } },
-          },
-        })
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: headerUser.id },
+            select: {
+              id: true,
+              companyId: true,
+              role: true,
+              exchangeRateArsPerUsd: true,
+              isActive: true,
+              company: { select: { isActive: true } },
+            },
+          })
 
-        if (dbUser?.isActive && dbUser.company?.isActive) {
-          user = dbUser
+          if (dbUser?.isActive && dbUser.company?.isActive) {
+            user = dbUser
+          }
+        } catch (dbErr) {
+          // Si falla la query con exchangeRateArsPerUsd, intentar sin ese campo
+          log.warn({ error: String(dbErr), authPath }, 'Query con exchangeRateArsPerUsd falló, intentando sin ese campo')
+          const dbUserFallback = await prisma.user.findUnique({
+            where: { id: headerUser.id },
+            select: {
+              id: true,
+              companyId: true,
+              role: true,
+              isActive: true,
+              company: { select: { isActive: true } },
+            },
+          })
+
+          if (dbUserFallback?.isActive && dbUserFallback.company?.isActive) {
+            user = dbUserFallback as typeof user
+          }
         }
       }
 
       if (!user) {
         const currentUser = await getCurrentUser()
         authPath = 'session'
-        const dbUser = await prisma.user.findUnique({
-          where: { id: currentUser.id },
-          select: {
-            id: true,
-            companyId: true,
-            role: true,
-            exchangeRateArsPerUsd: true,
-            isActive: true,
-            company: { select: { isActive: true } },
-          },
-        })
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: currentUser.id },
+            select: {
+              id: true,
+              companyId: true,
+              role: true,
+              exchangeRateArsPerUsd: true,
+              isActive: true,
+              company: { select: { isActive: true } },
+            },
+          })
 
-        if (dbUser?.isActive && dbUser.company?.isActive) {
-          user = dbUser
+          if (dbUser?.isActive && dbUser.company?.isActive) {
+            user = dbUser
+          }
+        } catch (dbErr) {
+          log.warn({ error: String(dbErr), authPath }, 'Query con exchangeRateArsPerUsd falló, intentando sin ese campo')
+          const dbUserFallback = await prisma.user.findUnique({
+            where: { id: currentUser.id },
+            select: {
+              id: true,
+              companyId: true,
+              role: true,
+              isActive: true,
+              company: { select: { isActive: true } },
+            },
+          })
+
+          if (dbUserFallback?.isActive && dbUserFallback.company?.isActive) {
+            user = dbUserFallback as typeof user
+          }
         }
       }
     } catch (authErr) {
