@@ -95,8 +95,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         },
         unit: {
           select: {
-            code: true,
-            model: true,
+            title: true,
+            vin: true,
+            domain: true,
           },
         },
         lead: {
@@ -118,7 +119,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
       return {
         id: deal.id,
-        unitCode: deal.unit?.code || 'N/A',
+        unitCode: deal.unit?.title || deal.unit?.vin || deal.unit?.domain || 'N/A',
         sellerName: deal.seller?.name || 'N/A',
         sellerId: deal.sellerId,
         finalPrice,
@@ -129,7 +130,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         createdAt: deal.createdAt.toISOString(),
         buyerName: deal.lead?.name,
         buyerPhone: deal.lead?.phone,
-        unitModel: deal.unit?.model,
+        unitModel: deal.unit?.vin || deal.unit?.domain || undefined,
       }
     })
 
