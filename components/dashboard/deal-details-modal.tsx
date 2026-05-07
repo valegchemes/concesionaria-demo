@@ -27,6 +27,16 @@ interface DealDetail {
   unitModel?: string
 }
 
+interface DealDetailsSummary {
+  salesArs: number
+  salesUsd: number
+  profitArs: number
+  profitUsd: number
+  costsArs: number
+  costsUsd: number
+  dealCount: number
+}
+
 interface DealDetailsModalProps {
   isOpen: boolean
   onOpenChange: (open: boolean) => void
@@ -39,6 +49,7 @@ interface DealDetailsModalProps {
     end: string
     label: string
   }
+  summary?: DealDetailsSummary
 }
 
 export function DealDetailsModal({
@@ -49,6 +60,7 @@ export function DealDetailsModal({
   isLoading = false,
   timeRange = '30d',
   period,
+  summary,
 }: DealDetailsModalProps) {
   if (!isOpen) return null
 
@@ -58,8 +70,8 @@ export function DealDetailsModal({
   }
 
   return (
-    <div className="modal-overlay p-4">
-      <div className="modal-content">
+    <div className="modal-overlay flex items-start justify-center p-6">
+      <div className="relative mx-auto flex min-h-[280px] max-w-6xl flex-col overflow-hidden rounded-[32px] border border-adaptive bg-white/95 shadow-2xl backdrop-blur-xl dark:bg-slate-950/95">
         {/* Header */}
         <div className="bg-slate-900 text-white px-5 py-4 flex justify-between items-center border-b border-adaptive">
           <div>
@@ -86,6 +98,27 @@ export function DealDetailsModal({
         <div className="flex-1 overflow-hidden">
           <div className="h-full overflow-y-auto">
             <div className="p-5">
+              {summary && (
+                <div className="grid gap-3 lg:grid-cols-4 mb-6">
+                  <div className="surface-secondary rounded-3xl border border-adaptive p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-adaptive-secondary font-semibold">Ingresos ARS</p>
+                    <p className="mt-3 text-xl font-semibold text-adaptive-primary">{formatCurrency(summary.salesArs, 'ARS')}</p>
+                  </div>
+                  <div className="surface-secondary rounded-3xl border border-adaptive p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-adaptive-secondary font-semibold">Ingresos USD</p>
+                    <p className="mt-3 text-xl font-semibold text-adaptive-primary">{formatCurrency(summary.salesUsd, 'USD')}</p>
+                  </div>
+                  <div className="surface-secondary rounded-3xl border border-adaptive p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-adaptive-secondary font-semibold">Ganancia ARS</p>
+                    <p className="mt-3 text-xl font-semibold text-adaptive-primary">{formatCurrency(summary.profitArs, 'ARS')}</p>
+                  </div>
+                  <div className="surface-secondary rounded-3xl border border-adaptive p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-adaptive-secondary font-semibold">Ganancia USD</p>
+                    <p className="mt-3 text-xl font-semibold text-adaptive-primary">{formatCurrency(summary.profitUsd, 'USD')}</p>
+                  </div>
+                </div>
+              )}
+
               {isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (

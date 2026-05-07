@@ -51,6 +51,15 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
   const [dealsModalOpen, setDealsModalOpen] = useState(false)
   const [daySummaryOpen, setDaySummaryOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<{ date: string; label: string } | null>(null)
+  const [selectedDayData, setSelectedDayData] = useState<{
+    salesArs: number
+    salesUsd: number
+    profitArs: number
+    profitUsd: number
+    costsArs: number
+    costsUsd: number
+    dealCount: number
+  } | null>(null)
 
   // Fetch detalles de deals cuando se abren los modales
   const { deals: revenueDeal, period: revenuePeriod, isLoading: revenueLoading } = useAnalyticsDealDetails(
@@ -205,6 +214,15 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                       isSeller={isSeller}
                       onPointClick={(point) => {
                         setSelectedDay({ date: point.date, label: point.name })
+                        setSelectedDayData({
+                          salesArs: point.salesArs,
+                          salesUsd: point.salesUsd,
+                          profitArs: point.profitArs,
+                          profitUsd: point.profitUsd,
+                          costsArs: point.costsArs,
+                          costsUsd: point.costsUsd,
+                          dealCount: point.dealCount,
+                        })
                         setDaySummaryOpen(true)
                       }}
                     />
@@ -331,11 +349,18 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
 
           <DealDetailsModal
             isOpen={daySummaryOpen}
-            onOpenChange={setDaySummaryOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                setSelectedDay(null)
+                setSelectedDayData(null)
+              }
+              setDaySummaryOpen(open)
+            }}
             title={selectedDay ? `Detalles del ${selectedDay.label}` : 'Detalles del día'}
             deals={dayDeals}
             isLoading={dayLoading}
             period={dayPeriod}
+            summary={selectedDayData ?? undefined}
           />
         </>
     </div>

@@ -25,11 +25,11 @@
 
   /* Tema claro (fondo oscuro) */
   [data-background-theme="dark"] .surface-primary {
-    @apply bg-white/90 text-slate-900 border-white/20 shadow-2xl;
+    @apply bg-white/95 text-slate-900 border-white/20 shadow-2xl;
   }
 
   [data-background-theme="dark"] .surface-secondary {
-    @apply bg-white/75 text-slate-800 border-white/15 shadow-lg;
+    @apply bg-white/90 text-slate-800 border-white/20 shadow-lg;
   }
 
   [data-background-theme="dark"] .surface-muted {
@@ -42,11 +42,11 @@
 
   /* Tema oscuro (fondo claro) */
   [data-background-theme="light"] .surface-primary {
-    @apply bg-slate-900/90 text-slate-100 border-slate-700/50 shadow-2xl;
+    @apply bg-slate-950/95 text-slate-100 border-slate-700/60 shadow-2xl;
   }
 
   [data-background-theme="light"] .surface-secondary {
-    @apply bg-slate-800/80 text-slate-200 border-slate-600/40 shadow-lg;
+    @apply bg-slate-900/90 text-slate-200 border-slate-700/50 shadow-lg;
   }
 
   [data-background-theme="light"] .surface-muted {
@@ -59,11 +59,11 @@
 
   /* Tema neutral (fondo intermedio) */
   [data-background-theme="neutral"] .surface-primary {
-    @apply bg-slate-50/85 text-slate-900 border-slate-200/40 shadow-xl backdrop-blur-2xl;
+    @apply bg-slate-50/95 text-slate-900 border-slate-200/40 shadow-xl backdrop-blur-2xl;
   }
 
   [data-background-theme="neutral"] .surface-secondary {
-    @apply bg-slate-100/80 text-slate-800 border-slate-300/30 shadow-lg;
+    @apply bg-slate-100/90 text-slate-800 border-slate-300/40 shadow-lg;
   }
 
   [data-background-theme="neutral"] .surface-muted {
@@ -147,11 +147,11 @@
   }
 
   [data-background-theme="dark"] .card-dashboard {
-    @apply bg-white/85 text-slate-900 border-white/25;
+    @apply bg-white/95 text-slate-900 border-white/25;
   }
 
   [data-background-theme="light"] .card-dashboard {
-    @apply bg-slate-900/85 text-slate-100 border-slate-700/40;
+    @apply bg-slate-950/95 text-slate-100 border-slate-700/50;
   }
 
   [data-background-theme="neutral"] .card-dashboard {
