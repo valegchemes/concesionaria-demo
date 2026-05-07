@@ -59,9 +59,10 @@ function addNoCacheHeaders(response: NextResponse): NextResponse {
 /**
  * Construye la clave de caché única por tenant, tipo y rango temporal.
  */
-function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string, userId?: string): string {
+function getAnalyticsCacheKey(companyId: string, type: string, timeRange: string, userId: string): string {
   // CACHE_VERSION se usa como prefijo para invalidar todas las claves al hacer un bump de versión
-  return `${CACHE_VERSION}${companyId}:${type}:${timeRange}${userId ? ':' + userId : ''}`
+  // Incluimos userId porque el tipo de cambio puede ser personalizado por usuario.
+  return `${CACHE_VERSION}${companyId}:${type}:${timeRange}:${userId}`
 }
 
 /**
@@ -141,9 +142,11 @@ function decimalToNumber(value: Prisma.Decimal | null | undefined): number {
   return Number(value.toString())
 }
 
-function resolveExchangeRate(exchangeRate?: Prisma.Decimal | null): number {
+function resolveExchangeRate(exchangeRate?: Prisma.Decimal | null, userExchangeRate?: number): number {
   const resolved = decimalToNumber(exchangeRate)
-  return resolved > 0 ? resolved : DEFAULT_EXCHANGE_RATE_ARS_PER_USD
+  if (resolved > 0) return resolved
+  if (userExchangeRate && userExchangeRate > 0) return userExchangeRate
+  return DEFAULT_EXCHANGE_RATE_ARS_PER_USD
 }
 
 function createMoneyAmount(ars: number, usd: number, exchangeRate?: number): MoneyAmount {
@@ -166,10 +169,10 @@ function createDealRevenueAmount(deal: {
   finalPrice: Prisma.Decimal | null | undefined
   finalPriceCurrency?: string | null
   exchangeRate?: Prisma.Decimal | null
-}): MoneyAmount {
+}, userExchangeRate?: number): MoneyAmount {
   const finalPrice = decimalToNumber(deal.finalPrice)
   const currency = deal.finalPriceCurrency ?? 'ARS'
-  const exchangeRate = resolveExchangeRate(deal.exchangeRate)
+  const exchangeRate = resolveExchangeRate(deal.exchangeRate, userExchangeRate)
 
   return currency === 'USD'
     ? createMoneyAmount(0, finalPrice, exchangeRate)
@@ -199,16 +202,36 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const { timeRange } = validation.data
     const dateRange = getDateRangeFromTimeRange(timeRange)
 
-    // Intentar obtener usuario desde headers (rápido) o DB (lento)
-    let user = null as null | { id: string; companyId: string; role?: string }
+    // Intentar obtener usuario desde headers (rápido) o sesión completa (lento).
+    // El tipo de cambio puede ser personalizado por usuario, por lo que
+    // necesitamos resolver el valor real desde la DB cuando esté disponible.
+    let user = null as null | { id: string; companyId: string; role?: string; exchangeRateArsPerUsd?: Prisma.Decimal | null }
     try {
-      user = await getCurrentUserFromHeaders(request)
+      const headerUser = await getCurrentUserFromHeaders(request)
+      if (headerUser?.id && headerUser.companyId) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: headerUser.id },
+          select: {
+            id: true,
+            companyId: true,
+            role: true,
+            exchangeRateArsPerUsd: true,
+            isActive: true,
+            company: { select: { isActive: true } },
+          },
+        })
+
+        if (dbUser?.isActive && dbUser.company?.isActive) {
+          user = dbUser
+        }
+      }
     } catch (authErr) {
       log.warn({ error: String(authErr) }, 'Error extrayendo usuario de headers/DB')
     }
 
     const companyId = user?.companyId
     const userId = user?.id ?? 'unknown'
+    const userExchangeRate = resolveExchangeRate(user?.exchangeRateArsPerUsd)
 
     if (!companyId) {
       log.warn({ userId, companyId }, 'No se pudo resolver companyId, devolviendo fallback')
@@ -247,7 +270,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const isSeller = user?.role === 'SELLER'
     const sellerId = isSeller ? userId : undefined
 
-    const cacheKey = getAnalyticsCacheKey(companyId, typeParam, timeRange, sellerId)
+    const cacheKey = getAnalyticsCacheKey(companyId, typeParam, timeRange, userId)
     let cacheHit = false
     let result: unknown
 
@@ -487,7 +510,7 @@ async function getDashboardSummary(
     decimalToNumber(unitCosts._sum?.amountUsd) +
     decimalToNumber(companyExpenses._sum?.amountUsd)
 
-  const totalCosts = createMoneyAmount(totalCostsArs, totalCostsUsd)
+  const totalCosts = createMoneyAmount(totalCostsArs, totalCostsUsd, userExchangeRate)
   const revenue = totalRevenue
 
   const netProfit = createExactMoneyAmount(
@@ -615,7 +638,8 @@ async function getSalesVsProfit(
     )
     const totalCost = createMoneyAmount(
       acquisitionArs + extraCostsArs,
-      acquisitionUsd + extraCostsUsd
+      acquisitionUsd + extraCostsUsd,
+      userExchangeRate
     )
 
     byPeriod.set(key, {
@@ -673,7 +697,7 @@ async function getSalesVsProfit(
 
     const costArs = sellerId ? 0 : decimalToNumber(exp.amountArs)
     const costUsd = sellerId ? 0 : decimalToNumber(exp.amountUsd)
-    const totalExpense = createMoneyAmount(costArs, costUsd)
+    const totalExpense = createMoneyAmount(costArs, costUsd, userExchangeRate)
 
     byPeriod.set(key, {
       ...existing,
@@ -709,7 +733,7 @@ async function getSalesVsProfit(
 
     const costArs = sellerId ? 0 : decimalToNumber(uc.amountArs)
     const costUsd = sellerId ? 0 : decimalToNumber(uc.amountUsd)
-    const totalCost = createMoneyAmount(costArs, costUsd)
+    const totalCost = createMoneyAmount(costArs, costUsd, userExchangeRate)
 
     byPeriod.set(key, {
       ...existing,
@@ -971,7 +995,8 @@ async function getCostAnalysis(
     const existing = costsByConcept.get(cost.concept) || createMoneyAmount(0, 0)
     costsByConcept.set(cost.concept, createMoneyAmount(
       existing.ars + decimalToNumber(cost.amountArs),
-      existing.usd + decimalToNumber(cost.amountUsd)
+      existing.usd + decimalToNumber(cost.amountUsd),
+      userExchangeRate
     ))
   }
 
@@ -979,13 +1004,14 @@ async function getCostAnalysis(
     const existing = costsByConcept.get(exp.category) || createMoneyAmount(0, 0)
     costsByConcept.set(exp.category, createMoneyAmount(
       existing.ars + decimalToNumber(exp.amountArs),
-      existing.usd + decimalToNumber(exp.amountUsd)
+      existing.usd + decimalToNumber(exp.amountUsd),
+      userExchangeRate
     ))
   }
 
   const totalCostsArs = Array.from(costsByConcept.values()).reduce((sum, c) => sum + c.ars, 0)
   const totalCostsUsd = Array.from(costsByConcept.values()).reduce((sum, c) => sum + c.usd, 0)
-  const totalCosts = createMoneyAmount(totalCostsArs, totalCostsUsd)
+  const totalCosts = createMoneyAmount(totalCostsArs, totalCostsUsd, userExchangeRate)
 
   const breakdown: CostBreakdown[] = Array.from(costsByConcept.entries()).map(([category, amount]) => ({
     category,
@@ -1005,11 +1031,13 @@ async function getCostAnalysis(
         dealCosts.reduce((sum, c) => sum + decimalToNumber(c.amountArs), 0) +
         companyExpenses.reduce((sum, e) => sum + decimalToNumber(e.amountArs), 0),
         dealCosts.reduce((sum, c) => sum + decimalToNumber(c.amountUsd), 0) +
-        companyExpenses.reduce((sum, e) => sum + decimalToNumber(e.amountUsd), 0)
+        companyExpenses.reduce((sum, e) => sum + decimalToNumber(e.amountUsd), 0),
+        userExchangeRate
       ),
       maintenance: createMoneyAmount(
         unitCosts.reduce((sum, c) => sum + decimalToNumber(c.amountArs), 0),
-        unitCosts.reduce((sum, c) => sum + decimalToNumber(c.amountUsd), 0)
+        unitCosts.reduce((sum, c) => sum + decimalToNumber(c.amountUsd), 0),
+        userExchangeRate
       ),
       commissions: createMoneyAmount(0, 0),
     },

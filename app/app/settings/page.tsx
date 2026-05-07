@@ -14,6 +14,7 @@ interface CurrentUser {
   email: string
   role: string
   avatarUrl?: string | null
+  exchangeRateArsPerUsd?: number | null
   companyId: string
   companyName: string
   companySlug: string
@@ -42,6 +43,7 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [avatarUrl, setAvatarUrl] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [exchangeRateArsPerUsd, setExchangeRateArsPerUsd] = useState('')
 
   useEffect(() => {
     async function fetchSettings() {
@@ -57,6 +59,7 @@ export default function SettingsPage() {
           setUserName(meData.name || '')
           setUserEmail(meData.email || '')
           setAvatarUrl(meData.avatarUrl || '')
+          setExchangeRateArsPerUsd(meData.exchangeRateArsPerUsd ? String(meData.exchangeRateArsPerUsd) : '')
         }
 
         if (companyRes.ok) {
@@ -145,6 +148,15 @@ export default function SettingsPage() {
 
       const isChangingCredentials = Boolean(password) || userEmail !== me?.email
 
+      const normalizedExchangeRate = exchangeRateArsPerUsd.trim().replace(',', '.')
+      const exchangeRateValue = normalizedExchangeRate === '' ? null : Number(normalizedExchangeRate)
+
+      if (normalizedExchangeRate !== '' && Number.isNaN(exchangeRateValue)) {
+        alert('El tipo de cambio debe ser un número válido')
+        setLoading(false)
+        return
+      }
+
       const res = await fetch('/api/settings/user', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -152,6 +164,7 @@ export default function SettingsPage() {
           name: userName,
           email: userEmail,
           avatarUrl: finalAvatarUrl,
+          exchangeRateArsPerUsd: exchangeRateValue,
           ...(password ? { password } : {}),
           ...(isChangingCredentials && currentPassword ? { currentPassword } : {}),
         }),
@@ -374,6 +387,22 @@ export default function SettingsPage() {
                     onChange={e => setUserEmail(e.target.value)}
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="exchangeRateArsPerUsd">Tipo de cambio USD/ARS actual</Label>
+                  <Input
+                    id="exchangeRateArsPerUsd"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Ej. 980.50"
+                    value={exchangeRateArsPerUsd}
+                    onChange={e => setExchangeRateArsPerUsd(e.target.value)}
+                  />
+                  <p className="text-sm text-slate-500">
+                    Ingresa el valor del dólar que querés usar en los cálculos del sistema. Dejá vacío para usar el valor por defecto.
+                  </p>
                 </div>
 
                 <div className="space-y-2">

@@ -24,6 +24,7 @@ export async function GET() {
         role: true,
         avatarUrl: true,
         whatsappNumber: true,
+        exchangeRateArsPerUsd: true,
         company: {
           select: {
             id: true,
@@ -46,6 +47,7 @@ export async function GET() {
       role: user.role,
       avatarUrl: user.avatarUrl,
       whatsappNumber: user.whatsappNumber,
+      exchangeRateArsPerUsd: user.exchangeRateArsPerUsd,
       companyId: user.company.id,
       companyName: user.company.name,
       companySlug: user.company.slug,

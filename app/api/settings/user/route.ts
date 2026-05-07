@@ -14,6 +14,15 @@ const UpdateUserSchema = z.object({
   password: z.string().min(8).optional(),
   currentPassword: z.string().min(1).optional(),
   avatarUrl: z.string().url().optional().or(z.literal('')),
+  exchangeRateArsPerUsd: z.preprocess((value) => {
+    if (typeof value === 'string') {
+      const trimmed = value.trim()
+      if (trimmed === '') return null
+      const parsed = Number(trimmed.replace(',', '.'))
+      return Number.isFinite(parsed) ? parsed : value
+    }
+    return value
+  }, z.number().positive().nullable()).optional(),
 })
 
 export async function PATCH(request: NextRequest) {
@@ -64,10 +73,11 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    const updateData: Record<string, string | null | undefined> = {}
+    const updateData: Record<string, string | number | null | undefined> = {}
     if (data.name) updateData.name = data.name
     if (data.email) updateData.email = data.email
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl
+    if (data.exchangeRateArsPerUsd !== undefined) updateData.exchangeRateArsPerUsd = data.exchangeRateArsPerUsd
     
     // Si envían password, significa que quieren cambiarla
     if (data.password) {
@@ -77,7 +87,7 @@ export async function PATCH(request: NextRequest) {
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: updateData,
-      select: { id: true, name: true, email: true, role: true } // Excluir password en la respuesta
+      select: { id: true, name: true, email: true, role: true, exchangeRateArsPerUsd: true } // Excluir password en la respuesta
     })
 
     return NextResponse.json(updatedUser, { status: 200 })
