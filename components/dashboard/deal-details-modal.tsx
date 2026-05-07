@@ -159,9 +159,18 @@ export function DealDetailsModal({
                                 {deal.currency}
                               </Badge>
                             </div>
-                            {deal.currency === 'USD' && (
+                            {deal.currency === 'USD' ? (
+                              <div className="space-y-1 mt-2 text-xs text-muted-foreground">
+                                <p>
+                                  Equivale a <strong>{formatCurrency(deal.finalPrice * deal.exchangeRate, 'ARS')}</strong> con tipo de cambio <strong>{deal.exchangeRate.toFixed(2)} ARS/USD</strong>
+                                </p>
+                                <p>
+                                  Precio original: <strong>{formatCurrency(deal.finalPrice, 'USD')}</strong>
+                                </p>
+                              </div>
+                            ) : (
                               <p className="text-xs text-muted-foreground mt-2">
-                                Tipo de cambio: ${deal.exchangeRate.toFixed(2)} ARS/USD
+                                Tipo de cambio: {deal.exchangeRate.toFixed(2)} ARS/USD
                               </p>
                             )}
                           </div>

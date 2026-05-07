@@ -77,11 +77,19 @@ function KPICard({
 
   return (
     <Card
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={cn(
         'p-5 transition-all duration-200',
-        onClick ? 'hover:shadow-lg hover:scale-105 cursor-pointer hover:bg-muted/50' : 'hover:shadow-md'
+        onClick ? 'hover:shadow-lg hover:scale-105 cursor-pointer hover:bg-muted/50 focus:ring-2 focus:ring-blue-500/30 focus:outline-none' : 'hover:shadow-md'
       )}
       onClick={onClick}
+      onKeyDown={onClick ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick()
+        }
+      } : undefined}
     >
       <div className="flex items-start justify-between mb-3">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -147,13 +155,41 @@ export function DashboardKPIs({
 
   const { kpis, inventory, period } = data
 
+  const revenueValue =
+    kpis.totalRevenue.ars > 0 && kpis.totalRevenue.usd > 0
+      ? `${formatCurrencyCompact(kpis.totalRevenue.ars, 'ARS')} / ${formatCurrencyCompact(kpis.totalRevenue.usd, 'USD')}`
+      : kpis.totalRevenue.usd > 0
+      ? formatCurrencyCompact(kpis.totalRevenue.usd, 'USD')
+      : formatCurrencyCompact(kpis.totalRevenue.ars, 'ARS')
+
+  const revenueDetail = [
+    kpis.totalRevenue.ars > 0 ? formatCurrency(kpis.totalRevenue.ars, 'ARS') : null,
+    kpis.totalRevenue.usd > 0 ? formatCurrency(kpis.totalRevenue.usd, 'USD') : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  const profitValue =
+    kpis.netProfit.ars > 0 && kpis.netProfit.usd > 0
+      ? `${formatCurrencyCompact(kpis.netProfit.ars, 'ARS')} / ${formatCurrencyCompact(kpis.netProfit.usd, 'USD')}`
+      : kpis.netProfit.usd > 0
+      ? formatCurrencyCompact(kpis.netProfit.usd, 'USD')
+      : formatCurrencyCompact(kpis.netProfit.ars, 'ARS')
+
+  const profitDetail = [
+    kpis.netProfit.ars !== 0 ? formatCurrency(kpis.netProfit.ars, 'ARS') : null,
+    kpis.netProfit.usd !== 0 ? formatCurrency(kpis.netProfit.usd, 'USD') : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <KPICard
         title="Ingresos Totales"
-        value={formatCurrencyCompact(kpis.totalRevenue.totalConverted)}
+        value={revenueValue}
         subtitle={period.label}
-        detail={formatCurrency(kpis.totalRevenue.totalConverted)}
+        detail={revenueDetail}
         trend="up"
         icon={DollarSign}
         iconBg="bg-blue-50 dark:bg-blue-950/40"
@@ -164,9 +200,9 @@ export function DashboardKPIs({
       {userRole !== 'SELLER' && (
         <KPICard
           title="Ganancia Neta"
-          value={formatCurrencyCompact(kpis.netProfit.totalConverted)}
+          value={profitValue}
           subtitle={`Margen: ${formatPercentage(kpis.profitMargin)}`}
-          detail={formatCurrency(kpis.netProfit.totalConverted)}
+          detail={profitDetail}
           trend={kpis.profitMargin > 0 ? 'up' : 'down'}
           icon={Percent}
           iconBg="bg-emerald-50 dark:bg-emerald-950/40"
