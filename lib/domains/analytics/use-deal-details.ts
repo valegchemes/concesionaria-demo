@@ -49,7 +49,11 @@ export function useAnalyticsDealDetails(
     async (url: string) => {
       const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to fetch deal details')
-      return res.json()
+      const payload = await res.json()
+      if (!payload.success) {
+        throw new Error(payload.error?.message || 'Failed to fetch deal details')
+      }
+      return payload.data
     },
     {
       revalidateOnFocus: false,
