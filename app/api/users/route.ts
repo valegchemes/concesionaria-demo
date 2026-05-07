@@ -1,8 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
-import { authOptions } from '../auth/[...nextauth]/auth-options'
 import { hashPassword } from '@/lib/auth'
 import { createLogger } from '@/lib/shared/logger'
 import { requirePermission, getCurrentUser } from '@/lib/shared/auth-helpers'
@@ -13,20 +11,14 @@ import { z } from 'zod'
 const log = createLogger('API:Users')
 
 export const maxDuration = 30
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    if (session.user.role === 'SELLER') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    const currentUser = await getCurrentUser()
+    await requirePermission('team', 'read_all')
 
     const users = await prisma.user.findMany({
       where: {
-        companyId: session.user.companyId,
+        companyId: currentUser.companyId,
         isActive: true,
       },
       select: {
@@ -200,7 +192,14 @@ export async function PUT(request: NextRequest) {
     }
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: {
+      name?: string
+      email?: string
+      role?: 'ADMIN' | 'MANAGER' | 'SELLER'
+      whatsappNumber?: string | null
+      avatarUrl?: string | null
+      password?: string
+    } = {
       ...(name && { name }),
       ...(email && { email }),
       ...(role && { role }),

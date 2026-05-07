@@ -117,38 +117,6 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
   }
 }
 
-function hasNextAuthCookies(request: NextRequest): boolean {
-  return Array.from(request.cookies, ([name]) => name)
-    .some((name) =>
-      name.startsWith('next-auth.') || name.startsWith('__Secure-next-auth.')
-    )
-}
-
-function clearNextAuthCookies(response: NextResponse, request?: NextRequest): NextResponse {
-  const cookiesToClear = request
-    ? Array.from(request.cookies, ([name]) => name)
-        .filter((name) => name.startsWith('next-auth.') || name.startsWith('__Secure-next-auth.'))
-    : [
-        '__Secure-next-auth.session-token',
-        'next-auth.session-token',
-        '__Secure-next-auth.callback-url',
-        'next-auth.callback-url',
-        '__Secure-next-auth.csrf-token',
-        'next-auth.csrf-token',
-      ]
-
-  for (const name of Array.from(new Set(cookiesToClear))) {
-    response.cookies.set({
-      name,
-      value: '',
-      path: '/',
-      expires: new Date(0),
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-    })
-  }
-  return response
-}
 
 /**
  * Añade headers de seguridad y deshabilita cache para asegurar frescura de datos
@@ -157,6 +125,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   // Seguridad estándar
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   
   // Deshabilitar cache del navegador (Solución a "no se almacene cache")
@@ -179,6 +148,16 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 export default async function middleware(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const startTime = Date.now()
+
+  // En producción forzar HTTPS si la petición llega por HTTP.
+  if (process.env.NODE_ENV === 'production') {
+    const protocol = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol
+    if (protocol !== 'https') {
+      const redirectUrl = new URL(request.url)
+      redirectUrl.protocol = 'https'
+      return addSecurityHeaders(NextResponse.redirect(redirectUrl, 308))
+    }
+  }
 
   // 1. Verificar rutas públicas
   if (isPublicRoute(pathname)) {

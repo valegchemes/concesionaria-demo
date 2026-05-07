@@ -6,31 +6,57 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Loader2, CreditCard, CheckCircle2 } from 'lucide-react'
 
-// Dummy plan para Phase 1. En Fase 2 vendrá de la tabla SaasPlan
-const STARTER_PLAN_PRICE_ID = 'price_fake_test_id'
+interface Plan {
+  id: string
+  name: string
+  description?: string | null
+  stripePriceId: string
+  price: string
+  currency: string
+  interval: string
+  maxUsers: number
+  maxUnits: number
+}
 
 export default function BillingPage() {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState(false)
   const [canceledMsg, setCanceledMsg] = useState(false)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [error, setError] = useState<string | null>(null)
   
-  // Realmente en una app completa harías fetch a un endpoint
-  // GET /api/billing/status para ver el current status antes de mostrar
-  // Pero para MVP asumimos vista genérica:
-
   useEffect(() => {
     if (searchParams.get('success')) setSuccessMsg(true)
     if (searchParams.get('canceled')) setCanceledMsg(true)
   }, [searchParams])
 
-  async function handleCheckout() {
+  useEffect(() => {
+    async function loadPlans() {
+      try {
+        const res = await fetch('/api/billing/plans')
+        const data = await res.json()
+
+        if (res.ok && Array.isArray(data.plans)) {
+          setPlans(data.plans)
+        } else {
+          setError(data.error || 'No se pudieron cargar los planes')
+        }
+      } catch {
+        setError('Error al cargar los planes')
+      }
+    }
+
+    loadPlans()
+  }, [])
+
+  async function handleCheckout(priceId: string) {
     setLoading(true)
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId: STARTER_PLAN_PRICE_ID })
+        body: JSON.stringify({ priceId })
       })
       const data = await res.json()
       if (data.url) {
@@ -83,31 +109,46 @@ export default function BillingPage() {
         </div>
       )}
 
+      {error && (
+        <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-md">
+          {error}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Panel de Upgrade / Planes */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-blue-500" />
-              <CardTitle>Plan Starter</CardTitle>
+        <div className="space-y-4">
+          {plans.length === 0 && !error ? (
+            <div className="p-4 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md">
+              Cargando planes...
             </div>
-            <CardDescription>$49 USD / mes</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-             <ul className="space-y-2 text-sm text-gray-600">
-               <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500"/> Hasta 2 usuarios</li>
-               <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500"/> Hasta 50 unidades</li>
-               <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500"/> Catálogo público</li>
-               <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500"/> Soporte por email</li>
-             </ul>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleCheckout} disabled={loading} className="w-full">
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Suscribirse Ahora'}
-            </Button>
-          </CardFooter>
-        </Card>
+          ) : (
+            plans.map((plan) => (
+              <Card key={plan.id}>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5 text-blue-500" />
+                    <CardTitle>{plan.name}</CardTitle>
+                  </div>
+                  <CardDescription>
+                    {plan.currency.toUpperCase()} {plan.price.toString()} / {plan.interval}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-gray-600">{plan.description || 'Plan de suscripción gestionado por Stripe'}</p>
+                  <ul className="space-y-2 text-sm text-gray-600">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500"/> Hasta {plan.maxUsers} usuarios</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-green-500"/> Hasta {plan.maxUnits} unidades</li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={() => handleCheckout(plan.stripePriceId)} disabled={loading} className="w-full">
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Suscribirse Ahora'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))
+          )}
+        </div>
 
         {/* Panel de Gestión (Stripe Portal) */}
         <Card>
@@ -118,6 +159,7 @@ export default function BillingPage() {
           <CardContent>
              <p className="text-sm text-gray-500">
                Serás redirigido al portal seguro de Stripe para autogestionar tus formas de pago.
+
              </p>
           </CardContent>
           <CardFooter>

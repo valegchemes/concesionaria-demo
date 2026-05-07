@@ -13,13 +13,42 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const secret = searchParams.get('secret')
+  const expectedSecret = process.env.NEXTAUTH_SECRET?.slice(0, 8)
 
-  // Diagnostic endpoint — allowed for debug/development
-  // if (process.env.NODE_ENV === 'production' && secret !== process.env.NEXTAUTH_SECRET?.slice(0, 8)) {
-  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  // }
+  if (!secret || secret !== expectedSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  const results = {
+  interface AuthDiagResults {
+    timestamp: string
+    environment: {
+      NODE_ENV?: string
+      HAS_NEXTAUTH_SECRET: boolean
+      HAS_NEXTAUTH_URL: boolean
+      NEXTAUTH_URL?: string
+      SECRET_LENGTH: number
+    }
+    cookies: {
+      all: Array<{ name: string; length: number; value: string }>
+      nextAuthCookies: Array<{ name: string; length: number }>
+    }
+    session: {
+      status: string
+      data: { userId: string; email: string; companyId: string; role: string; duration: number } | null
+      error: string | null
+      duration?: number
+    }
+    token: {
+      status: string
+      data: unknown | null
+      error: string | null
+      duration?: number
+    }
+    issues?: string[]
+    recommendations?: string[]
+  }
+
+  const results: AuthDiagResults = {
     timestamp: new Date().toISOString(),
     environment: {
       NODE_ENV: process.env.NODE_ENV,
@@ -48,7 +77,7 @@ export async function GET(request: NextRequest) {
       data: null,
       error: null,
     },
-  } as any
+  }
 
   // 1. Try getServerSession (requires request context)
   try {
@@ -63,10 +92,10 @@ export async function GET(request: NextRequest) {
     if (session) {
       results.session.status = 'SUCCESS'
       results.session.data = {
-        userId: (session.user as any)?.id,
-        email: (session.user as any)?.email,
-        companyId: (session.user as any)?.companyId,
-        role: (session.user as any)?.role,
+        userId: session.user.id,
+        email: session.user.email,
+        companyId: session.user.companyId,
+        role: session.user.role,
         duration: Date.now() - start,
       }
     } else {

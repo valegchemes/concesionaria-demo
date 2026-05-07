@@ -1,10 +1,9 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
-import { authOptions } from '../../../auth/[...nextauth]/auth-options'
 import { z } from 'zod'
 import { createLogger } from '@/lib/shared/logger'
+import { requireAuth } from '@/lib/shared/auth-helpers'
 import { ValidationError } from '@/lib/shared/errors'
 import { UpdateTaskSchema } from '@/lib/shared/validation'
 
@@ -21,10 +20,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requireAuth()
 
     const { id } = await params
 
@@ -95,10 +91,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requireAuth()
 
     const { searchParams } = new URL(request.url)
     const taskId = searchParams.get('taskId')

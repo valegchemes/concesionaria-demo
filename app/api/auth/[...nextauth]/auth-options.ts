@@ -1,9 +1,30 @@
-import { NextAuthOptions } from 'next-auth'
+import { type NextAuthOptions, type Session } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
+import { type JWT } from 'next-auth/jwt'
 import { z } from 'zod'
 import { verifyCredentials } from '@/lib/auth'
 import { EmailSchema, SlugSchema } from '@/lib/shared/validation'
 import { env } from '@/lib/env'
+
+type AuthUser = {
+  id: string
+  email: string
+  name: string
+  role: string
+  companyId: string
+  companyName: string
+  companySlug: string
+  avatarUrl?: string | null
+  company: unknown
+}
+
+type AuthToken = JWT & {
+  id?: string
+  role?: string
+  companyId?: string
+  companyName?: string
+  companySlug?: string
+}
 
 const LoginInputSchema = z.object({
   email: EmailSchema,
@@ -20,7 +41,7 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
         companySlug: { label: 'Company', type: 'text' },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         const parseResult = LoginInputSchema.safeParse({
           email: credentials?.email,
           password: credentials?.password,
@@ -50,18 +71,18 @@ export const authOptions: NextAuthOptions = {
           companySlug: user.company.slug,
           avatarUrl: user.avatarUrl,
           company: user.company, // Required by NextAuth User type
-        } as any
+        } as AuthUser
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id
         token.role = user.role
         token.companyId = user.companyId
         token.companyName = user.companyName
-        token.companySlug = (user as any).companySlug
+        token.companySlug = user.companySlug
         // Do NOT store avatarUrl/logoUrl in the JWT — they can be large base64
         // strings that overflow the cookie size limit (HTTP 431).
         // They are fetched fresh from the DB in the layout server component.
@@ -89,7 +110,7 @@ export const authOptions: NextAuthOptions = {
           : 'next-auth.session-token',
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'strict',
         path: '/',
         secure: env.NODE_ENV === 'production',
       },
@@ -113,17 +134,19 @@ export const authOptions: NextAuthOptions = {
           : 'next-auth.csrf-token',
       options: {
         httpOnly: false,
-        sameSite: 'lax',
+        sameSite: 'strict',
         path: '/',
         secure: env.NODE_ENV === 'production',
       },
     },
   },
   useSecureCookies: env.NODE_ENV === 'production',
-  pages: {
-    signIn: '/login',
-  },
   session: {
     strategy: 'jwt',
+    maxAge: 60 * 60 * 24,
+    updateAge: 60 * 15,
+  },
+  pages: {
+    signIn: '/login',
   },
 }

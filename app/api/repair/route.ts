@@ -9,18 +9,25 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
+import { getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
+import { hasPermission } from '@/lib/shared/authz'
 import { prisma } from '@/lib/shared/prisma'
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions)
+  const headerUser = await getCurrentUserFromHeaders(req)
+  if (!headerUser?.id || !headerUser?.companyId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-  if (!session?.user || session.user.role !== 'ADMIN') {
+  // Check if user has the required permission
+  if (!hasPermission(headerUser.permissions, 'team', 'manage_all')) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const companyId = session.user.companyId
+  const companyId = req.headers.get('x-company-id') ?? ''
+  if (!companyId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   // 1. Deals DELIVERED → unidad y lead deben ser SOLD
   const deliveredDeals = await prisma.deal.findMany({

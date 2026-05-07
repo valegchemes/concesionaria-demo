@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
+import { requireAuth } from '@/lib/shared/auth-helpers'
 import { compare, hash } from 'bcryptjs'
 import { createLogger } from '@/lib/shared/logger'
 import { z } from 'zod'
@@ -19,10 +18,7 @@ const UpdateUserSchema = z.object({
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requireAuth()
 
     const body = await request.json()
     const data = UpdateUserSchema.parse(body)

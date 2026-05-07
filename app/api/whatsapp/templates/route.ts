@@ -1,19 +1,15 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth/next'
 import { prisma } from '@/lib/prisma'
-import { authOptions } from '../../auth/[...nextauth]/auth-options'
 import { createLogger } from '@/lib/shared/logger'
+import { requireAuth } from '@/lib/shared/auth-helpers'
 import { WhatsAppTemplateSchema } from '@/lib/shared/validation'
 
 const log = createLogger('API:WhatsAppTemplates')
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requireAuth()
 
     const templates = await prisma.whatsAppTemplate.findMany({
       where: { companyId: session.user.companyId },
@@ -29,10 +25,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const session = await requireAuth()
 
     const body = await request.json()
     

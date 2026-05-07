@@ -44,6 +44,42 @@ export const billingService = {
     return customer.id
   },
 
+  async getAllowedPlans() {
+    return prisma.saasPlan.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        stripePriceId: true,
+        price: true,
+        currency: true,
+        interval: true,
+        maxUsers: true,
+        maxUnits: true,
+      },
+      orderBy: { price: 'asc' },
+    })
+  },
+
+  async getPlanByStripePriceId(stripePriceId: string) {
+    return prisma.saasPlan.findUnique({
+      where: { stripePriceId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        stripePriceId: true,
+        price: true,
+        currency: true,
+        interval: true,
+        maxUsers: true,
+        maxUnits: true,
+        isActive: true,
+      },
+    })
+  },
+
   /**
    * Sincroniza el estado de la suscripción desde Stripe hacia nuestra BD
    */

@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
+import { prisma } from '@/lib/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import { getCurrentUserFromHeaders, requireAuth } from '@/lib/shared/auth-helpers'
 
 const log = createLogger('API:Blob')
 
@@ -14,43 +16,53 @@ const log = createLogger('API:Blob')
  * Esto permite que uploads funcionen incluso cuando las cookies
  * no llegan correctamente (algunos proxies, mobile, etc.)
  */
-async function resolveUserId(request: NextRequest): Promise<string | null> {
-  // Método 1: Sesión normal via cookies
+async function resolveCurrentUser(request: NextRequest): Promise<{ id: string; companyId: string } | null> {
   try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.id) {
-      return session.user.id
+    const session = await requireAuth()
+    // requireAuth throws if not authenticated, so if we get here, we have a session
+    // But we need to get the session data again since requireAuth doesn't return it
+    const sessionData = await Promise.race([
+      getServerSession(authOptions),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 5000))
+    ])
+    if (sessionData?.user) {
+      return { id: sessionData.user.id, companyId: sessionData.user.companyId }
     }
-  } catch (sessionError) {
-    log.debug({ error: String(sessionError) }, 'getServerSession failed, trying header fallback')
+  } catch {
+    // Si no hay sesión normal, intentar con headers inyectados por middleware.
   }
 
-  // Método 2: Header inyectado por middleware (más confiable en algunos flows)
-  const userIdFromHeader = request.headers.get('x-user-id')
-  if (userIdFromHeader) {
-    log.debug({ userId: userIdFromHeader }, 'Using x-user-id header for auth')
-    return userIdFromHeader
+  const headerUser = await getCurrentUserFromHeaders(request)
+  if (!headerUser?.id || !headerUser?.companyId) {
+    return null
   }
 
-  return null
+  const user = await prisma.user.findUnique({
+    where: { id: headerUser.id },
+    select: { id: true, companyId: true, isActive: true, company: { select: { isActive: true } } },
+  })
+
+  if (!user?.isActive || !user.company?.isActive) {
+    return null
+  }
+
+  return { id: user.id, companyId: user.companyId }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = (await request.json()) as HandleUploadBody
+    const currentUser = await resolveCurrentUser(request)
+
+    if (!currentUser?.id || !currentUser?.companyId) {
+      log.warn({}, 'Blob upload rejected - no valid authenticated user')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (pathname) => {
-        // Authenticate via session OR header fallback
-        const userId = await resolveUserId(request)
-
-        if (!userId) {
-          log.warn({ pathname }, 'Blob upload rejected - no valid session or header')
-          throw new Error('Unauthorized: No valid session or x-user-id header')
-        }
-
+      onBeforeGenerateToken: async () => {
         return {
           allowedContentTypes: [
             'image/jpeg',
@@ -65,19 +77,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           ],
           maximumSizeInBytes: 5 * 1024 * 1024,
           tokenPayload: JSON.stringify({
-            userId: userId,
+            userId: currentUser.id,
+            companyId: currentUser.companyId,
           }),
           addRandomSuffix: true,
         }
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {
         // This is called via webhook from Vercel Blob servers
-        let parsedPayload: any = tokenPayload
+        let parsedPayload: Record<string, unknown> = {}
         try {
           if (typeof tokenPayload === 'string') {
             parsedPayload = JSON.parse(tokenPayload)
           }
-        } catch (e) {
+        } catch {
           // ignore
         }
         log.info({ url: blob.url, tokenPayload: parsedPayload }, 'Upload completed via webhook')
