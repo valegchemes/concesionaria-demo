@@ -739,7 +739,7 @@ async function getSalesVsProfit(
           WHERE ce."companyId" = ${companyId}
             AND ce."isActive" = true
             AND ce.date >= ${start} AND ce.date <= ${end}
-          GROUP BY DATE_TRUNC(${truncFn}::text, ce.date)
+          GROUP BY 1
           ORDER BY period ASC
         `,
         prisma.$queryRaw<PeriodCostRow[]>`
@@ -751,7 +751,7 @@ async function getSalesVsProfit(
           JOIN "Unit" u ON u.id = uci."unitId"
           WHERE u."companyId" = ${companyId}
             AND uci.date >= ${start} AND uci.date <= ${end}
-          GROUP BY DATE_TRUNC(${truncFn}::text, uci.date)
+          GROUP BY 1
           ORDER BY period ASC
         `,
       ])
