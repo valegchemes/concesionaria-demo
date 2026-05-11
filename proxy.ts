@@ -1,10 +1,13 @@
 /**
- * Enterprise Middleware Global
+ * Proxy (antes Middleware) — Enterprise Global Auth Proxy
  * - Protección de rutas API y App
- * - Validación de sesión con NextAuth
- * - Multi-tenancy con tenantId obligatorio
- * - Headers de seguridad (No-Cache habilitado)
- * - Logging de requests
+ * - Validación de JWT con NextAuth
+ * - Multi-tenancy: inyecta x-company-id, x-user-id, x-user-role
+ * - Headers de seguridad y no-cache
+ *
+ * MIGRATION NOTE: Renombrado de middleware.ts a proxy.ts (Next.js 16 breaking change).
+ * La función principal se llama 'proxy' en lugar de 'middleware'.
+ * @see https://nextjs.org/docs/messages/middleware-to-proxy
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
@@ -12,10 +15,10 @@ import { getToken } from 'next-auth/jwt'
 
 // Inline logger — safe for Edge Runtime
 const log = {
-  debug: (meta: object, msg: string) => console.debug('[Middleware]', msg, meta),
-  info:  (meta: object, msg: string) => console.info('[Middleware]', msg, meta),
-  warn:  (meta: object, msg: string) => console.warn('[Middleware]', msg, meta),
-  error: (meta: object, msg: string) => console.error('[Middleware]', msg, meta),
+  debug: (meta: object, msg: string) => console.debug('[Proxy]', msg, meta),
+  info:  (meta: object, msg: string) => console.info('[Proxy]', msg, meta),
+  warn:  (meta: object, msg: string) => console.warn('[Proxy]', msg, meta),
+  error: (meta: object, msg: string) => console.error('[Proxy]', msg, meta),
 }
 
 // ============================================================================
@@ -64,9 +67,6 @@ interface RequestMetadata {
 // UTILIDADES DE SEGURIDAD Y SESIÓN
 // ============================================================================
 
-/**
- * Resuelve NEXTAUTH_SECRET de forma robusta
- */
 function getResolvedSecret(): string {
   const secret = process.env.NEXTAUTH_SECRET
   if (!secret) {
@@ -75,9 +75,6 @@ function getResolvedSecret(): string {
   return secret
 }
 
-/**
- * Verifica si una ruta es pública
- */
 function isPublicRoute(pathname: string): boolean {
   return PUBLIC_ROUTES.some(route =>
     pathname === route ||
@@ -87,10 +84,8 @@ function isPublicRoute(pathname: string): boolean {
 
 /**
  * Valida que el callbackUrl sea del mismo origen para prevenir Open Redirect.
- * Solo permite rutas relativas (empiezan con '/') o URLs del mismo host.
  */
 function isSafeCallbackUrl(url: string, requestUrl: string): boolean {
-  // Rutas relativas siempre son seguras
   if (url.startsWith('/') && !url.startsWith('//')) return true
   try {
     const base = new URL(requestUrl)
@@ -108,12 +103,8 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
   try {
     const secret = getResolvedSecret()
     
-    // Timeout de 2s: si getToken cuelga, fallar a null
     const token = await Promise.race([
-      getToken({ 
-        req: request,
-        secret
-      }),
+      getToken({ req: request, secret }),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
     ]) as TokenPayload | null
 
@@ -133,18 +124,14 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
   }
 }
 
-
 /**
- * Añade headers de seguridad y deshabilita cache para asegurar frescura de datos
+ * Añade headers de seguridad y deshabilita cache
  */
 function addSecurityHeaders(response: NextResponse): NextResponse {
-  // Seguridad estándar
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  
-  // Deshabilitar cache del navegador (Solución a "no se almacene cache")
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
   response.headers.set('Pragma', 'no-cache')
   response.headers.set('Expires', '0')
@@ -158,14 +145,14 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
 }
 
 // ============================================================================
-// MIDDLEWARE PRINCIPAL
+// PROXY PRINCIPAL (antes: middleware)
 // ============================================================================
 
-export default async function middleware(request: NextRequest): Promise<NextResponse> {
+export default async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
   const startTime = Date.now()
 
-  // En producción forzar HTTPS si la petición llega por HTTP.
+  // En producción forzar HTTPS
   if (process.env.NODE_ENV === 'production') {
     const protocol = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol
     if (protocol !== 'https') {
@@ -177,8 +164,7 @@ export default async function middleware(request: NextRequest): Promise<NextResp
 
   // 1. Verificar rutas públicas
   if (isPublicRoute(pathname)) {
-    const response = NextResponse.next()
-    return addSecurityHeaders(response)
+    return addSecurityHeaders(NextResponse.next())
   }
 
   // 2. Extraer información del usuario autenticado
@@ -198,23 +184,20 @@ export default async function middleware(request: NextRequest): Promise<NextResp
   if (pathname.startsWith('/api/')) {
     if (!tenant) {
       log.warn(metadata, 'Acceso no autorizado a API')
-      const response = NextResponse.json(
-        { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' },
-        { status: 401 }
+      return addSecurityHeaders(
+        NextResponse.json(
+          { success: false, error: 'Authentication required', code: 'UNAUTHORIZED' },
+          { status: 401 }
+        )
       )
-      return addSecurityHeaders(response)
     }
 
-    // Inyectar headers de tenant
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-user-id', tenant.userId)
     requestHeaders.set('x-company-id', tenant.companyId)
     requestHeaders.set('x-user-role', tenant.role)
 
-    const response = NextResponse.next({
-      request: { headers: requestHeaders },
-    })
-    
+    const response = NextResponse.next({ request: { headers: requestHeaders } })
     log.info({ ...metadata, duration: Date.now() - startTime }, 'API request autorizado')
     return addSecurityHeaders(response)
   }
@@ -224,11 +207,9 @@ export default async function middleware(request: NextRequest): Promise<NextResp
     if (!tenant) {
       log.warn(metadata, 'Redirigiendo a login - sesión no válida')
       const loginUrl = new URL('/login', request.url)
-      // Validar callbackUrl para prevenir Open Redirect (I-06)
       const safePath = isSafeCallbackUrl(pathname, request.url) ? pathname : '/app'
       loginUrl.searchParams.set('callbackUrl', safePath)
-      const response = NextResponse.redirect(loginUrl)
-      return addSecurityHeaders(response)
+      return addSecurityHeaders(NextResponse.redirect(loginUrl))
     }
 
     const requestHeaders = new Headers(request.headers)
@@ -236,10 +217,9 @@ export default async function middleware(request: NextRequest): Promise<NextResp
     requestHeaders.set('x-company-id', tenant.companyId)
     requestHeaders.set('x-user-role', tenant.role)
 
-    const response = NextResponse.next({
-      request: { headers: requestHeaders },
-    })
-    return addSecurityHeaders(response)
+    return addSecurityHeaders(
+      NextResponse.next({ request: { headers: requestHeaders } })
+    )
   }
 
   return addSecurityHeaders(NextResponse.next())

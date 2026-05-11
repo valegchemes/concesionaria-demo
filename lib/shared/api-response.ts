@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { AppError, isAppError, getErrorResponse, getErrorStatusCode } from './errors'
 import { createLogger } from './logger'
+import { Prisma } from '@prisma/client'
 
 const log = createLogger('APIResponse')
 
@@ -109,6 +110,24 @@ export function errorResponse(
       details: fieldErrors,
     }
     log.debug({ fieldErrors }, 'Validation error')
+  }
+  // Handle Prisma known errors
+  else if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    const code = error.code
+    if (code === 'P2025') {
+      statusCode = 404
+      errorResponse = { error: 'Recurso no encontrado', code: 'NOT_FOUND' }
+    } else if (code === 'P2002') {
+      statusCode = 409
+      errorResponse = { error: 'Ya existe un registro con esos datos', code: 'CONFLICT' }
+    } else if (code === 'P2003' || code === 'P2014') {
+      statusCode = 400
+      errorResponse = { error: 'Referencia inválida en los datos', code: 'BAD_REQUEST' }
+    } else {
+      statusCode = 500
+      errorResponse = { error: 'Error de base de datos', code: 'DATABASE_ERROR' }
+    }
+    log.error({ prismaCode: code, meta: error.meta, path: context?.path }, `Prisma error ${code}`)
   }
   // Handle unknown errors
   else {

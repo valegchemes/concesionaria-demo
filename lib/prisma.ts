@@ -11,6 +11,7 @@
 import { PrismaClient, Prisma } from '@prisma/client'
 import { createLogger } from '@/lib/shared/logger'
 import { getCurrentTenantId } from '@/lib/shared/tenant'
+import { ForbiddenError } from '@/lib/shared/errors'
 
 const log = createLogger('PrismaClient')
 
@@ -205,7 +206,7 @@ function createTenantExtension(baseClient: PrismaClient) {
                 { model, operation, tenantId, requestedCompanyId: currentWhere.companyId },
                 '[TenantIsolation] Cross-tenant query bloqueada'
               )
-              throw new Error(
+            throw new ForbiddenError(
                 `[TenantIsolation] Acceso denegado: el companyId de la query no coincide con el tenant actual`
               )
             }
@@ -247,7 +248,7 @@ function createTenantExtension(baseClient: PrismaClient) {
                   { model, operation, tenantId, requestedCompanyId: currentWhere.companyId },
                   '[TenantIsolation] Cross-tenant write query bloqueada'
                 )
-                throw new Error(
+                throw new ForbiddenError(
                   `[TenantIsolation] Acceso denegado: el companyId de la query no coincide con el tenant actual`
                 )
               }
