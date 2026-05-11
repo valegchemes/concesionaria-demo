@@ -1,22 +1,16 @@
 /**
  * lib/utils/export.ts
- * Utility functions for exporting data to Excel / CSV
+ * Utility functions for exporting data to Excel / CSV.
+ *
+ * NOTE: The xlsx dependency was removed (CVE-2023-30533).
+ * If Excel export is needed, install exceljs: `npm install exceljs`
+ * and replace the exportToExcel implementation.
  */
 
-export function exportToExcel(
-  data: Record<string, unknown>[],
-  filename: string,
-  sheetName = 'Datos'
-) {
-  // Dynamic import to avoid adding xlsx to the server bundle
-  import('xlsx').then(({ utils, writeFile }) => {
-    const ws = utils.json_to_sheet(data)
-    const wb = utils.book_new()
-    utils.book_append_sheet(wb, ws, sheetName)
-    writeFile(wb, `${filename}.xlsx`)
-  })
-}
-
+/**
+ * Export data to CSV file (client-side, browser only).
+ * Includes BOM for correct UTF-8 encoding in Excel.
+ */
 export function exportToCSV(
   data: Record<string, unknown>[],
   filename: string
@@ -39,4 +33,17 @@ export function exportToCSV(
   a.download = `${filename}.csv`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/**
+ * @deprecated Excel export requires exceljs. Use exportToCSV instead.
+ * Install: npm install exceljs && npm install --save-dev @types/exceljs
+ */
+export function exportToExcel(
+  data: Record<string, unknown>[],
+  filename: string,
+  _sheetName = 'Datos'
+) {
+  console.warn('[export] Excel export via xlsx has been removed (CVE-2023-30533). Falling back to CSV.')
+  exportToCSV(data, filename)
 }

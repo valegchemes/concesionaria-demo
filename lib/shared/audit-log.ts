@@ -13,8 +13,12 @@ function sanitizeForAudit(obj: unknown): unknown {
   if (typeof obj !== 'object' || obj === null) return obj
   if (Array.isArray(obj)) return obj.map(sanitizeForAudit)
   const sanitized = { ...(obj as Record<string, unknown>) }
-  for (const field of SENSITIVE_FIELDS) {
-    if (field in sanitized) sanitized[field] = '[REDACTED]'
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (SENSITIVE_FIELDS.includes(key)) {
+      sanitized[key] = '[REDACTED]'
+    } else if (typeof value === 'object' && value !== null) {
+      sanitized[key] = sanitizeForAudit(value)
+    }
   }
   return sanitized
 }
