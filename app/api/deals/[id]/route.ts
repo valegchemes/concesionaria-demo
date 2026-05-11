@@ -8,6 +8,7 @@ import { createAuditLog } from '@/lib/shared/audit-log'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { UpdateDealSchema, RecordPaymentSchema } from '@/lib/shared/validation'
 import { hasAnyPermission } from '@/lib/shared/authz'
+import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
 
 const log = createLogger('DealDetailRoutes')
 
@@ -75,6 +76,8 @@ export const PUT = withErrorHandling(
       userId: user.id,
     })
 
+    await invalidateAnalyticsCache(user.companyId)
+
     return successResponse(deal)
   }
 )
@@ -131,6 +134,8 @@ export const POST = withErrorHandling(
       userId: user.id,
     })
 
+    await invalidateAnalyticsCache(user.companyId)
+
     return successResponse(payment, 201)
   }
 )
@@ -170,6 +175,8 @@ export const DELETE = withErrorHandling(
       companyId: user.companyId,
       userId: user.id,
     })
+
+    await invalidateAnalyticsCache(user.companyId)
 
     return successResponse({ deleted: true })
   }

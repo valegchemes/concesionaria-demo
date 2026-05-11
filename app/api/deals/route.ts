@@ -9,6 +9,7 @@ import { createLogger } from '@/lib/shared/logger'
 import { createAuditLog } from '@/lib/shared/audit-log'
 import { hasAnyPermission } from '@/lib/shared/authz'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
 
 const log = createLogger('DealRoutes')
 
@@ -102,6 +103,9 @@ export const POST = withTenantHandler(withErrorHandling(async (request: NextRequ
     companyId: user.companyId,
     userId: user.id,
   })
+
+  // Invalidar caché de analíticas para reflejar el nuevo deal
+  await invalidateAnalyticsCache(user.companyId)
 
   return successResponse(deal, 201)
 }))

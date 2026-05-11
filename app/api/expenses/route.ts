@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { kv } from '@/lib/kv-client'
 import { prisma } from '@/lib/shared/prisma'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
 
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),
@@ -83,21 +84,7 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
     })
 
     // Invalidar caché de analytics para este tenant
-    try {
-      const types = ['dashboard', 'sales-profit', 'top-sellers', 'costs']
-      const ranges = ['7d', '30d', '90d', '1y', 'all']
-      const keys: string[] = []
-      for (const t of types) {
-        for (const r of ranges) {
-          keys.push(`analytics:${companyId}:${t}:${r}`)
-        }
-      }
-      if (keys.length > 0) {
-        await kv.del(...keys)
-      }
-    } catch (kvErr) {
-      // KV no crítico — continuar sin invalidar caché
-    }
+    await invalidateAnalyticsCache(companyId)
 
     return NextResponse.json({ success: true, data: expense })
   } catch (error: unknown) {
