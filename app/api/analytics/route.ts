@@ -718,51 +718,61 @@ async function getSalesVsProfit(
     })
   }
 
-  const companyExpenses = await prisma.companyExpense.findMany({
-    where: {
-      companyId,
-      isActive: true,
-      date: { gte: start, lte: end },
-    },
-    select: { amountArs: true, amountUsd: true, date: true },
-  })
+  // ── Optimización O-01: pre-agrupar costos en DB ───────────────────────────
+  // companyExpenses y unitCostItems se agregan con GROUP BY en Postgres.
+  // Ejecutamos ambas queries en paralelo; omitimos cuando sellerId está
+  // presente porque los sellers no tienen visibilidad de costos operativos.
+  // Los deals se mantienen en JS (requieren tipo de cambio por-deal).
+  // ──────────────────────────────────────────────────────────────────────────
+  type PeriodCostRow = { period: Date; total_ars: number; total_usd: number }
+  const truncFn = isDaily ? 'day' : 'month'
 
-  const unitCosts = await prisma.unitCostItem.findMany({
-    where: {
-      date: { gte: start, lte: end },
-      unit: { companyId },
-    },
-    select: { amountArs: true, amountUsd: true, date: true },
-  })
+  const [expensesByPeriod, unitCostsByPeriod] = sellerId
+    ? [[] as PeriodCostRow[], [] as PeriodCostRow[]]
+    : await Promise.all([
+        prisma.$queryRaw<PeriodCostRow[]>`
+          SELECT
+            DATE_TRUNC(${truncFn}::text, ce.date)::date   AS period,
+            COALESCE(SUM(ce."amountArs"), 0)::float8      AS total_ars,
+            COALESCE(SUM(ce."amountUsd"), 0)::float8      AS total_usd
+          FROM "CompanyExpense" ce
+          WHERE ce."companyId" = ${companyId}
+            AND ce."isActive" = true
+            AND ce.date >= ${start} AND ce.date <= ${end}
+          GROUP BY DATE_TRUNC(${truncFn}::text, ce.date)
+          ORDER BY period ASC
+        `,
+        prisma.$queryRaw<PeriodCostRow[]>`
+          SELECT
+            DATE_TRUNC(${truncFn}::text, uci.date)::date  AS period,
+            COALESCE(SUM(uci."amountArs"), 0)::float8     AS total_ars,
+            COALESCE(SUM(uci."amountUsd"), 0)::float8     AS total_usd
+          FROM "UnitCostItem" uci
+          JOIN "Unit" u ON u.id = uci."unitId"
+          WHERE u."companyId" = ${companyId}
+            AND uci.date >= ${start} AND uci.date <= ${end}
+          GROUP BY DATE_TRUNC(${truncFn}::text, uci.date)
+          ORDER BY period ASC
+        `,
+      ])
 
-  for (const exp of companyExpenses) {
-    const d = exp.date
+  for (const row of expensesByPeriod) {
+    const d = new Date(row.period)
     const key = isDaily
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-
+      ? `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      : `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
     const existingDate = isDaily
-      ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
-      : new Date(d.getFullYear(), d.getMonth(), 1)
-
+      ? new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+      : new Date(d.getUTCFullYear(), d.getUTCMonth(), 1)
     const existing = byPeriod.get(key) || {
-      salesArs: 0,
-      salesUsd: 0,
-      salesConverted: 0,
-      unitCostsArs: 0,
-      unitCostsUsd: 0,
-      unitCostsConverted: 0,
-      opCostsArs: 0,
-      opCostsUsd: 0,
-      opCostsConverted: 0,
-      count: 0,
-      date: existingDate,
+      salesArs: 0, salesUsd: 0, salesConverted: 0,
+      unitCostsArs: 0, unitCostsUsd: 0, unitCostsConverted: 0,
+      opCostsArs: 0, opCostsUsd: 0, opCostsConverted: 0,
+      count: 0, date: existingDate,
     }
-
-    const costArs = sellerId ? 0 : decimalToNumber(exp.amountArs)
-    const costUsd = sellerId ? 0 : decimalToNumber(exp.amountUsd)
+    const costArs = Number(row.total_ars) || 0
+    const costUsd = Number(row.total_usd) || 0
     const totalExpense = createMoneyAmount(costArs, costUsd, userExchangeRate)
-
     byPeriod.set(key, {
       ...existing,
       opCostsArs: existing.opCostsArs + costArs,
@@ -771,34 +781,23 @@ async function getSalesVsProfit(
     })
   }
 
-  for (const uc of unitCosts) {
-    const d = uc.date
+  for (const row of unitCostsByPeriod) {
+    const d = new Date(row.period)
     const key = isDaily
-      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-
+      ? `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      : `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
     const existingDate = isDaily
-      ? new Date(d.getFullYear(), d.getMonth(), d.getDate())
-      : new Date(d.getFullYear(), d.getMonth(), 1)
-
+      ? new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+      : new Date(d.getUTCFullYear(), d.getUTCMonth(), 1)
     const existing = byPeriod.get(key) || {
-      salesArs: 0,
-      salesUsd: 0,
-      salesConverted: 0,
-      unitCostsArs: 0,
-      unitCostsUsd: 0,
-      unitCostsConverted: 0,
-      opCostsArs: 0,
-      opCostsUsd: 0,
-      opCostsConverted: 0,
-      count: 0,
-      date: existingDate,
+      salesArs: 0, salesUsd: 0, salesConverted: 0,
+      unitCostsArs: 0, unitCostsUsd: 0, unitCostsConverted: 0,
+      opCostsArs: 0, opCostsUsd: 0, opCostsConverted: 0,
+      count: 0, date: existingDate,
     }
-
-    const costArs = sellerId ? 0 : decimalToNumber(uc.amountArs)
-    const costUsd = sellerId ? 0 : decimalToNumber(uc.amountUsd)
+    const costArs = Number(row.total_ars) || 0
+    const costUsd = Number(row.total_usd) || 0
     const totalCost = createMoneyAmount(costArs, costUsd, userExchangeRate)
-
     byPeriod.set(key, {
       ...existing,
       unitCostsArs: existing.unitCostsArs + costArs,
