@@ -28,6 +28,7 @@ import {
 import { createLogger } from '@/lib/shared/logger'
 import { requirePermission } from '@/lib/shared/authz'
 import type { UnitStatus, UnitType, Prisma } from '@prisma/client'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('API:Units')
 
@@ -97,7 +98,7 @@ function parseListQuery(searchParams: URLSearchParams): ListUnitsQuery {
 // HANDLER: GET /api/units
 // ============================================================================
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export const GET = withTenantHandler(async (request: NextRequest): Promise<NextResponse> => {
   const startTime = Date.now()
   
   try {
@@ -192,13 +193,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { path: '/api/units', method: 'GET' }
     )
   }
-}
+})
 
 // ============================================================================
 // HANDLER: POST /api/units
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
+export const POST = withTenantHandler(async (request: NextRequest): Promise<NextResponse> => {
   const startTime = Date.now()
 
   try {
@@ -334,5 +335,5 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { path: '/api/units', method: 'POST' }
     )
   }
-}
+})
 

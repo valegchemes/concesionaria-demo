@@ -2,6 +2,23 @@ import { prismaBypass } from '@/lib/prisma'
 import { createLogger } from '@/lib/shared/logger'
 import { type Prisma } from '@prisma/client'
 
+// Campos que nunca deben persistirse en el audit log
+const SENSITIVE_FIELDS = ['password', 'hashedPassword', 'token', 'secret', 'apiKey']
+
+/**
+ * Elimina campos sensibles de un objeto antes de guardarlo en el audit log.
+ * Trabaja recursivamente sobre objetos y arrays.
+ */
+function sanitizeForAudit(obj: unknown): unknown {
+  if (typeof obj !== 'object' || obj === null) return obj
+  if (Array.isArray(obj)) return obj.map(sanitizeForAudit)
+  const sanitized = { ...(obj as Record<string, unknown>) }
+  for (const field of SENSITIVE_FIELDS) {
+    if (field in sanitized) sanitized[field] = '[REDACTED]'
+  }
+  return sanitized
+}
+
 const log = createLogger('AuditLog')
 
 export type AuditLogEntry = {
@@ -31,11 +48,11 @@ export async function createAuditLog(entry: AuditLogEntry) {
     } as Prisma.AuditLogCreateInput
 
     if (entry.before !== undefined) {
-      data.before = entry.before as Prisma.InputJsonValue
+      data.before = sanitizeForAudit(entry.before) as Prisma.InputJsonValue
     }
 
     if (entry.after !== undefined) {
-      data.after = entry.after as Prisma.InputJsonValue
+      data.after = sanitizeForAudit(entry.after) as Prisma.InputJsonValue
     }
 
     return await prismaBypass.auditLog.create({ data })

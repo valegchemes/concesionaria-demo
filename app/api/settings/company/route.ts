@@ -7,12 +7,13 @@ import { requirePermission } from '@/lib/shared/auth-helpers'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { UpdateCompanySchema } from '@/lib/shared/validation'
 import { z } from 'zod'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('API:CompanySettings')
 
 export const maxDuration = 30
 
-export async function GET(request: NextRequest) {
+export const GET = withTenantHandler(async (request: NextRequest) => {
   try {
     const currentUser = await requirePermission('settings', 'read')
 
@@ -36,9 +37,9 @@ export async function GET(request: NextRequest) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Settings Fetch Error')
     return NextResponse.json({ error: 'Failed to fetch company settings' }, { status: 500 })
   }
-}
+})
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withTenantHandler(async (request: NextRequest) => {
   try {
     const currentUser = await requirePermission('settings', 'manage')
 
@@ -89,4 +90,4 @@ export async function PATCH(request: NextRequest) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Settings Update Error')
     return NextResponse.json({ error: 'Failed to update company settings' }, { status: 500 })
   }
-}
+})

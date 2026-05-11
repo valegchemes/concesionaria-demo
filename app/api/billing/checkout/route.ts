@@ -5,12 +5,13 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { stripe } from '@/lib/domains/billing/stripe'
 import { billingService } from '@/lib/domains/billing/service'
 import { computedEnv } from '@/lib/env'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const CheckoutSchema = z.object({
   priceId: z.string().trim().min(1, 'priceId is required'),
 })
 
-export async function POST(request: NextRequest) {
+export const POST = withTenantHandler(async (request: NextRequest) => {
   try {
     const user = await getCurrentUser()
     const json = await request.json()
@@ -49,4 +50,4 @@ export async function POST(request: NextRequest) {
     const message = err instanceof Error ? err.message : 'Unexpected error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})

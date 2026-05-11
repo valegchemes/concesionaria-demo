@@ -1,12 +1,14 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { requirePermission } from '@/lib/shared/auth-helpers'
 import { prismaBypass } from '@/lib/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('API:AuditLog')
 
-export async function GET(request: Request) {
+export const GET = withTenantHandler(async (request: NextRequest) => {
   try {
     const user = await requirePermission('team', 'manage_all')
     const { searchParams } = new URL(request.url)
@@ -43,4 +45,5 @@ export async function GET(request: Request) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to fetch audit logs')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-}
+})
+

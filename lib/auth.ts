@@ -1,9 +1,16 @@
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 
+/**
+ * Hash ficticio usado para normalizar el timing de respuesta cuando el usuario
+ * no existe. Previene timing oracle attacks que permiten enumerar emails válidos.
+ * (bcrypt cost 12, valor fijo — nunca coincidirá con ninguna contraseña real)
+ */
+const DUMMY_HASH = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LFBNBLPfQ1vbK7Sm2'
+
 export async function verifyCredentials(email: string, password: string, companySlug?: string) {
   let user
-  
+
   if (companySlug) {
     user = await prisma.user.findFirst({
       where: {
@@ -27,21 +34,12 @@ export async function verifyCredentials(email: string, password: string, company
     })
   }
 
-  if (!user) {
-    return null
-  }
+  // SIEMPRE ejecutar bcrypt para normalizar el tiempo de respuesta.
+  // Si el usuario no existe, comparamos contra el dummy hash (siempre falla).
+  const hashToCompare = user?.password ?? DUMMY_HASH
+  const isValid = await bcrypt.compare(password, hashToCompare)
 
-  if (!user.isActive) {
-    return null
-  }
-
-  if (!user.company.isActive) {
-    return null
-  }
-
-  const isValid = await bcrypt.compare(password, user.password)
-
-  if (!isValid) {
+  if (!user || !isValid || !user.isActive || !user.company.isActive) {
     return null
   }
 
@@ -57,5 +55,5 @@ export async function verifyCredentials(email: string, password: string, company
 }
 
 export async function hashPassword(password: string) {
-  return bcrypt.hash(password, 10)
+  return bcrypt.hash(password, 12) // cost factor 12: recomendado para 2025+
 }

@@ -3,12 +3,13 @@ import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 /**
  * GET /api/units/[id]/notes — List all promissory notes for a unit (read-only).
  * Notes are created via /api/leads/[id]/notes.
  */
-export const GET = withErrorHandling(
+export const GET = withTenantHandler(withErrorHandling(
   async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id } = await params
@@ -30,4 +31,4 @@ export const GET = withErrorHandling(
 
     return successResponse(notes)
   }
-)
+))

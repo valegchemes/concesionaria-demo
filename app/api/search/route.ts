@@ -4,6 +4,7 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 import type { Prisma } from '@prisma/client'
 
 const log = createLogger('SearchRoute')
@@ -20,7 +21,7 @@ export interface SearchResult {
   url: string
 }
 
-export const GET = withErrorHandling(async (request: NextRequest) => {
+export const GET = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
   // Fast-path: usar headers del middleware (0 queries DB en lugar de 2)
   const user = await getCurrentUserFromHeaders(request)
   const { searchParams } = new URL(request.url)
@@ -150,4 +151,4 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
   ]
 
   return successResponse(results)
-})
+}))

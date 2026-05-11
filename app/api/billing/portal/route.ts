@@ -4,8 +4,9 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { stripe } from '@/lib/domains/billing/stripe'
 import { billingService } from '@/lib/domains/billing/service'
 import { computedEnv } from '@/lib/env'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
-export async function POST(req: NextRequest) {
+export const POST = withTenantHandler(async (req: NextRequest) => {
   try {
     const user = await getCurrentUser()
     const customerId = await billingService.getOrCreateCustomer(user.companyId)
@@ -16,7 +17,8 @@ export async function POST(req: NextRequest) {
     })
 
     return NextResponse.json({ url: session.url })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unexpected error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})

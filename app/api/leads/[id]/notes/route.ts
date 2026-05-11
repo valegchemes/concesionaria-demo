@@ -3,6 +3,7 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const CreateNoteSchema = z.object({
   amount: z.number().positive(),
@@ -19,7 +20,7 @@ function addMonths(date: Date, months: number): Date {
   return d
 }
 
-export const GET = withErrorHandling(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const GET = withTenantHandler(withErrorHandling(async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const user = await getCurrentUser()
   const { id: leadId } = await params
 
@@ -39,9 +40,9 @@ export const GET = withErrorHandling(async (_req: NextRequest, { params }: { par
   })
 
   return successResponse(notes)
-})
+}))
 
-export const POST = withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+export const POST = withTenantHandler(withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const user = await getCurrentUser()
   const { id: leadId } = await params
   const body = await req.json()
@@ -84,4 +85,4 @@ export const POST = withErrorHandling(async (req: NextRequest, { params }: { par
   })
 
   return successResponse(note, 201)
-})
+}))

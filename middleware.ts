@@ -32,7 +32,7 @@ const PUBLIC_ROUTES = [
   '/favicon.ico',
   '/public',
   '/catalog',
-  '/api/diag',
+  // /api/diag ya NO es pública — protegida por Bearer token (DIAG_SECRET_TOKEN)
 ]
 
 // ============================================================================
@@ -79,10 +79,26 @@ function getResolvedSecret(): string {
  * Verifica si una ruta es pública
  */
 function isPublicRoute(pathname: string): boolean {
-  return PUBLIC_ROUTES.some(route => 
-    pathname === route || 
+  return PUBLIC_ROUTES.some(route =>
+    pathname === route ||
     pathname.startsWith(`${route}/`)
   )
+}
+
+/**
+ * Valida que el callbackUrl sea del mismo origen para prevenir Open Redirect.
+ * Solo permite rutas relativas (empiezan con '/') o URLs del mismo host.
+ */
+function isSafeCallbackUrl(url: string, requestUrl: string): boolean {
+  // Rutas relativas siempre son seguras
+  if (url.startsWith('/') && !url.startsWith('//')) return true
+  try {
+    const base = new URL(requestUrl)
+    const callback = new URL(url)
+    return callback.origin === base.origin
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -208,7 +224,9 @@ export default async function middleware(request: NextRequest): Promise<NextResp
     if (!tenant) {
       log.warn(metadata, 'Redirigiendo a login - sesión no válida')
       const loginUrl = new URL('/login', request.url)
-      loginUrl.searchParams.set('callbackUrl', pathname)
+      // Validar callbackUrl para prevenir Open Redirect (I-06)
+      const safePath = isSafeCallbackUrl(pathname, request.url) ? pathname : '/app'
+      loginUrl.searchParams.set('callbackUrl', safePath)
       const response = NextResponse.redirect(loginUrl)
       return addSecurityHeaders(response)
     }

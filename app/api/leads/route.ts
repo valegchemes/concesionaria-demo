@@ -6,6 +6,7 @@ import { parsePagination } from '@/lib/shared/pagination'
 import { CreateLeadSchema } from '@/lib/shared/validation'
 import { leadService } from '@/lib/domains/leads/service'
 import { createLogger } from '@/lib/shared/logger'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('LeadRoutes')
 
@@ -15,7 +16,7 @@ export const maxDuration = 30
  * GET /api/leads - List all leads for company
  * Query params: page, limit, status, assignedToId
  */
-export const GET = withErrorHandling(async (request: NextRequest) => {
+export const GET = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
   // Fast-path: headers del middleware (0 queries DB)
   // Nota: permissions vacío - leadService.list debe manejar RBAC fallback
   const user = await getCurrentUserFromHeaders(request)
@@ -54,12 +55,12 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     paginationMeta.page,
     paginationMeta.limit
   )
-})
+}))
 
 /**
  * POST /api/leads - Create new lead
  */
-export const POST = withErrorHandling(async (request: NextRequest) => {
+export const POST = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
   const user = await getCurrentUser()
 
   const json = await request.json()
@@ -78,4 +79,4 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   })
 
   return successResponse(lead, 201)
-})
+}))

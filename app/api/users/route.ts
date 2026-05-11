@@ -7,11 +7,14 @@ import { requirePermission, getCurrentUser } from '@/lib/shared/auth-helpers'
 import { createAuditLog } from '@/lib/shared/audit-log'
 import { EmailSchema, NameSchema, PasswordSchema, PhoneSchema } from '@/lib/shared/validation'
 import { z } from 'zod'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
+
+// PasswordSchema centralizado: min 8 chars + mayúscula + minúscula + número
 
 const log = createLogger('API:Users')
 
 export const maxDuration = 30
-export async function GET() {
+export const GET = withTenantHandler(async () => {
   try {
     const currentUser = await getCurrentUser()
 
@@ -38,8 +41,8 @@ export async function GET() {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching users')
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
   }
-}
-export async function POST(request: NextRequest) {
+})
+export const POST = withTenantHandler(async (request: NextRequest) => {
   try {
     const body = await request.json()
 
@@ -108,9 +111,9 @@ export async function POST(request: NextRequest) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error creating user')
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
   }
-}
+})
 
-export async function DELETE(request: NextRequest) {
+export const DELETE = withTenantHandler(async (request: NextRequest) => {
   try {
     const currentUser = await getCurrentUser()
     const requestingUserId = currentUser.id
@@ -159,9 +162,9 @@ export async function DELETE(request: NextRequest) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error deleting user')
     return NextResponse.json({ error: 'Failed to delete user' }, { status: 500 })
   }
-}
+})
 
-export async function PUT(request: NextRequest) {
+export const PUT = withTenantHandler(async (request: NextRequest) => {
   try {
     const body = await request.json()
 
@@ -169,7 +172,7 @@ export async function PUT(request: NextRequest) {
       id: z.string(),
       name: NameSchema.optional(),
       email: EmailSchema.optional(),
-      password: z.string().min(6).optional().or(z.literal('')),
+      password: PasswordSchema.optional().or(z.literal('')),
       role: z.enum(['ADMIN', 'MANAGER', 'SELLER']).optional(),
       whatsappNumber: PhoneSchema.optional().or(z.literal('')),
       avatarUrl: z.string().url().optional().or(z.literal('')).nullable(),
@@ -242,4 +245,4 @@ export async function PUT(request: NextRequest) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating user')
     return NextResponse.json({ error: 'Failed to update user' }, { status: 500 })
   }
-}
+})

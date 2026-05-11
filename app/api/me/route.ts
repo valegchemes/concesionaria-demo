@@ -1,13 +1,15 @@
 export const dynamic = 'force-dynamic'
 
 import { NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/shared/prisma'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { createLogger } from '@/lib/shared/logger'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('API:Me')
 
-export async function GET() {
+export const GET = withTenantHandler(async (_request: NextRequest) => {
   try {
     const currentUser = await getCurrentUser()
 
@@ -57,4 +59,4 @@ export async function GET() {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Failed to fetch current user')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-}
+})

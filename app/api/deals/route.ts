@@ -8,6 +8,7 @@ import { dealService } from '@/lib/domains/deals/service'
 import { createLogger } from '@/lib/shared/logger'
 import { createAuditLog } from '@/lib/shared/audit-log'
 import { hasAnyPermission } from '@/lib/shared/authz'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('DealRoutes')
 
@@ -17,7 +18,7 @@ export const maxDuration = 30
  * GET /api/deals - List all deals for company
  * Query params: page, limit, status, soldById
  */
-export const GET = withErrorHandling(async (request: NextRequest) => {
+export const GET = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
   const user = await getCurrentUser()
   if (!hasAnyPermission(user.permissions, 'deals', ['read_all', 'read_own'])) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
@@ -61,12 +62,12 @@ export const GET = withErrorHandling(async (request: NextRequest) => {
     paginationMeta.page,
     paginationMeta.limit
   )
-})
+}))
 
 /**
  * POST /api/deals - Create new deal
  */
-export const POST = withErrorHandling(async (request: NextRequest) => {
+export const POST = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
   const user = await getCurrentUser()
   if (!hasAnyPermission(user.permissions, 'deals', ['manage_all', 'manage_own'])) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
@@ -103,4 +104,4 @@ export const POST = withErrorHandling(async (request: NextRequest) => {
   })
 
   return successResponse(deal, 201)
-})
+}))

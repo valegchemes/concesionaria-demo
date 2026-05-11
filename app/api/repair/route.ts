@@ -12,8 +12,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { hasPermission } from '@/lib/shared/authz'
 import { prisma } from '@/lib/shared/prisma'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
-export async function POST(req: NextRequest) {
+export const POST = withTenantHandler(async (req: NextRequest) => {
   const headerUser = await getCurrentUserFromHeaders(req)
   if (!headerUser?.id || !headerUser?.companyId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -78,4 +79,4 @@ export async function POST(req: NextRequest) {
     leadsMarkedSold: soldLeads.count,
     unitsReverted: revertedUnits.count,
   })
-}
+})

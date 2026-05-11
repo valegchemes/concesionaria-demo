@@ -6,6 +6,7 @@ import { compare, hash } from 'bcryptjs'
 import { createLogger } from '@/lib/shared/logger'
 import { successResponse, errorResponse } from '@/lib/shared/api-response'
 import { z } from 'zod'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('API:UserSettings')
 
@@ -26,7 +27,7 @@ const UpdateUserSchema = z.object({
   }, z.number().positive().nullable()).optional(),
 })
 
-export async function PATCH(request: NextRequest) {
+export const PATCH = withTenantHandler(async (request: NextRequest) => {
   try {
     const session = await requireAuth()
 
@@ -82,7 +83,7 @@ export async function PATCH(request: NextRequest) {
     
     // Si envían password, significa que quieren cambiarla
     if (data.password) {
-      updateData.password = await hash(data.password, 10)
+      updateData.password = await hash(data.password, 12) // cost factor 12: consistente con lib/auth.ts
     }
 
     const updatedUser = await prisma.user.update({
@@ -99,4 +100,4 @@ export async function PATCH(request: NextRequest) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Settings Update Error')
     return errorResponse(new Error('Failed to update user settings'))
   }
-}
+})

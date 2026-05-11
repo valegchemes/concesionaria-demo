@@ -6,6 +6,7 @@ import { UpdateLeadSchema } from '@/lib/shared/validation'
 import { leadService } from '@/lib/domains/leads/service'
 import { createLogger } from '@/lib/shared/logger'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('LeadDetailRoutes')
 
@@ -14,7 +15,7 @@ export const maxDuration = 30
 /**
  * GET /api/leads/[id] - Get single lead with all relations
  */
-export const GET = withErrorHandling(
+export const GET = withTenantHandler(withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id } = await params
@@ -29,12 +30,12 @@ export const GET = withErrorHandling(
 
     return successResponse(lead)
   }
-)
+))
 
 /**
  * PUT /api/leads/[id] - Update lead
  */
-export const PUT = withErrorHandling(
+export const PUT = withTenantHandler(withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     // Rate limiting
     const blocked = await applyRateLimit(request)
@@ -56,12 +57,12 @@ export const PUT = withErrorHandling(
 
     return successResponse(lead)
   }
-)
+))
 
 /**
  * DELETE /api/leads/[id] - Delete lead (soft delete)
  */
-export const DELETE = withErrorHandling(
+export const DELETE = withTenantHandler(withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     // Rate limiting
     const blocked = await applyRateLimit(request)
@@ -80,4 +81,4 @@ export const DELETE = withErrorHandling(
 
     return successResponse({ deleted: true })
   }
-)
+))

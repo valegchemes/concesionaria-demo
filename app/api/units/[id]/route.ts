@@ -5,6 +5,7 @@ import { getCurrentUser, requirePermission } from '@/lib/shared/auth-helpers'
 import { UpdateUnitSchema } from '@/lib/shared/validation'
 import { unitService } from '@/lib/domains/units/service'
 import { createLogger } from '@/lib/shared/logger'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('UnitDetailRoutes')
 export const maxDuration = 30
@@ -12,7 +13,7 @@ export const maxDuration = 30
 /**
  * GET /api/units/[id] - Get single unit with all relations
  */
-export const GET = withErrorHandling(
+export const GET = withTenantHandler(withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id } = await params
@@ -23,12 +24,12 @@ export const GET = withErrorHandling(
 
     return successResponse(unit)
   }
-)
+))
 
 /**
  * PUT /api/units/[id] - Update unit
  */
-export const PUT = withErrorHandling(
+export const PUT = withTenantHandler(withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await requirePermission('units', 'manage_all')
     const { id } = await params
@@ -42,12 +43,12 @@ export const PUT = withErrorHandling(
 
     return successResponse(unit)
   }
-)
+))
 
 /**
  * DELETE /api/units/[id] - Delete unit (soft delete)
  */
-export const DELETE = withErrorHandling(
+export const DELETE = withTenantHandler(withErrorHandling(
   async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await requirePermission('units', 'manage_all')
     const { id } = await params
@@ -58,4 +59,4 @@ export const DELETE = withErrorHandling(
 
     return successResponse({ deleted: true })
   }
-)
+))

@@ -4,6 +4,7 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const PaymentSchema = z.object({
   amount: z.number().positive(),
@@ -15,7 +16,7 @@ const PaymentSchema = z.object({
 /**
  * GET /api/notes/[noteId]/installments/[instId]/payments — Payment history for an installment
  */
-export const GET = withErrorHandling(
+export const GET = withTenantHandler(withErrorHandling(
   async (_req: NextRequest, { params }: { params: Promise<{ noteId: string; instId: string }> }) => {
     const user = await getCurrentUser()
     const { noteId, instId } = await params
@@ -33,12 +34,12 @@ export const GET = withErrorHandling(
 
     return successResponse(payments)
   }
-)
+))
 
 /**
  * POST /api/notes/[noteId]/installments/[instId]/payments — Register a payment
  */
-export const POST = withErrorHandling(
+export const POST = withTenantHandler(withErrorHandling(
   async (req: NextRequest, { params }: { params: Promise<{ noteId: string; instId: string }> }) => {
     const user = await getCurrentUser()
     const { noteId, instId } = await params
@@ -80,4 +81,4 @@ export const POST = withErrorHandling(
 
     return successResponse(payment)
   }
-)
+))

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 import { createLogger } from '@/lib/shared/logger'
 import { requireAuth } from '@/lib/shared/auth-helpers'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('API:LeadActivities')
 
@@ -12,25 +13,17 @@ const activitySchema = z.object({
   notes: z.string().optional(),
 })
 
-export async function POST(
+export const POST = withTenantHandler(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context?: unknown
+) => {
+  const { id } = await (context as { params: Promise<{ id: string }> }).params
   try {
     const session = await requireAuth()
 
-    const { id } = await params
-
-    // Verify lead exists and user can access it
     const lead = await prisma.lead.findFirst({
-      where: {
-        id,
-        companyId: session.user.companyId,
-      },
-      select: {
-        assignedToId: true,
-        createdById: true,
-      },
+      where: { id, companyId: session.user.companyId },
+      select: { assignedToId: true, createdById: true },
     })
 
     if (!lead) {
@@ -57,11 +50,7 @@ export async function POST(
         createdById: session.user.id,
         companyId: session.user.companyId,
       },
-      include: {
-        createdBy: {
-          select: { name: true },
-        },
-      },
+      include: { createdBy: { select: { name: true } } },
     })
 
     return NextResponse.json(activity, { status: 201 })
@@ -72,4 +61,4 @@ export async function POST(
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error creating activity')
     return NextResponse.json({ error: 'Failed to create activity' }, { status: 500 })
   }
-}
+})

@@ -7,13 +7,13 @@ import { head } from '@vercel/blob'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  // Solo permitir acceso si hay una clave secreta en la query o si es desarrollo
-  const { searchParams } = new URL(request.url)
-  const secret = searchParams.get('secret')
-  
-  // if (process.env.NODE_ENV === 'production' && secret !== process.env.NEXTAUTH_SECRET?.slice(0, 8)) {
-  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  // }
+  // Protección con Bearer token — configura DIAG_SECRET_TOKEN en tus variables de entorno
+  const authHeader = request.headers.get('authorization')
+  const diagToken = process.env.DIAG_SECRET_TOKEN
+
+  if (!diagToken || authHeader !== `Bearer ${diagToken}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   const results = {
     timestamp: new Date().toISOString(),

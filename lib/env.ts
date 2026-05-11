@@ -42,6 +42,17 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
 
+  // Analytics
+  DEFAULT_EXCHANGE_RATE_ARS_PER_USD: z.string()
+    .optional()
+    .transform(v => (v ? Number(v) : 1000))
+    .refine(n => Number.isFinite(n) && n > 0, {
+      message: 'DEFAULT_EXCHANGE_RATE_ARS_PER_USD must be a positive number',
+    }),
+
+  // Diagnostic endpoint
+  DIAG_SECRET_TOKEN: z.string().min(16).optional(),
+
   // Node environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 })

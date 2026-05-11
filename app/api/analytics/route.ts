@@ -15,8 +15,10 @@ import { kv } from '@/lib/kv-client'
 import { prisma } from '@/lib/shared/prisma'
 import { checkDatabaseConnection } from '@/lib/prisma'
 import { getCurrentUser, getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
+import { env } from '@/lib/env'
 import { AnalyticsQuerySchema, getDateRangeFromTimeRange } from '@/lib/domains/analytics/types'
 import { successResponse, errorResponse } from '@/lib/shared/api-response'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { ValidationError, ForbiddenError, isAppError } from '@/lib/shared/errors'
 import { createLogger } from '@/lib/shared/logger'
 import type {
@@ -42,7 +44,7 @@ const log = createLogger('API:Analytics')
 // Versión de caché. Incrementar esto invalida TODA la caché de analíticas
 // Útil cuando se hacen cambios en la lógica de cálculo
 const CACHE_VERSION = 'analytics:v8:'
-const ANALYTICS_CACHE_TTL_SECONDS = 15 // Reducido a 15 segundos para mayor frescura
+const ANALYTICS_CACHE_TTL_SECONDS = 300 // 5 minutos: balance entre frescura y carga en DB
 const ANALYTICS_TIMEOUT_MS = 8000 // 8 segundos máximo para computación
 
 /**
@@ -133,9 +135,8 @@ function createFallbackResponse(type: string): unknown {
   }
 }
 
-const DEFAULT_EXCHANGE_RATE_ARS_PER_USD = Number(
-  process.env.DEFAULT_EXCHANGE_RATE_ARS_PER_USD ?? '1000'
-)
+// Validado en lib/env.ts — nunca será NaN ni negativo
+const DEFAULT_EXCHANGE_RATE_ARS_PER_USD = env.DEFAULT_EXCHANGE_RATE_ARS_PER_USD ?? 1000
 
 function decimalToNumber(value: Prisma.Decimal | null | undefined): number {
   if (value === null || value === undefined) return 0
@@ -179,7 +180,7 @@ function createDealRevenueAmount(deal: {
     : createMoneyAmount(finalPrice, 0, exchangeRate)
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
+export const GET = withTenantHandler(async (request: NextRequest): Promise<NextResponse> => {
   const startTime = Date.now()
 
   try {
@@ -466,7 +467,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       { path: '/api/analytics', method: 'GET' }
     )
   }
-}
+})
 
 // ============================================================================
 // FUNCIÓN: Dashboard Summary

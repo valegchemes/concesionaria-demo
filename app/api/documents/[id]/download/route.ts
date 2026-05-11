@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import PDFDocument from 'pdfkit'
+import { createLogger } from '@/lib/shared/logger'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const DOC_LABELS: Record<string, string> = {
   BOLETO_COMPRAVENTA: 'BOLETO DE COMPRAVENTA',
@@ -14,14 +16,15 @@ const DOC_LABELS: Record<string, string> = {
  * GET /api/documents/[id]/download
  * Generates a PDF on-the-fly from stored metadata and streams it to the browser.
  */
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const user = await getCurrentUser()
-    const { id } = await params
+const log = createLogger('API:DocumentDownload')
 
+export const GET = withTenantHandler(async (
+  _req: NextRequest,
+  context?: unknown
+) => {
+  const { id } = await (context as { params: Promise<{ id: string }> }).params
+  const user = await getCurrentUser()
+  try {
     const doc = await prisma.digitalDocument.findFirst({
       where: { id, companyId: user.companyId },
     })
@@ -190,10 +193,10 @@ export async function GET(
       },
     })
   } catch (err) {
-    console.error('[document/download]', err)
+    log.error({ error: err instanceof Error ? err.message : String(err) }, 'PDF generation error')
     return NextResponse.json({
       error: 'ERROR_PDF_DIAGNOSTIC',
       details: err instanceof Error ? err.message : String(err)
     }, { status: 500 })
   }
-}
+})

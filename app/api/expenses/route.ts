@@ -1,8 +1,10 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/shared/prisma'
 import { getCurrentUser, getCurrentUserFromHeaders } from '@/lib/shared/auth-helpers'
 import { z } from 'zod'
 import { kv } from '@/lib/kv-client'
+import { prisma } from '@/lib/shared/prisma'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),
@@ -16,7 +18,7 @@ const ExpenseSchema = z.object({
   }),
 })
 
-export async function GET(request: NextRequest) {
+export const GET = withTenantHandler(async (request: NextRequest) => {
   try {
     const user = await getCurrentUserFromHeaders(request)
     const companyId = user.companyId
@@ -33,8 +35,6 @@ export async function GET(request: NextRequest) {
       const [yearStr, monthStr] = month.split('-')
       const year = parseInt(yearStr, 10)
       const m = parseInt(monthStr, 10) - 1 // 0-indexed month
-
-      // Rango completo del mes en UTC
       const start = new Date(Date.UTC(year, m, 1, 0, 0, 0, 0))
       const end = new Date(Date.UTC(year, m + 1, 0, 23, 59, 59, 999))
       dateFilter = { date: { gte: start, lte: end } }
@@ -50,9 +50,9 @@ export async function GET(request: NextRequest) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
-}
+})
 
-export async function POST(request: NextRequest) {
+export const POST = withTenantHandler(async (request: NextRequest) => {
   try {
     const user = await getCurrentUser()
     const companyId = user.companyId
@@ -62,7 +62,6 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-
     const parsed = ExpenseSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
@@ -87,25 +86,22 @@ export async function POST(request: NextRequest) {
     try {
       const types = ['dashboard', 'sales-profit', 'top-sellers', 'costs']
       const ranges = ['7d', '30d', '90d', '1y', 'all']
-      
-      const keys = []
+      const keys: string[] = []
       for (const t of types) {
         for (const r of ranges) {
           keys.push(`analytics:${companyId}:${t}:${r}`)
         }
       }
-      
       if (keys.length > 0) {
         await kv.del(...keys)
       }
     } catch (kvErr) {
-      console.error('Error invalidando cache:', kvErr)
+      // KV no crítico — continuar sin invalidar caché
     }
 
     return NextResponse.json({ success: true, data: expense })
   } catch (error: unknown) {
-    console.error('[POST /api/expenses] Error:', error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ success: false, error: message }, { status: 400 })
   }
-}
+})

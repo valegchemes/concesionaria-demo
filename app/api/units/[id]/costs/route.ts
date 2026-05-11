@@ -4,25 +4,26 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { unitService } from '@/lib/domains/units/service'
 import { ForbiddenError } from '@/lib/shared/errors'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const canManageUnits = (role: string) => role === 'ADMIN' || role === 'MANAGER'
 
 /**
  * GET /api/units/[id]/costs - List all cost items for a unit
  */
-export const GET = withErrorHandling(
+export const GET = withTenantHandler(withErrorHandling(
   async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id } = await params
     const items = await unitService.getCostItems(id, user.companyId)
     return successResponse(items)
   }
-)
+))
 
 /**
  * POST /api/units/[id]/costs - Add a cost item to a unit
  */
-export const POST = withErrorHandling(
+export const POST = withTenantHandler(withErrorHandling(
   async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     if (!canManageUnits(user.role)) {
@@ -37,4 +38,4 @@ export const POST = withErrorHandling(
     })
     return successResponse(item)
   }
-)
+))

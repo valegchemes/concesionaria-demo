@@ -6,6 +6,7 @@ import { createLogger } from '@/lib/shared/logger'
 import { requireAuth } from '@/lib/shared/auth-helpers'
 import { ValidationError } from '@/lib/shared/errors'
 import { UpdateTaskSchema } from '@/lib/shared/validation'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const log = createLogger('API:Tasks')
 
@@ -15,26 +16,17 @@ const taskSchema = z.object({
   assignedToId: z.string().optional(),
 })
 
-export async function POST(
+export const POST = withTenantHandler(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context?: unknown
+) => {
+  const { id } = await (context as { params: Promise<{ id: string }> }).params
   try {
     const session = await requireAuth()
 
-    const { id } = await params
-
-    // Verify lead belongs to company and user can access it
     const lead = await prisma.lead.findFirst({
-      where: {
-        id,
-        companyId: session.user.companyId,
-      },
-      select: {
-        id: true,
-        assignedToId: true,
-        createdById: true,
-      },
+      where: { id, companyId: session.user.companyId },
+      select: { id: true, assignedToId: true, createdById: true },
     })
 
     if (!lead) {
@@ -54,11 +46,7 @@ export async function POST(
     const body = await request.json()
     const validated = taskSchema.parse(body)
 
-    if (
-      validated.assignedToId &&
-      validated.assignedToId !== session.user.id &&
-      !canManageAll
-    ) {
+    if (validated.assignedToId && validated.assignedToId !== session.user.id && !canManageAll) {
       throw new ValidationError('You can only assign tasks to yourself')
     }
 
@@ -69,11 +57,7 @@ export async function POST(
         companyId: session.user.companyId,
         assignedToId: validated.assignedToId || session.user.id,
       },
-      include: {
-        assignedTo: {
-          select: { name: true },
-        },
-      },
+      include: { assignedTo: { select: { name: true } } },
     })
 
     return NextResponse.json(task, { status: 201 })
@@ -84,12 +68,13 @@ export async function POST(
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error creating task')
     return NextResponse.json({ error: 'Failed to create task' }, { status: 500 })
   }
-}
+})
 
-export async function PATCH(
+export const PATCH = withTenantHandler(async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  context?: unknown
+) => {
+  const { id } = await (context as { params: Promise<{ id: string }> }).params
   try {
     const session = await requireAuth()
 
@@ -100,11 +85,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Task ID required' }, { status: 400 })
     }
 
-    const { id } = await params
-
     const body = await request.json()
-    
-    // ✅ TAREA 2: Validar input con Zod
     const validationResult = UpdateTaskSchema.safeParse(body)
     if (!validationResult.success) {
       return NextResponse.json(
@@ -116,14 +97,8 @@ export async function PATCH(
     const { isCompleted } = validationResult.data
 
     const lead = await prisma.lead.findFirst({
-      where: {
-        id,
-        companyId: session.user.companyId,
-      },
-      select: {
-        assignedToId: true,
-        createdById: true,
-      },
+      where: { id, companyId: session.user.companyId },
+      select: { assignedToId: true, createdById: true },
     })
 
     if (!lead) {
@@ -141,15 +116,8 @@ export async function PATCH(
     }
 
     const task = await prisma.task.updateMany({
-      where: {
-        id: taskId,
-        leadId: id,
-        companyId: session.user.companyId,
-      },
-      data: {
-        isCompleted,
-        completedAt: isCompleted ? new Date() : null,
-      },
+      where: { id: taskId, leadId: id, companyId: session.user.companyId },
+      data: { isCompleted, completedAt: isCompleted ? new Date() : null },
     })
 
     return NextResponse.json({ success: true, count: task.count })
@@ -160,4 +128,4 @@ export async function PATCH(
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error updating task')
     return NextResponse.json({ error: 'Failed to update task' }, { status: 500 })
   }
-}
+})

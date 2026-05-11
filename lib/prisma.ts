@@ -66,14 +66,13 @@ function getDatabaseUrl(): string {
 // ============================================================================
 
 const logConfig: { emit: 'event'; level: LogLevel }[] = [
-  { emit: 'event', level: 'query' },
   { emit: 'event', level: 'error' },
   { emit: 'event', level: 'warn' },
 ]
 
 // En desarrollo, incluir queries
 if (process.env.NODE_ENV === 'development') {
-  logConfig.unshift({ emit: 'event', level: 'query' })
+  logConfig.push({ emit: 'event', level: 'query' })
 }
 
 // ============================================================================
@@ -331,16 +330,24 @@ export async function withRetry<T>(
  * Ejecuta operaciones en transacción con manejo de errores.
  * Usa prismaBypass para evitar conflictos de tipos con la extensión de tenant.
  * El aislamiento de tenant sigue activo a través de AsyncLocalStorage.
+ *
+ * @param operations - Función que recibe el cliente de transacción
+ * @param options.isolationLevel - Nivel de aislamiento (default: ReadCommitted).
+ *   Usar Serializable solo para operaciones financieras críticas (pagos, reservas).
  */
 export async function withTransaction<T>(
-  operations: (tx: Prisma.TransactionClient) => Promise<T>
+  operations: (tx: Prisma.TransactionClient) => Promise<T>,
+  options: {
+    isolationLevel?: Prisma.TransactionIsolationLevel
+  } = {}
 ): Promise<T> {
   return withRetry(() => prismaBypass.$transaction(operations, {
-    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    isolationLevel: options.isolationLevel ?? Prisma.TransactionIsolationLevel.ReadCommitted,
     maxWait: 5000,
     timeout: 10000,
   }))
 }
+
 
 /**
  * Verifica la conexión a la base de datos

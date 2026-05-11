@@ -4,6 +4,7 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
+import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const CreateDocSchema = z.object({
   type: z.enum(['BOLETO_COMPRAVENTA', 'RECIBO', 'CONTRATO']),
@@ -38,7 +39,7 @@ async function generateRefNumber(type: string, companyId: string): Promise<strin
 /**
  * GET /api/units/[id]/documents — List documents for a unit
  */
-export const GET = withErrorHandling(
+export const GET = withTenantHandler(withErrorHandling(
   async (_req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id: unitId } = await params
@@ -53,12 +54,12 @@ export const GET = withErrorHandling(
 
     return successResponse(docs)
   }
-)
+))
 
 /**
  * POST /api/units/[id]/documents — Create a new document
  */
-export const POST = withErrorHandling(
+export const POST = withTenantHandler(withErrorHandling(
   async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id: unitId } = await params
@@ -147,4 +148,4 @@ export const POST = withErrorHandling(
 
     return successResponse(doc, 201)
   }
-)
+))
