@@ -84,11 +84,11 @@
   }
 
   [data-background-theme="light"] .sidebar-surface {
-    @apply bg-white/95 text-slate-900 border-slate-200/50;
+    @apply bg-slate-900/95 text-slate-100 border-slate-700/60 shadow-2xl;
   }
 
   [data-background-theme="neutral"] .sidebar-surface {
-    @apply bg-slate-100/90 text-slate-900 border-slate-300/40;
+    @apply bg-slate-900/90 text-slate-100 border-slate-700/40 shadow-xl;
   }
 
   /* Texto adaptativo */

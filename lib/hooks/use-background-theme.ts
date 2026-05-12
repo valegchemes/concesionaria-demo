@@ -101,9 +101,18 @@ export function useBackgroundTheme(initialImageUrl?: string): UseBackgroundTheme
       setBrightness(calculatedBrightness)
       setTheme(calculatedTheme)
 
-      // Aplicar al DOM para CSS
+      // Aplicar al DOM para CSS custom props
       document.documentElement.dataset.backgroundTheme = calculatedTheme
       document.documentElement.dataset.backgroundBrightness = calculatedBrightness.toString()
+
+      // Sincronizar Tailwind dark mode:
+      // Fondo CLARO (imagen blanca/luminosa) → UI debe ser OSCURA → activar `.dark`
+      // Fondo OSCURO o NEUTRAL → UI debe ser CLARA → desactivar `.dark`
+      if (calculatedTheme === 'light') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
 
     } catch (error) {
       console.warn('Error updating background theme:', error)
