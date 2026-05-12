@@ -162,206 +162,106 @@ export default async function DashboardPage() {
       : '0'
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Panel de Control</h1>
-          {companyName && (
-            <p className="mt-1 text-sm text-slate-500">{companyName}</p>
-          )}
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Dashboard</h1>
+        {companyName && (
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{companyName}</p>
+        )}
+      </div>
+
+      {/* Resumen Operacional */}
+      <div className="space-y-4">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+          Resumen Operacional
+        </h2>
+
+        {/* KPI Cards con borde de color */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <KpiCard
+            title="Leads Activos"
+            value={formatNumber(stats.leads.active)}
+            subtitle={`de ${formatNumber(stats.leads.total)} total`}
+            icon={Users}
+            accentColor="border-l-blue-500"
+            iconColor="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400"
+          />
+          <KpiCard
+            title="Leads Nuevos"
+            value={formatNumber(stats.leads.new)}
+            subtitle="sin contactar"
+            icon={AlertCircle}
+            accentColor="border-l-orange-500"
+            iconColor="bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400"
+          />
+          <KpiCard
+            title="Unidades Disponibles"
+            value={formatNumber(stats.units.available)}
+            subtitle={`${formatNumber(stats.deals.completed)} vendidas · ${formatNumber(stats.units.total)} total`}
+            icon={Car}
+            accentColor="border-l-emerald-500"
+            iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+          />
+          <KpiCard
+            title="Tasa de Conversión"
+            value={`${conversionRate}%`}
+            subtitle="leads → ventas cerradas"
+            icon={TrendingUp}
+            accentColor="border-l-violet-500"
+            iconColor="bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400"
+          />
+        </div>
+
+        {/* Pills de operaciones */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatPill
+            label="En Curso"
+            value={stats.deals.active}
+            sublabel="negociaciones activas"
+            icon={Clock}
+            color="blue"
+          />
+          <StatPill
+            label="Completadas"
+            value={stats.deals.completed}
+            sublabel="operaciones entregadas"
+            icon={CheckCircle}
+            color="green"
+          />
+          <StatPill
+            label="Canceladas"
+            value={stats.deals.canceled}
+            sublabel="operaciones canceladas"
+            icon={XCircle}
+            color="red"
+          />
         </div>
       </div>
 
-      {/* Section 1: Actividad de Hoy */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Visitas y Test Drives */}
-        <Card className="lg:col-span-1 bg-white border border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-slate-700">Actividad de Hoy</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Visitas de Clientes</p>
-              <p className="mt-2 text-4xl font-bold text-slate-900">{formatNumber(stats.leads.new)}</p>
-              <div className="mt-2 h-1 w-12 rounded-full bg-gradient-to-r from-blue-400 to-blue-500" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">Pruebas de Manejo (Test Drives)</p>
-              <p className="mt-2 text-3xl font-bold text-slate-900">{formatNumber(stats.deals.active)}</p>
-              <div className="mt-2 h-1 w-12 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Embudo de Ventas */}
-        <Card className="lg:col-span-1 bg-white border border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-slate-700">Embudo de Ventas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-32 h-4 rounded bg-gradient-to-r from-blue-500 to-blue-400 shadow-sm" />
-                <span className="text-xs text-slate-600 font-medium">Lead Inicial ({formatNumber(Math.ceil(stats.leads.total * 0.5))})</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-24 h-4 rounded bg-gradient-to-r from-sky-500 to-sky-400 shadow-sm" />
-                <span className="text-xs text-slate-600 font-medium">Contactado ({formatNumber(Math.ceil(stats.leads.total * 0.38))})</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-16 h-4 rounded bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-sm" />
-                <span className="text-xs text-slate-600 font-medium">Cita Concertada ({formatNumber(Math.ceil(stats.leads.total * 0.15))})</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-4 rounded bg-gradient-to-r from-amber-500 to-amber-400 shadow-sm" />
-                <span className="text-xs text-slate-600 font-medium">Oferta Formal ({formatNumber(Math.ceil(stats.leads.total * 0.09))})</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-4 rounded bg-gradient-to-r from-red-500 to-red-400 shadow-sm" />
-                <span className="text-xs text-slate-600 font-medium">Cierre de Venta ({formatNumber(stats.deals.completed)})</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Ventas del Mes */}
-        <Card className="lg:col-span-1 bg-white border border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-slate-700">Ventas del Mes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-right mb-4">
-              <p className="text-3xl font-bold text-slate-900">$1.2M USD</p>
-              <p className="text-xs text-slate-500 mt-1">Ventas Totales del Mes</p>
-            </div>
-            <div className="h-12 rounded bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200 flex items-end p-2 gap-1">
-              <div className="h-2/3 w-1 bg-emerald-400 rounded-sm opacity-60" />
-              <div className="h-3/4 w-1 bg-emerald-500 rounded-sm opacity-70" />
-              <div className="h-4/5 w-1 bg-emerald-500 rounded-sm opacity-80" />
-              <div className="h-5/6 w-1 bg-emerald-600 rounded-sm opacity-90" />
-              <div className="h-full w-1 bg-emerald-600 rounded-sm" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Section 2: Leads Recientes y Autos en Stock */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Leads Recientes Table */}
-        <Card className="lg:col-span-2 bg-white border border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-slate-700">Leads Recientes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="grid grid-cols-5 gap-3 text-xs font-bold uppercase tracking-wide text-slate-500 pb-3 border-b border-slate-100">
-                <div>Nombre</div>
-                <div>Fuente</div>
-                <div>Estado</div>
-                <div>Vehículo</div>
-                <div>Asesor</div>
-              </div>
-              {/* Mock leads para demostración */}
-              {[
-                { name: 'Juan Pérez', source: 'WhatsApp', status: 'Cita Pendiente', vehicle: 'VW Tiguan', advisor: 'Sarah' },
-                { name: 'Ana Gómez', source: 'Teléfono', status: 'Seguimiento', vehicle: 'Ford Focus', advisor: 'Sarah' },
-                { name: 'Marcos Díaz', source: 'Web', status: 'Nuevo', vehicle: 'Seat León', advisor: 'Michael' },
-                { name: 'Sofía Martín', source: 'Showroom', status: 'Nuevo', vehicle: 'VW Golf', advisor: 'Michael' },
-                { name: 'Diego Soler', source: 'Referencia', status: 'Cierre Pendiente', vehicle: 'Ford Kuga', advisor: 'Sarah' },
-              ].map((lead, idx) => (
-                <div key={idx} className="grid grid-cols-5 gap-3 py-3 text-sm text-slate-700 border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                  <div className="font-medium">{lead.name}</div>
-                  <div className="text-slate-500">{lead.source}</div>
-                  <div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      lead.status === 'Nuevo' ? 'bg-green-100 text-green-700' :
-                      lead.status === 'Seguimiento' ? 'bg-blue-100 text-blue-700' :
-                      lead.status === 'Cita Pendiente' ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-slate-100 text-slate-700'
-                    }`}>
-                      {lead.status}
-                    </span>
-                  </div>
-                  <div className="text-slate-500">{lead.vehicle}</div>
-                  <div className="text-slate-500">{lead.advisor}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Total Autos en Stock */}
-        <Card className="lg:col-span-1 bg-white border border-slate-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold text-slate-700">Total Autos en Stock</CardTitle>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{formatNumber(stats.units.total)}</p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-600">Disponibles</span>
-                <span className="text-sm font-bold text-emerald-600">{formatNumber(stats.units.available)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-600">Vendidos</span>
-                <span className="text-sm font-bold text-blue-600">{formatNumber(stats.units.sold)}</span>
-              </div>
-              <div className="mt-3 pt-3 border-t border-slate-100">
-                <p className="text-xs text-slate-500 mb-2">Disponibilidad</p>
-                <div className="flex gap-2">
-                  <div className="flex-1 h-2 rounded-full bg-emerald-200 overflow-hidden">
-                    <div 
-                      className="h-full bg-emerald-500 rounded-full" 
-                      style={{ width: `${Math.round((stats.units.available / stats.units.total) * 100) || 0}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-slate-600 font-semibold">{Math.round((stats.units.available / stats.units.total) * 100) || 0}%</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Resumen Operacional (Mini KPI Cards) */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Leads Activos</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(stats.leads.active)}</p>
-            </div>
-            <Users className="h-6 w-6 text-blue-500 opacity-20" />
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Operaciones</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(stats.deals.active)}</p>
-            </div>
-            <Handshake className="h-6 w-6 text-amber-500 opacity-20" />
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Conversión</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{conversionRate}%</p>
-            </div>
-            <TrendingUp className="h-6 w-6 text-emerald-500 opacity-20" />
-          </div>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-slate-500 font-semibold uppercase tracking-wide">Inventario</p>
-              <p className="mt-2 text-2xl font-bold text-slate-900">{formatNumber(stats.units.available)}</p>
-            </div>
-            <Car className="h-6 w-6 text-violet-500 opacity-20" />
-          </div>
-        </div>
+      {/* Analytics de Ventas */}
+      <div className="border-t border-white/20 dark:border-slate-800/50 pt-4">
+        <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+          Analíticas de Ventas
+        </h2>
+        {stats.deals.completed > 0 ? (
+          <AnalyticsDashboardLazy
+            companyId={session.user.companyId}
+            companyName={companyName}
+            hideHeader
+            userRole={session.user.role}
+          />
+        ) : (
+          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+            <CardContent className="py-12 text-center text-gray-400 dark:text-gray-300">
+              <Handshake className="mx-auto mb-3 h-10 w-10 opacity-20" />
+              <p className="font-semibold text-gray-500 dark:text-gray-200">Sin ventas completadas aún</p>
+              <p className="mt-1 text-sm">
+                Los gráficos aparecerán cuando marques tu primera operación como <strong>Entregada</strong>.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

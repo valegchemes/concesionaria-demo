@@ -61,33 +61,30 @@ export function AppSidebar({ user }: AppSidebarProps) {
     user.role === 'MANAGER' ? 'Manager' : 'Vendedor'
 
   return (
-    <aside className="flex w-64 flex-col bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white border-r border-slate-800/50">
+    <aside className="sidebar-surface flex w-56 flex-col text-adaptive-primary">
       {/* Logo / Empresa */}
-      <div className="border-b border-slate-800/50 px-6 py-5">
-        <div className="flex items-center gap-3">
+      <div className="border-b border-adaptive px-4 py-4">
+        <div className="flex items-center gap-2.5">
           {user.logoUrl ? (
             <Image
               src={user.logoUrl}
               alt={user.companyName}
-              width={32}
-              height={32}
-              className="h-8 w-8 rounded-lg bg-white object-cover shadow-lg"
+              width={30}
+              height={30}
+              className="h-7 w-7 rounded-md bg-white object-cover"
               unoptimized
             />
           ) : (
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
+            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/80">
               <Store className="h-4 w-4 text-white" />
             </div>
           )}
-          <div className="flex-1">
-            <span className="truncate text-sm font-bold tracking-tight text-white">{user.companyName}</span>
-            <p className="text-xs text-slate-400 mt-0.5">Panel de Control</p>
-          </div>
+          <span className="truncate text-sm font-bold tracking-tight">{user.companyName}</span>
         </div>
       </div>
 
       {/* Navegación agrupada */}
-      <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
         {navGroups
           .filter(group => {
             if (group.label === 'Administración' && user.role === 'SELLER') return false
@@ -95,10 +92,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
           })
           .map((group) => (
           <div key={group.label}>
-            <p className="mb-3 px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-adaptive-secondary">
               {group.label}
             </p>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive = currentPath.startsWith(item.href)
                 return (
@@ -106,23 +103,29 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                      'group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-150',
                       isActive
-                        ? 'bg-white/10 text-white shadow-md'
-                        : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                        ? 'bg-white/10 text-white shadow-sm'
+                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
                     )}
                   >
-                    {/* Indicador izquierdo activo */}
-                    {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-gradient-to-b from-blue-400 to-blue-500" />
-                    )}
+                    {/* Línea izquierda activa */}
+                    <span
+                      className={cn(
+                        'absolute left-0 h-6 w-[3px] rounded-r-full bg-blue-400 transition-all duration-200',
+                        isActive ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
                     <item.icon
                       className={cn(
-                        'h-5 w-5 shrink-0 transition-colors',
+                        'h-4 w-4 shrink-0 transition-colors',
                         isActive ? item.color : 'text-slate-500 group-hover:text-slate-300'
                       )}
                     />
                     <span className="flex-1 truncate">{item.name}</span>
+                    {isActive && (
+                      <ChevronRight className="h-3 w-3 text-slate-500" />
+                    )}
                   </Link>
                 )
               })}
@@ -132,25 +135,25 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </nav>
 
       {/* Usuario al pie */}
-      <div className="border-t border-slate-800/50 px-4 py-4">
-        <div className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-white/5 transition-colors cursor-pointer">
+      <div className="border-t border-white/10 px-3 py-3">
+        <div className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-white/5 transition-colors">
           {user.avatarUrl ? (
             <Image
               src={user.avatarUrl}
               alt={user.name}
-              width={36}
-              height={36}
-              className="h-9 w-9 rounded-full border border-slate-700 object-cover"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full border border-white/20 object-cover"
               unoptimized
             />
           ) : (
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
               {user.name.charAt(0).toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-white">{user.name}</p>
-            <p className="text-xs text-slate-400">{roleLabel}</p>
+            <p className="truncate text-xs font-semibold text-white">{user.name}</p>
+            <p className="text-[10px] text-slate-400">{roleLabel}</p>
           </div>
         </div>
       </div>
