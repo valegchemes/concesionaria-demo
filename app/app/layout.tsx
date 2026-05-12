@@ -48,11 +48,11 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-adaptive">
       <AppSidebar user={user} />
-      <div className="flex-1 flex flex-col bg-white">
+      <div className="flex-1 flex flex-col">
         <AppHeader user={user} />
-        <main className="flex-1 p-6 overflow-auto bg-slate-50">
+        <main className="flex-1 p-6 overflow-auto bg-adaptive">
           {children}
         </main>
       </div>
