@@ -44,7 +44,7 @@ export type AuditLogEntry = {
   userAgent?: string
   reason?: string
   companyId: string
-  userId: string
+  userId: string | null
 }
 
 export async function createAuditLog(entry: AuditLogEntry) {
