@@ -31,7 +31,7 @@ export function parseCursorPagination(params: {
   cursor?: string | null
   limit?: string | null
   direction?: string | null
-}): Required<CursorPaginationParams> {
+}): { limit: number; direction: 'forward' | 'backward'; cursor?: string } {
   const DEFAULT_LIMIT = 20
   const MAX_LIMIT = 100
 
@@ -41,11 +41,16 @@ export function parseCursorPagination(params: {
 
   const direction = params.direction === 'backward' ? 'backward' : 'forward'
 
-  return {
-    cursor: params.cursor || undefined,
+  const result: { limit: number; direction: 'forward' | 'backward'; cursor?: string } = {
     limit,
     direction,
   }
+
+  if (params.cursor) {
+    result.cursor = params.cursor
+  }
+
+  return result
 }
 
 /**
