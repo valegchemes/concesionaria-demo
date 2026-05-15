@@ -71,9 +71,10 @@ const envSchema = z.object({
     .min(32, 'DIAG_SECRET_TOKEN must be at least 32 characters for security')
     .refine(val => {
       // Validar entropía mínima (variedad de caracteres)
+      // Ajustado a 0.2 para permitir hashes hexadecimales de 64 caracteres (max 16 chars únicos -> 16/64 = 0.25)
       const uniqueChars = new Set(val).size
       const entropy = uniqueChars / val.length
-      return entropy > 0.4 // Al menos 40% de caracteres únicos
+      return entropy > 0.2 
     }, 'DIAG_SECRET_TOKEN must have sufficient entropy (variety of characters)')
     .refine(val => {
       // Rechazar valores de ejemplo

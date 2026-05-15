@@ -39,17 +39,18 @@ async function getCompany() {
 }
 
 interface UnitPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 export default async function UnitDetailPage({ params }: UnitPageProps) {
+  const resolvedParams = await params
   const company = await getCompany()
   
   if (!company) {
     notFound()
   }
 
-  const unit = await getUnitData(params.id, company.id)
+  const unit = await getUnitData(resolvedParams.id, company.id)
 
   if (!unit) {
     notFound()
