@@ -123,6 +123,10 @@ export const alerting = {
 }
 
 // Resetear contadores cada hora para evitar memory leaks
-setInterval(() => {
+const alertingInterval = setInterval(() => {
   counters.clear()
 }, 3600000)
+
+if (alertingInterval.unref) {
+  alertingInterval.unref()
+}

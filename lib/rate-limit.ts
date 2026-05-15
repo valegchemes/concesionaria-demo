@@ -29,4 +29,7 @@ export function cleanExpiredRateLimits() {
   }
 }
 
-setInterval(cleanExpiredRateLimits, 5 * 60 * 1000)
+const rlInterval = setInterval(cleanExpiredRateLimits, 5 * 60 * 1000)
+if (rlInterval.unref) {
+  rlInterval.unref()
+}
