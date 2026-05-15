@@ -102,7 +102,7 @@ export async function releaseLock(
 
     // Nota: @vercel/kv no soporta EVAL directamente
     // Alternativa: verificar y eliminar (no atómico pero suficiente)
-    const currentToken = await kv.get(key)
+    const currentToken = (await kv.get(key)) as string | null
     if (currentToken === lockToken) {
       await kv.del(key)
       log.debug({ lockKey, lockToken }, 'Lock released')
