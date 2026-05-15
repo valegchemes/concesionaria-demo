@@ -36,12 +36,16 @@ function checkInMemory(key: string, max: number, windowSec: number): { allowed: 
 }
 
 // Limpiar entradas expiradas cada 5 minutos para evitar memory leaks
-setInterval(() => {
+const cleanupInterval = setInterval(() => {
   const now = Date.now()
   for (const [key, value] of inMemoryCounters.entries()) {
     if (value.resetAt < now) inMemoryCounters.delete(key)
   }
 }, 5 * 60 * 1000)
+
+if (cleanupInterval.unref) {
+  cleanupInterval.unref()
+}
 
 // ============================================================================
 // Configuración

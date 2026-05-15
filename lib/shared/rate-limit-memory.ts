@@ -45,6 +45,10 @@ class InMemoryRateLimitStore {
     this.cleanupInterval = setInterval(() => {
       this.cleanup()
     }, 60000)
+    
+    if (this.cleanupInterval.unref) {
+      this.cleanupInterval.unref()
+    }
   }
 
   private cleanup() {

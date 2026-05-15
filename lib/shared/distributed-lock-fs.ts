@@ -269,9 +269,13 @@ function sleep(ms: number): Promise<void> {
 
 // Cleanup periódico cada 5 minutos
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
+  const cleanupTimer = setInterval(() => {
     cleanupExpiredLocks().catch(err => {
       log.error({ error: err.message }, 'Error in periodic lock cleanup')
     })
   }, 5 * 60 * 1000)
+  
+  if (cleanupTimer.unref) {
+    cleanupTimer.unref()
+  }
 }
