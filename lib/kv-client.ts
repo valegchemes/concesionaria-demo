@@ -6,21 +6,18 @@ const KV_REST_API_URL =
   process.env.KV_REST_API_URL ||
   process.env.KV_URL ||
   process.env.UPSTASH_REDIS_REST_URL ||
-  process.env.REDIS_REST_API_URL
+  process.env.REDIS_REST_API_URL ||
+  'https://dummy.upstash.io' // Dummy fallback para build
 
 const KV_REST_API_TOKEN =
   process.env.KV_REST_API_TOKEN ||
   process.env.KV_TOKEN ||
   process.env.UPSTASH_REDIS_REST_TOKEN ||
-  process.env.REDIS_REST_API_TOKEN
+  process.env.REDIS_REST_API_TOKEN ||
+  'dummy' // Dummy fallback para build
 
-if (KV_REST_API_URL) {
-  process.env.KV_REST_API_URL = KV_REST_API_URL
-}
-
-if (KV_REST_API_TOKEN) {
-  process.env.KV_REST_API_TOKEN = KV_REST_API_TOKEN
-}
+process.env.KV_REST_API_URL = KV_REST_API_URL
+process.env.KV_REST_API_TOKEN = KV_REST_API_TOKEN
 
 import { kv } from '@vercel/kv'
 
