@@ -21,6 +21,7 @@ const config: AlertConfig = {
 const counters = new Map<string, number[]>() // key -> timestamps
 
 function shouldAlert(key: string, threshold: number, windowSeconds: number): boolean {
+  ensureAlertingCleanup()
   const now = Date.now()
   const window = windowSeconds * 1000
   
@@ -122,11 +123,15 @@ export const alerting = {
   }
 }
 
-// Resetear contadores cada hora para evitar memory leaks
-const alertingInterval = setInterval(() => {
-  counters.clear()
-}, 3600000)
+let alertingInterval: any = null
+function ensureAlertingCleanup() {
+  if (!alertingInterval && typeof setInterval !== 'undefined') {
+    alertingInterval = setInterval(() => {
+      counters.clear()
+    }, 3600000)
 
-if (alertingInterval.unref) {
-  alertingInterval.unref()
+    if (alertingInterval.unref) {
+      alertingInterval.unref()
+    }
+  }
 }

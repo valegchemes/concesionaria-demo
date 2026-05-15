@@ -25,6 +25,7 @@ function withKVTimeout<T>(promise: Promise<T>, ms = 2000): Promise<T> {
 const inMemoryCounters = new Map<string, { count: number; resetAt: number }>()
 
 function checkInMemory(key: string, max: number, windowSec: number): { allowed: boolean; current: number } {
+  ensureCleanup()
   const now = Date.now()
   const entry = inMemoryCounters.get(key)
   if (!entry || entry.resetAt < now) {
@@ -35,16 +36,20 @@ function checkInMemory(key: string, max: number, windowSec: number): { allowed: 
   return { allowed: entry.count <= max, current: entry.count }
 }
 
-// Limpiar entradas expiradas cada 5 minutos para evitar memory leaks
-const cleanupInterval = setInterval(() => {
-  const now = Date.now()
-  for (const [key, value] of inMemoryCounters.entries()) {
-    if (value.resetAt < now) inMemoryCounters.delete(key)
-  }
-}, 5 * 60 * 1000)
+let cleanupInterval: any = null
+function ensureCleanup() {
+  if (!cleanupInterval && typeof setInterval !== 'undefined') {
+    cleanupInterval = setInterval(() => {
+      const now = Date.now()
+      for (const [key, value] of inMemoryCounters.entries()) {
+        if (value.resetAt < now) inMemoryCounters.delete(key)
+      }
+    }, 5 * 60 * 1000)
 
-if (cleanupInterval.unref) {
-  cleanupInterval.unref()
+    if (cleanupInterval.unref) {
+      cleanupInterval.unref()
+    }
+  }
 }
 
 // ============================================================================

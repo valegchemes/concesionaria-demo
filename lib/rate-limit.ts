@@ -3,6 +3,7 @@ export const MAX_REQUESTS = 10
 export const WINDOW_MS = 60 * 1000
 
 export function checkRateLimit(ip: string, path: string): boolean {
+  ensureRlCleanup()
   const key = `${ip}:${path}`
   const now = Date.now()
   const record = rateLimitStore.get(key)
@@ -29,7 +30,12 @@ export function cleanExpiredRateLimits() {
   }
 }
 
-const rlInterval = setInterval(cleanExpiredRateLimits, 5 * 60 * 1000)
-if (rlInterval.unref) {
-  rlInterval.unref()
+let rlInterval: any = null
+function ensureRlCleanup() {
+  if (!rlInterval && typeof setInterval !== 'undefined') {
+    rlInterval = setInterval(cleanExpiredRateLimits, 5 * 60 * 1000)
+    if (rlInterval.unref) {
+      rlInterval.unref()
+    }
+  }
 }
