@@ -80,6 +80,7 @@ export async function acquireLock(
   } = options
 
   await ensureLockDir()
+  ensureCleanup()
 
   const lockToken = `${Date.now()}:${Math.random()}`
   const lockPath = getLockPath(lockKey)
@@ -267,15 +268,17 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-// Cleanup periódico cada 5 minutos
-if (typeof setInterval !== 'undefined') {
-  const cleanupTimer = setInterval(() => {
-    cleanupExpiredLocks().catch(err => {
-      log.error({ error: err.message }, 'Error in periodic lock cleanup')
-    })
-  }, 5 * 60 * 1000)
-  
-  if (cleanupTimer.unref) {
-    cleanupTimer.unref()
+let cleanupTimer: any = null
+function ensureCleanup() {
+  if (!cleanupTimer && typeof setInterval !== 'undefined') {
+    cleanupTimer = setInterval(() => {
+      cleanupExpiredLocks().catch(err => {
+        log.error({ error: err.message }, 'Error in periodic lock cleanup')
+      })
+    }, 5 * 60 * 1000)
+    
+    if (cleanupTimer.unref) {
+      cleanupTimer.unref()
+    }
   }
 }

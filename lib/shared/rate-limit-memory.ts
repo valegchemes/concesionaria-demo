@@ -41,13 +41,19 @@ class InMemoryRateLimitStore {
   private cleanupInterval: NodeJS.Timeout | null = null
 
   constructor() {
-    // Limpiar entradas expiradas cada 60 segundos
-    this.cleanupInterval = setInterval(() => {
-      this.cleanup()
-    }, 60000)
-    
-    if (this.cleanupInterval.unref) {
-      this.cleanupInterval.unref()
+    // El cleanup interval se inicializa perezosamente (lazy)
+    // para evitar colgar el proceso de build estático de Next.js
+  }
+
+  private ensureCleanup() {
+    if (!this.cleanupInterval && typeof setInterval !== 'undefined') {
+      this.cleanupInterval = setInterval(() => {
+        this.cleanup()
+      }, 60000)
+      
+      if (this.cleanupInterval.unref) {
+        this.cleanupInterval.unref()
+      }
     }
   }
 
@@ -72,6 +78,7 @@ class InMemoryRateLimitStore {
   }
 
   set(key: string, entry: RateLimitEntry): void {
+    this.ensureCleanup()
     this.store.set(key, entry)
   }
 
