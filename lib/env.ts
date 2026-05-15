@@ -12,7 +12,23 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
 
   // NextAuth
-  NEXTAUTH_SECRET: z.string().min(32, 'NEXTAUTH_SECRET must be at least 32 characters').optional(),
+  NEXTAUTH_SECRET: z.string()
+    .min(32, 'NEXTAUTH_SECRET must be at least 32 characters')
+    .refine(val => {
+      // Rechazar valores de ejemplo débiles
+      const weakSecrets = [
+        'your-secret',
+        'change-me',
+        'example',
+        'test',
+        'demo',
+        'password',
+        '12345',
+      ]
+      const valLower = val.toLowerCase()
+      return !weakSecrets.some(weak => valLower.includes(weak))
+    }, 'NEXTAUTH_SECRET must not contain common weak patterns')
+    .optional(),
   NEXTAUTH_URL: z.string().optional(),
 
   // Database
@@ -51,7 +67,26 @@ const envSchema = z.object({
     }),
 
   // Diagnostic endpoint
-  DIAG_SECRET_TOKEN: z.string().min(16).optional(),
+  DIAG_SECRET_TOKEN: z.string()
+    .min(32, 'DIAG_SECRET_TOKEN must be at least 32 characters for security')
+    .refine(val => {
+      // Validar entropía mínima (variedad de caracteres)
+      const uniqueChars = new Set(val).size
+      const entropy = uniqueChars / val.length
+      return entropy > 0.4 // Al menos 40% de caracteres únicos
+    }, 'DIAG_SECRET_TOKEN must have sufficient entropy (variety of characters)')
+    .refine(val => {
+      // Rechazar valores de ejemplo
+      const weakTokens = ['your-random-secret', 'change-me', 'example', 'test']
+      const valLower = val.toLowerCase()
+      return !weakTokens.some(weak => valLower.includes(weak))
+    }, 'DIAG_SECRET_TOKEN must not be a placeholder value')
+    .optional(),
+
+  // Cron secret
+  CRON_SECRET: z.string()
+    .min(32, 'CRON_SECRET must be at least 32 characters')
+    .optional(),
 
   // Node environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),

@@ -1,6 +1,6 @@
 {
   "name": "consencionaria-app",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -16,7 +16,11 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
-    "postinstall": "prisma generate"
+    "db:indexes": "psql $DATABASE_URL < prisma/migrations/add_composite_indexes.sql",
+    "postinstall": "prisma generate",
+    "verify:deploy": "node scripts/verify-deploy.js",
+    "verify:env": "node -e \"require('./lib/env').env; console.log('✅ Environment variables validated')\"",
+    "security:check": "npm audit --production && npm run verify:env"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -10,6 +10,7 @@ import { createAuditLog } from '@/lib/shared/audit-log'
 import { hasAnyPermission } from '@/lib/shared/authz'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
+import { requireRateLimit, RATE_LIMITS, getRequestIdentifier } from '@/lib/shared/rate-limit-memory'
 
 const log = createLogger('DealRoutes')
 
@@ -20,6 +21,10 @@ export const maxDuration = 30
  * Query params: page, limit, status, soldById
  */
 export const GET = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
+  // Rate limiting
+  const identifier = getRequestIdentifier(request)
+  await requireRateLimit(identifier, RATE_LIMITS.AUTHENTICATED_API)
+  
   const user = await getCurrentUser()
   if (!hasAnyPermission(user.permissions, 'deals', ['read_all', 'read_own'])) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })
@@ -69,6 +74,10 @@ export const GET = withTenantHandler(withErrorHandling(async (request: NextReque
  * POST /api/deals - Create new deal
  */
 export const POST = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
+  // Rate limiting
+  const identifier = getRequestIdentifier(request)
+  await requireRateLimit(identifier, RATE_LIMITS.AUTHENTICATED_API)
+  
   const user = await getCurrentUser()
   if (!hasAnyPermission(user.permissions, 'deals', ['manage_all', 'manage_own'])) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } })

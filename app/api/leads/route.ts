@@ -7,6 +7,7 @@ import { CreateLeadSchema } from '@/lib/shared/validation'
 import { leadService } from '@/lib/domains/leads/service'
 import { createLogger } from '@/lib/shared/logger'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { requireRateLimit, RATE_LIMITS, getRequestIdentifier } from '@/lib/shared/rate-limit-memory'
 
 const log = createLogger('LeadRoutes')
 
@@ -17,6 +18,10 @@ export const maxDuration = 30
  * Query params: page, limit, status, assignedToId
  */
 export const GET = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
+  // Rate limiting
+  const identifier = getRequestIdentifier(request)
+  await requireRateLimit(identifier, RATE_LIMITS.AUTHENTICATED_API)
+  
   // Fast-path: headers del middleware (0 queries DB)
   // Nota: permissions vacío - leadService.list debe manejar RBAC fallback
   const user = await getCurrentUserFromHeaders(request)
@@ -61,6 +66,10 @@ export const GET = withTenantHandler(withErrorHandling(async (request: NextReque
  * POST /api/leads - Create new lead
  */
 export const POST = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
+  // Rate limiting
+  const identifier = getRequestIdentifier(request)
+  await requireRateLimit(identifier, RATE_LIMITS.AUTHENTICATED_API)
+  
   const user = await getCurrentUser()
 
   const json = await request.json()

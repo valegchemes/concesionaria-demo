@@ -82,14 +82,35 @@ export const billingService = {
 
   /**
    * Sincroniza el estado de la suscripción desde Stripe hacia nuestra BD
+   * @param stripeSubscriptionId - ID de la suscripción en Stripe
+   * @param expectedCompanyId - ID de la empresa esperada (validación de ownership)
    */
-  async syncSubscriptionStatus(stripeSubscriptionId: string) {
-    log.info({ stripeSubscriptionId }, 'Syncing subscription from Stripe')
+  async syncSubscriptionStatus(stripeSubscriptionId: string, expectedCompanyId?: string) {
+    log.info({ stripeSubscriptionId, expectedCompanyId }, 'Syncing subscription from Stripe')
+    
     const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId)
 
+    // Validar que la suscripción tenga companyId en metadata
+    const companyId = subscription.metadata?.companyId
+    if (!companyId) {
+      throw new Error(`Subscription ${stripeSubscriptionId} missing companyId in metadata`)
+    }
+
+    // Validar ownership si se proporciona expectedCompanyId
+    if (expectedCompanyId && companyId !== expectedCompanyId) {
+      log.error(
+        { stripeSubscriptionId, expectedCompanyId, actualCompanyId: companyId },
+        'Subscription ownership mismatch'
+      )
+      throw new Error('Subscription does not belong to this company')
+    }
+
     // Aquí guardamos el estado a nuestra BD
-    const localSub = await prisma.saasSubscription.findUnique({
-      where: { stripeSubscriptionId: subscription.id }
+    const localSub = await prisma.saasSubscription.findFirst({
+      where: { 
+        stripeSubscriptionId: subscription.id,
+        companyId // ✅ SIEMPRE filtrar por tenant
+      }
     })
 
     if (localSub) {
@@ -134,6 +155,11 @@ export const billingService = {
           'incomplete': 'INCOMPLETE',
           'incomplete_expired': 'INCOMPLETE_EXPIRED',
           'paused': 'PAUSED'
+        }
+
+        // Validar que el customer pertenezca al mismo tenant
+        if (localCustomer.companyId !== companyId) {
+          throw new Error('Customer/Subscription company mismatch')
         }
 
         await prisma.saasSubscription.update({

@@ -29,6 +29,7 @@ import { createLogger } from '@/lib/shared/logger'
 import { requirePermission } from '@/lib/shared/authz'
 import type { UnitStatus, UnitType, Prisma } from '@prisma/client'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { requireRateLimit, RATE_LIMITS, getRequestIdentifier } from '@/lib/shared/rate-limit-memory'
 
 const log = createLogger('API:Units')
 
@@ -102,15 +103,19 @@ export const GET = withTenantHandler(async (request: NextRequest): Promise<NextR
   const startTime = Date.now()
   
   try {
-    // 1. Autenticación (fast-path: headers del middleware, 0 queries DB)
+    // 1. Rate limiting
+    const identifier = getRequestIdentifier(request)
+    await requireRateLimit(identifier, RATE_LIMITS.PUBLIC_API)
+    
+    // 2. Autenticación (fast-path: headers del middleware, 0 queries DB)
     const user = await getCurrentUserFromHeaders(request)
     log.debug({ userId: user.id, companyId: user.companyId, source: (await hasAuthHeaders(request)) ? 'headers' : 'fallback' }, 'GET /api/units - iniciado')
 
-    // 2. Parseo de query params
+    // 3. Parseo de query params
     const { searchParams } = new URL(request.url)
     const filters = parseListQuery(searchParams)
 
-    // 3. Construcción de where clause (SIEMPRE con tenantId)
+    // 4. Construcción de where clause (SIEMPRE con tenantId)
     const where: Prisma.UnitWhereInput = {
       companyId: user.companyId, // 🔒 Multi-tenancy: SIEMPRE filtrar por companyId
       isActive: true,
@@ -128,7 +133,7 @@ export const GET = withTenantHandler(async (request: NextRequest): Promise<NextR
       ...(filters.maxPrice !== undefined && { priceArs: { lte: filters.maxPrice } }),
     }
 
-    // 4. Ejecutar queries en paralelo
+    // 5. Ejecutar queries en paralelo
     const skip = (filters.page - 1) * filters.limit
     
     const [total, units] = await Promise.all([
@@ -149,7 +154,12 @@ export const GET = withTenantHandler(async (request: NextRequest): Promise<NextR
           updatedAt: true,
           createdBy: { select: { name: true } },
           _count: { select: { deals: true, interestedLeads: true } },
-          photos: { orderBy: { order: 'asc' }, select: { url: true, order: true } },
+          // ✅ Solo primera foto para listado (evita N+1)
+          photos: { 
+            take: 1, 
+            orderBy: { order: 'asc' }, 
+            select: { url: true, order: true } 
+          },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -203,14 +213,18 @@ export const POST = withTenantHandler(async (request: NextRequest): Promise<Next
   const startTime = Date.now()
 
   try {
-    // 1. Autenticación
+    // 1. Rate limiting
+    const identifier = getRequestIdentifier(request)
+    await requireRateLimit(identifier, RATE_LIMITS.AUTHENTICATED_API)
+    
+    // 2. Autenticación
     const user = await getCurrentUser()
     log.debug({ userId: user.id, companyId: user.companyId }, 'POST /api/units - iniciado')
 
     // Verify permission
     await requirePermission(user.id, user.companyId, 'units', 'manage_all')
 
-    // 2. Validación del body con Zod
+    // 3. Validación del body con Zod
     const body = await request.json()
     const validationResult = CreateUnitSchema.safeParse(body)
 
@@ -235,7 +249,7 @@ export const POST = withTenantHandler(async (request: NextRequest): Promise<Next
 
     const data = validationResult.data
 
-    // 3. Validación de negocio: verificar duplicados por VIN o dominio
+    // 4. Validación de negocio: verificar duplicados por VIN o dominio
     if (data.vin || data.domain) {
       const duplicateWhere: Prisma.UnitWhereInput = {
         companyId: user.companyId, // 🔒 Multi-tenancy
@@ -258,7 +272,7 @@ export const POST = withTenantHandler(async (request: NextRequest): Promise<Next
       }
     }
 
-    // 4. Crear unidad con fotos en transacción
+    // 5. Crear unidad con fotos en transacción
     const unit = await prisma.$transaction(async (tx) => {
       // Crear unidad
       const newUnit = await tx.unit.create({

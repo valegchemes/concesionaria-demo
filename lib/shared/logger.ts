@@ -3,6 +3,7 @@
  * - En browser: usa console (sin dependencias)
  * - En server/edge: usa pino para logs estructurados
  * - Seguro para importar en cualquier contexto (client, server, edge)
+ * - Redacta automáticamente datos sensibles (passwords, tokens, etc.)
  */
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal' | 'trace'
@@ -24,6 +25,88 @@ const isEdge = !isBrowser && typeof process === 'undefined'
 const isServer = !isBrowser
 
 // ============================================================================
+// REDACTOR DE DATOS SENSIBLES
+// ============================================================================
+
+/**
+ * Palabras clave que indican datos sensibles
+ * Se buscan en los nombres de las propiedades (case-insensitive)
+ */
+const SENSITIVE_KEYS = [
+  'password',
+  'passwd',
+  'pwd',
+  'secret',
+  'token',
+  'apikey',
+  'api_key',
+  'accesstoken',
+  'access_token',
+  'refreshtoken',
+  'refresh_token',
+  'authorization',
+  'auth',
+  'cookie',
+  'session',
+  'creditcard',
+  'credit_card',
+  'cardnumber',
+  'card_number',
+  'cvv',
+  'cvc',
+  'ssn',
+  'social_security',
+  'pin',
+  'privatekey',
+  'private_key',
+  'encryptionkey',
+  'encryption_key',
+]
+
+/**
+ * Redacta datos sensibles de un objeto recursivamente
+ */
+function redactSensitiveData(obj: unknown, depth = 0): unknown {
+  // Prevenir recursión infinita
+  if (depth > 10) return '[MAX_DEPTH]'
+
+  // Tipos primitivos: retornar tal cual
+  if (obj === null || obj === undefined) return obj
+  if (typeof obj !== 'object') return obj
+
+  // Arrays: redactar cada elemento
+  if (Array.isArray(obj)) {
+    return obj.map(item => redactSensitiveData(item, depth + 1))
+  }
+
+  // Objetos: redactar propiedades sensibles
+  const redacted: Record<string, unknown> = {}
+  
+  for (const [key, value] of Object.entries(obj)) {
+    const keyLower = key.toLowerCase()
+    
+    // Verificar si la key contiene palabras sensibles
+    const isSensitive = SENSITIVE_KEYS.some(sensitiveKey => 
+      keyLower.includes(sensitiveKey)
+    )
+
+    if (isSensitive) {
+      // Redactar pero mantener tipo y longitud aproximada
+      if (typeof value === 'string') {
+        redacted[key] = value.length > 0 ? `[REDACTED:${value.length}]` : '[REDACTED]'
+      } else {
+        redacted[key] = '[REDACTED]'
+      }
+    } else {
+      // Recursivamente redactar objetos anidados
+      redacted[key] = redactSensitiveData(value, depth + 1)
+    }
+  }
+
+  return redacted
+}
+
+// ============================================================================
 // LOGGER UNIVERSAL
 // ============================================================================
 
@@ -39,13 +122,16 @@ type ModuleLogger = {
 
 /**
  * Logger que usa console en browser y pino en server
+ * Redacta automáticamente datos sensibles
  */
 function createBrowserLogger(options: LoggerOptions): ModuleLogger {
   const prefix = `[${options.module}]`
 
   const make = (level: LogLevel, consoleFn: (...args: unknown[]) => void) =>
     (ctx: LogContext, msg: string) => {
-      consoleFn(prefix, msg, ctx)
+      // Redactar contexto antes de loguear
+      const safeCtx = redactSensitiveData(ctx)
+      consoleFn(prefix, msg, safeCtx)
     }
 
   const logger: ModuleLogger = {
@@ -82,6 +168,35 @@ function getPinoLogger(options: LoggerOptions): ModuleLogger {
       level: logLevel,
       base: { module: options.module },
       timestamp: pino.stdTimeFunctions.isoTime,
+      // Serializers personalizados para redactar datos sensibles
+      serializers: {
+        ...pino.stdSerializers,
+        // Redactar errores (pueden contener datos sensibles en message/stack)
+        err: (err: Error) => {
+          const serialized = pino.stdSerializers.err(err)
+          return redactSensitiveData(serialized)
+        },
+        // Redactar requests HTTP
+        req: (req: unknown) => {
+          const serialized = pino.stdSerializers.req(req)
+          return redactSensitiveData(serialized)
+        },
+        // Redactar responses HTTP
+        res: (res: unknown) => {
+          const serialized = pino.stdSerializers.res(res)
+          return redactSensitiveData(serialized)
+        },
+      },
+      // Hook para redactar todos los contextos
+      hooks: {
+        logMethod(args: unknown[], method: (...args: unknown[]) => void) {
+          // args[0] es el contexto, args[1] es el mensaje
+          if (args.length >= 2 && typeof args[0] === 'object') {
+            args[0] = redactSensitiveData(args[0])
+          }
+          method.apply(this, args)
+        },
+      },
     })
 
     const child = base.child({

@@ -99,6 +99,8 @@ model Lead {
   @@index([companyId])
   @@index([companyId, status])
   @@index([companyId, assignedToId])
+  @@index([companyId, status, assignedToId])
+  @@index([companyId, createdAt(sort: Desc)])
   @@map("Lead")
 }
 
@@ -180,6 +182,9 @@ model Unit {
   @@index([companyId])
   @@index([companyId, status])
   @@index([companyId, type])
+  @@index([companyId, status, type])
+  @@index([companyId, priceArs])
+  @@index([companyId, createdAt(sort: Desc)])
   @@map("Unit")
 }
 
@@ -264,6 +269,7 @@ model Installment {
 
   @@index([promissoryNoteId])
   @@index([dueDate, status])
+  @@index([status, dueDate])
   @@map("Installment")
 }
 
@@ -314,6 +320,8 @@ model Deal {
   @@index([companyId])
   @@index([companyId, status])
   @@index([sellerId])
+  @@index([companyId, status, sellerId])
+  @@index([companyId, createdAt(sort: Desc)])
   @@map("Deal")
 }
 
@@ -410,6 +418,8 @@ model AuditLog {
   @@index([companyId, createdAt])
   @@index([userId, createdAt])
   @@index([resource, resourceId])
+  @@index([companyId, resource, createdAt])
+  @@index([companyId, userId, createdAt])
   @@map("AuditLog")
 }
 
@@ -678,4 +688,22 @@ model DigitalDocument {
   @@index([unitId])
   @@index([leadId])
   @@map("DigitalDocument")
+}
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  eventId     String    @unique
+  source      String    // 'stripe', 'other'
+  type        String
+  status      String    @default("processing") // 'processing', 'processed', 'failed'
+  payload     Json?
+  error       String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+
+  @@index([eventId])
+  @@index([expiresAt])
+  @@index([source, status])
+  @@map("WebhookEvent")
 }
