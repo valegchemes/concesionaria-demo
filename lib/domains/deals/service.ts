@@ -156,12 +156,20 @@ export class DealService {
     const deal = await prisma.deal.findFirst({
       where: { id, companyId },
       include: {
-        lead: { select: { id: true, name: true, phone: true } },
+        lead: { 
+          include: {
+            tasks: {
+              where: { isCompleted: false },
+              orderBy: { dueDate: 'asc' },
+              take: 5
+            }
+          }
+        },
         unit: { select: { id: true, title: true, type: true } },
         payments: { orderBy: { createdAt: 'desc' } },
         closingCosts: { orderBy: { id: 'asc' } },
         tradeIn: true,
-        seller: { select: { id: true, name: true, email: true } },
+        seller: { select: { id: true, name: true, email: true, whatsappNumber: true } },
       },
     }) as unknown as DealWithRelations
 

@@ -22,13 +22,16 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   OTHER: 'Otro',
 }
 
-function formatCurrency(amount: number, currency: string): string {
+function formatCurrency(amount: number | string | null, currency: string): string {
+  const value = Number(amount || 0)
   const symbol = currency === 'USD' ? 'USD' : 'ARS'
-  return `${symbol} ${amount.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+  return `${symbol} ${value.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return ''
   const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return ''
   return d.toLocaleDateString('es-AR', {
     weekday: 'long',
     day: 'numeric',
@@ -37,8 +40,10 @@ function formatDate(dateStr: string): string {
   })
 }
 
-function formatDateTime(dateStr: string): string {
+function formatDateTime(dateStr: string | null): string {
+  if (!dateStr) return ''
   const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return ''
   return d.toLocaleDateString('es-AR', {
     weekday: 'long',
     day: 'numeric',
@@ -51,9 +56,9 @@ function formatDateTime(dateStr: string): string {
 export interface DealForMessage {
   id: string
   status: string
-  finalPrice: number
+  finalPrice: number | string
   finalPriceCurrency: string
-  depositAmount: number | null
+  depositAmount: number | string | null
   depositDate: string | null
   depositMethod: string | null
   notes: string | null
@@ -61,7 +66,7 @@ export interface DealForMessage {
   seller: { id: string; name: string; whatsappNumber: string | null } | null
   payments?: {
     id: string
-    amount: number
+    amount: number | string
     currency: string
     method: string
     receivedAt: string
@@ -112,27 +117,31 @@ export function generateDealWhatsAppMessage({
   lines.push(`💰 *Precio acordado:* ${price}`)
 
   // Deposit / seña
-  if (deal.depositAmount && deal.depositAmount > 0) {
+  const depositVal = Number(deal.depositAmount || 0)
+  if (depositVal > 0) {
     const depositStr = formatCurrency(deal.depositAmount, deal.finalPriceCurrency)
     const methodStr = deal.depositMethod ? PAYMENT_METHOD_LABELS[deal.depositMethod] ?? deal.depositMethod : ''
-    const dateStr = deal.depositDate ? ` — ${formatDate(deal.depositDate)}` : ''
-    const methodPart = methodStr ? ` (${methodStr}${dateStr})` : dateStr ? ` (${dateStr})` : ''
+    const dateStr = formatDate(deal.depositDate)
+    const methodPart = methodStr ? ` (${methodStr}${dateStr ? ` — ${dateStr}` : ''})` : dateStr ? ` (${dateStr})` : ''
     lines.push(`💵 *Seña / Anticipo:* ${depositStr}${methodPart}`)
   }
 
   // Additional payments
-  if (deal.payments && deal.payments.length > 0) {
-    const totalPaid = deal.payments.reduce((sum, p) => sum + p.amount, 0)
+  const payments = deal.payments || []
+  if (payments.length > 0) {
+    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
     if (totalPaid > 0) {
       lines.push(`💳 *Pagos registrados:* ${formatCurrency(totalPaid, deal.finalPriceCurrency)}`)
     }
   }
 
   // Remaining balance
-  const depositAmt = deal.depositAmount ?? 0
-  const paymentTotal = deal.payments?.reduce((sum, p) => sum + p.amount, 0) ?? 0
+  const depositAmt = Number(deal.depositAmount || 0)
+  const paymentTotal = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
   const totalAbonado = depositAmt + paymentTotal
-  const saldo = deal.finalPrice - totalAbonado
+  const finalPriceVal = Number(deal.finalPrice || 0)
+  const saldo = finalPriceVal - totalAbonado
+  
   if (saldo > 0 && totalAbonado > 0) {
     lines.push(`📊 *Saldo pendiente:* ${formatCurrency(saldo, deal.finalPriceCurrency)}`)
   }

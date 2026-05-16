@@ -3,10 +3,15 @@
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Car, Handshake, DollarSign, Calendar, Clock, CreditCard, UserCircle } from 'lucide-react'
+import { 
+  ArrowLeft, User, Car, Handshake, DollarSign, Calendar, Clock, CreditCard, UserCircle, 
+  MessageCircle, Send, X, Lock
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatDate, formatPrice } from '@/lib/utils'
+import { formatDate, formatPrice, generateWhatsAppLink } from '@/lib/utils'
+import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
+import { generateDealWhatsAppMessage, type DealForMessage, type TaskForMessage } from '@/lib/utils/generate-deal-whatsapp-message'
 import {
   Select,
   SelectContent,
@@ -28,6 +33,12 @@ interface DealDetail {
     id: string
     name: string
     phone: string
+    tasks?: {
+      id: string
+      title: string
+      dueDate: string
+      assignedTo?: { name: string } | null
+    }[]
   }
   unit: {
     id: string
@@ -38,10 +49,16 @@ interface DealDetail {
     id: string
     name: string
     email: string
+    whatsappNumber: string | null
   }
   payments: any[]
   closingCosts: any[]
   tradeIn: any | null
+}
+
+interface CurrentUser {
+  companyName: string
+  whatsappCentral?: string | null
 }
 
 const statusColors: Record<string, string> = {
@@ -77,10 +94,33 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
   
   const [deal, setDeal] = useState<DealDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const { limits } = usePlanLimits()
+  const [me, setMe] = useState<CurrentUser | null>(null)
+
+  // WhatsApp deal modal state
+  const [waModalOpen, setWaModalOpen] = useState(false)
+  const [waPreviewMessage, setWaPreviewMessage] = useState('')
+  const [waPhoneNumber, setWaPhoneNumber] = useState<string>('')
 
   useEffect(() => {
     fetchDeal()
+    fetchCurrentUser()
   }, [id])
+
+  async function fetchCurrentUser() {
+    try {
+      const res = await fetch('/api/me', { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json()
+        setMe({
+          companyName: data.companyName || '',
+          whatsappCentral: data.whatsappCentral || null,
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error)
+    }
+  }
 
   async function fetchDeal() {
     try {
@@ -126,6 +166,41 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
     } finally {
       setUpdatingStatus(false)
     }
+  }
+
+  function openWhatsAppModal() {
+    if (!deal || !me) return
+
+    const tasks: TaskForMessage[] = (deal.lead.tasks || []).map(t => ({
+      id: t.id,
+      title: t.title,
+      dueDate: t.dueDate,
+      assignedTo: t.assignedTo ?? null,
+    }))
+
+    const msg = generateDealWhatsAppMessage({
+      lead: { name: deal.lead.name, phone: deal.lead.phone },
+      deal: deal as any as DealForMessage,
+      tasks,
+      companyName: me.companyName,
+    })
+    setWaPreviewMessage(msg)
+
+    // Pre-select phone: central > seller
+    const phone = me.whatsappCentral || deal.seller.whatsappNumber || ''
+    setWaPhoneNumber(phone)
+
+    setWaModalOpen(true)
+  }
+
+  function confirmSendWhatsApp() {
+    if (!waPhoneNumber) {
+      alert('Seleccioná un número de WhatsApp para enviar.')
+      return
+    }
+    const link = generateWhatsAppLink(waPhoneNumber, waPreviewMessage)
+    window.open(link, '_blank')
+    setWaModalOpen(false)
   }
 
   if (loading) {
@@ -263,6 +338,41 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
             </CardContent>
           </Card>
 
+          {/* WhatsApp Card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-slate-500 flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 text-green-500" />
+                WhatsApp
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!limits.whatsappEnabled ? (
+                <div className="text-center py-4 space-y-3">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-950/30">
+                    <Lock className="h-5 w-5 text-green-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">WhatsApp no disponible en tu plan</p>
+                  <p className="text-xs text-gray-500">Activá esta función con el <strong>Plan Pro</strong>.</p>
+                  <Link
+                    href="/app/settings/billing"
+                    className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
+                  >
+                    Ver planes
+                  </Link>
+                </div>
+              ) : (
+                <Button
+                  className="w-full bg-green-500 hover:bg-green-600 gap-2"
+                  onClick={openWhatsAppModal}
+                >
+                  <Send className="h-4 w-4" />
+                  Enviar resumen por WhatsApp
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Notes */}
           {deal.notes && (
             <Card>
@@ -323,6 +433,89 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
         </div>
       </div>
+
+      {/* WhatsApp deal confirmation modal */}
+      {waModalOpen && deal && me && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 dark:bg-green-950/40">
+                  <MessageCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">Enviar WhatsApp</h3>
+                  <p className="text-xs text-gray-500">Resumen de la operación para el cliente</p>
+                </div>
+              </div>
+              <button onClick={() => setWaModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Enviar desde</p>
+                <div className="flex flex-col gap-2">
+                  {me.whatsappCentral && (
+                    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${waPhoneNumber === me.whatsappCentral ? 'border-green-500 bg-green-50' : 'hover:bg-slate-50'}`}>
+                      <input 
+                        type="radio" 
+                        name="phone" 
+                        value={me.whatsappCentral} 
+                        checked={waPhoneNumber === me.whatsappCentral}
+                        onChange={e => setWaPhoneNumber(e.target.value)}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">Central</span>
+                        <span className="text-xs text-gray-500">{me.whatsappCentral}</span>
+                      </div>
+                    </label>
+                  )}
+                  {deal.seller.whatsappNumber && (
+                    <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${waPhoneNumber === deal.seller.whatsappNumber ? 'border-green-500 bg-green-50' : 'hover:bg-slate-50'}`}>
+                      <input 
+                        type="radio" 
+                        name="phone" 
+                        value={deal.seller.whatsappNumber} 
+                        checked={waPhoneNumber === deal.seller.whatsappNumber}
+                        onChange={e => setWaPhoneNumber(e.target.value)}
+                        className="h-4 w-4 text-green-600 focus:ring-green-500"
+                      />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">Asesor ({deal.seller.name})</span>
+                        <span className="text-xs text-gray-500">{deal.seller.whatsappNumber}</span>
+                      </div>
+                    </label>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Vista previa del mensaje</p>
+                <textarea
+                  value={waPreviewMessage}
+                  onChange={e => setWaPreviewMessage(e.target.value)}
+                  rows={12}
+                  className="w-full rounded-lg border bg-gray-50 dark:bg-slate-800 px-3 py-2.5 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+                />
+                <p className="text-xs text-gray-400">Podés editar el mensaje antes de enviarlo.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 px-5 py-4 border-t dark:border-slate-800">
+              <Button variant="outline" className="flex-1" onClick={() => setWaModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700 gap-2 text-white"
+                onClick={confirmSendWhatsApp}
+              >
+                <Send className="h-4 w-4" />
+                Confirmar y abrir WhatsApp
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
