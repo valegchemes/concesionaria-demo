@@ -56,20 +56,20 @@ interface KpiCardProps {
 
 function KpiCard({ title, value, subtitle, icon: Icon, accentColor, iconColor, trend }: KpiCardProps) {
   return (
-    <Card className={`relative overflow-hidden border-l-4 ${accentColor} bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30 hover:shadow-lg hover:shadow-black/10 transition-all duration-300`}>
+    <Card className={`relative overflow-hidden border-l-4 ${accentColor} surface-secondary hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
-        <CardTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+        <CardTitle className="text-xs font-semibold uppercase tracking-widest text-adaptive-secondary">
           {title}
         </CardTitle>
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconColor}`}>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconColor} transition-transform group-hover:scale-110`}>
           <Icon className="h-4 w-4" />
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4">
-        <div className="text-2xl font-black text-foreground tabular-nums">{value}</div>
-        <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        <div className="text-2xl font-black text-adaptive-primary tabular-nums">{value}</div>
+        <p className="text-xs text-adaptive-secondary mt-0.5">{subtitle}</p>
         {trend && (
-          <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.value > 0 ? 'text-emerald-600' : trend.value < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+          <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.value > 0 ? 'text-emerald-500' : trend.value < 0 ? 'text-red-500' : 'text-adaptive-secondary'}`}>
             {trend.value > 0 ? <ArrowUpRight className="h-3 w-3" /> : trend.value < 0 ? <ArrowDownRight className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
             {trend.label}
           </div>
@@ -90,39 +90,30 @@ interface StatPillProps {
 function StatPill({ label, value, sublabel, icon: Icon, color }: StatPillProps) {
   const colorMap = {
     blue: {
-      card: 'border-blue-100/50 bg-blue-50/40 dark:border-blue-900/30 dark:bg-blue-950/30',
-      label: 'text-blue-700 dark:text-blue-300',
-      value: 'text-blue-800 dark:text-blue-100',
-      sub: 'text-blue-600/70 dark:text-blue-400/70',
-      icon: 'text-blue-300 dark:text-blue-600',
+      label: 'text-blue-500 dark:text-blue-400',
+      icon: 'text-blue-400',
     },
     green: {
-      card: 'border-emerald-100/50 bg-emerald-50/40 dark:border-emerald-900/30 dark:bg-emerald-950/30',
-      label: 'text-emerald-700 dark:text-emerald-300',
-      value: 'text-emerald-800 dark:text-emerald-100',
-      sub: 'text-emerald-600/70 dark:text-emerald-400/70',
-      icon: 'text-emerald-300 dark:text-emerald-600',
+      label: 'text-emerald-500 dark:text-emerald-400',
+      icon: 'text-emerald-400',
     },
     red: {
-      card: 'border-red-100/50 bg-red-50/40 dark:border-red-900/30 dark:bg-red-950/30',
-      label: 'text-red-700 dark:text-red-300',
-      value: 'text-red-800 dark:text-red-100',
-      sub: 'text-red-600/70 dark:text-red-400/70',
-      icon: 'text-red-300 dark:text-red-600',
+      label: 'text-red-500 dark:text-red-400',
+      icon: 'text-red-400',
     },
   }
   const c = colorMap[color]
 
   return (
-    <Card className={`${c.card} backdrop-blur-sm border`}>
+    <Card className={`surface-secondary hover:-translate-y-1 transition-transform duration-300 group`}>
       <CardContent className="py-4 px-4">
         <div className="flex items-center justify-between">
           <div>
             <p className={`text-[10px] font-bold uppercase tracking-widest ${c.label}`}>{label}</p>
-            <p className={`mt-1 text-3xl font-black ${c.value}`}>{formatNumber(value)}</p>
-            <p className={`mt-0.5 text-xs ${c.sub}`}>{sublabel}</p>
+            <p className={`mt-1 text-3xl font-black text-adaptive-primary`}>{formatNumber(value)}</p>
+            <p className={`mt-0.5 text-xs text-adaptive-secondary`}>{sublabel}</p>
           </div>
-          <Icon className={`h-10 w-10 ${c.icon}`} />
+          <Icon className={`h-10 w-10 ${c.icon} transition-transform group-hover:scale-110`} />
         </div>
       </CardContent>
     </Card>
@@ -171,15 +162,15 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-black text-adaptive-primary tracking-tight">Dashboard</h1>
         {companyName && (
-          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{companyName}</p>
+          <p className="mt-0.5 text-sm text-adaptive-secondary">{companyName}</p>
         )}
       </div>
 
       {/* Resumen Operacional */}
       <div className="space-y-4">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
           Resumen Operacional
         </h2>
 
@@ -246,18 +237,18 @@ export default async function DashboardPage() {
       </div>
 
       {/* Analytics de Ventas */}
-      <div className="border-t border-white/20 dark:border-slate-800/50 pt-4">
-        <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
+      <div className="border-t border-adaptive pt-6">
+        <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
           Analíticas de Ventas
         </h2>
         {!analyticsEnabled ? (
-          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+          <Card className="surface-secondary">
             <CardContent className="py-12 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-950/40">
-                <Lock className="h-6 w-6 text-violet-500" />
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-violet-500/10 backdrop-blur-xl">
+                <Lock className="h-6 w-6 text-violet-400" />
               </div>
-              <p className="font-semibold text-gray-700 dark:text-gray-200">Analíticas no disponibles en tu plan</p>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              <p className="font-semibold text-adaptive-primary">Analíticas no disponibles en tu plan</p>
+              <p className="mt-1 text-sm text-adaptive-secondary">
                 Actualizá al <strong>Plan Medio</strong> o <strong>Plan Pro</strong> para ver gráficos de ventas, rendimiento y más.
               </p>
               <Link
@@ -276,10 +267,10 @@ export default async function DashboardPage() {
             userRole={session.user.role}
           />
         ) : (
-          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
-            <CardContent className="py-12 text-center text-gray-400 dark:text-gray-300">
-              <Handshake className="mx-auto mb-3 h-10 w-10 opacity-20" />
-              <p className="font-semibold text-gray-500 dark:text-gray-200">Sin ventas completadas aún</p>
+          <Card className="surface-secondary">
+            <CardContent className="py-12 text-center text-adaptive-secondary">
+              <Handshake className="mx-auto mb-3 h-10 w-10 opacity-40" />
+              <p className="font-semibold text-adaptive-primary">Sin ventas completadas aún</p>
               <p className="mt-1 text-sm">
                 Los gráficos aparecerán cuando marques tu primera operación como <strong>Entregada</strong>.
               </p>

@@ -124,11 +124,11 @@ export default function UnitsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Inventario</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">{available}</span> disponibles
+          <h1 className="text-xl font-bold text-adaptive-primary">Inventario</h1>
+          <p className="text-sm text-adaptive-secondary mt-0.5">
+            <span className="text-emerald-500 font-bold">{available}</span> disponibles
             {reserved > 0 && (
-              <> · <span className="text-orange-600 dark:text-orange-400 font-medium">{reserved}</span> reservados</>
+              <> · <span className="text-orange-500 font-bold">{reserved}</span> reservados</>
             )}
             {' '}· {units.length} total
           </p>
@@ -155,21 +155,21 @@ export default function UnitsPage() {
 
       {/* Filtros rápidos */}
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50">
+        <div className="flex gap-1 p-1 rounded-lg surface-secondary backdrop-blur-sm shadow-sm">
           {['ALL','AVAILABLE','IN_PREP','RESERVED','SOLD'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
-                statusFilter === s ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                statusFilter === s ? 'surface-primary text-adaptive-primary shadow-sm' : 'text-adaptive-secondary hover:text-adaptive-primary'
               )}>
               {s === 'ALL' ? 'Todos' : s === 'AVAILABLE' ? 'Disponible' : s === 'IN_PREP' ? 'En prep.' : s === 'RESERVED' ? 'Reservado' : 'Vendido'}
             </button>
           ))}
         </div>
-        <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50">
+        <div className="flex gap-1 p-1 rounded-lg surface-secondary backdrop-blur-sm shadow-sm">
           {['ALL','CAR','MOTORCYCLE','BOAT'].map(t => (
             <button key={t} onClick={() => setTypeFilter(t)}
               className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
-                typeFilter === t ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                typeFilter === t ? 'surface-primary text-adaptive-primary shadow-sm' : 'text-adaptive-secondary hover:text-adaptive-primary'
               )}>
               {t === 'ALL' ? 'Tipo' : t === 'CAR' ? '🚗 Autos' : t === 'MOTORCYCLE' ? '🏍 Motos' : '⛵ Náutica'}
             </button>
@@ -179,10 +179,10 @@ export default function UnitsPage() {
 
       {/* Buscador */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-adaptive-secondary" />
         <Input
           placeholder="Buscar por modelo o ubicación…"
-          className="pl-9 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm"
+          className="pl-9 surface-secondary backdrop-blur-sm text-adaptive-primary"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -216,10 +216,10 @@ export default function UnitsPage() {
       )}
 
       {!loading && !error && filteredUnits.length === 0 && (
-        <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+        <Card className="surface-secondary">
           <CardContent className="py-16 text-center">
-            <Car className="h-12 w-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-            <p className="font-semibold text-slate-600 dark:text-slate-300">
+            <Car className="h-12 w-12 mx-auto mb-3 text-adaptive-secondary opacity-50" />
+            <p className="font-semibold text-adaptive-primary">
               {search ? 'Sin resultados para tu búsqueda.' : 'No hay unidades cargadas.'}
             </p>
             {!search && (
@@ -242,7 +242,7 @@ export default function UnitsPage() {
             const gradient = typeGradients[unit.type] ?? 'from-slate-700 to-slate-900'
 
             return (
-              <Card key={unit.id} className="overflow-hidden hover:shadow-lg hover:shadow-black/10 transition-all duration-300 group bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+              <Card key={unit.id} className="overflow-hidden surface-primary hover:-translate-y-1 transition-transform duration-300 group">
                 {/* Imagen / Placeholder Premium */}
                 <Link href={`/app/units/${unit.id}`}>
                   <div className="aspect-video bg-muted relative overflow-hidden cursor-pointer">
@@ -314,12 +314,12 @@ export default function UnitsPage() {
                   {/* Precios */}
                   <div className="mt-3 flex items-baseline gap-2">
                     {arsPrice && (
-                      <span className="text-base font-bold text-foreground tabular-nums">{arsPrice}</span>
+                      <span className="text-base font-bold text-adaptive-primary tabular-nums">{arsPrice}</span>
                     )}
                     {usdPrice && (
                       <span className={cn(
                         'text-sm tabular-nums font-semibold',
-                        arsPrice ? 'text-muted-foreground' : 'text-base font-bold text-foreground'
+                        arsPrice ? 'text-adaptive-secondary' : 'text-base font-bold text-adaptive-primary'
                       )}>
                         {usdPrice}
                       </span>
@@ -331,9 +331,9 @@ export default function UnitsPage() {
                   
                   {/* Creador de la unidad */}
                   {unit.createdBy && (
-                    <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <div className="mt-1 flex items-center gap-1 text-[11px] text-adaptive-secondary">
                       <Users className="h-3 w-3" />
-                      Cargado por <span className="font-medium text-foreground">{unit.createdBy}</span>
+                      Cargado por <span className="font-medium text-adaptive-primary">{unit.createdBy}</span>
                     </div>
                   )}
 

@@ -25,53 +25,53 @@
 
   /* Tema claro (fondo oscuro) */
   [data-background-theme="dark"] .surface-primary {
-    @apply bg-white/95 text-slate-900 border-white/20 shadow-2xl;
+    @apply bg-slate-950/60 backdrop-blur-2xl text-slate-100 border-white/10 shadow-2xl;
   }
 
   [data-background-theme="dark"] .surface-secondary {
-    @apply bg-white/90 text-slate-800 border-white/20 shadow-lg;
+    @apply bg-slate-900/50 backdrop-blur-xl text-slate-200 border-white/10 shadow-lg hover:bg-slate-900/60 transition-colors;
   }
 
   [data-background-theme="dark"] .surface-muted {
-    @apply bg-white/60 text-slate-700 border-white/10;
+    @apply bg-slate-800/40 text-slate-300 border-white/5;
   }
 
   [data-background-theme="dark"] .surface-accent {
-    @apply bg-blue-50/80 text-blue-900 border-blue-200/30;
+    @apply bg-blue-900/40 text-blue-100 border-blue-500/30;
   }
 
   /* Tema oscuro (fondo claro) */
   [data-background-theme="light"] .surface-primary {
-    @apply bg-slate-950/95 text-slate-100 border-slate-700/60 shadow-2xl;
+    @apply bg-white/70 backdrop-blur-2xl text-slate-900 border-slate-200/50 shadow-2xl;
   }
 
   [data-background-theme="light"] .surface-secondary {
-    @apply bg-slate-900/90 text-slate-200 border-slate-700/50 shadow-lg;
+    @apply bg-white/60 backdrop-blur-xl text-slate-800 border-slate-200/50 shadow-lg hover:bg-white/80 transition-colors;
   }
 
   [data-background-theme="light"] .surface-muted {
-    @apply bg-slate-700/70 text-slate-300 border-slate-500/30;
+    @apply bg-slate-100/50 text-slate-600 border-slate-300/30;
   }
 
   [data-background-theme="light"] .surface-accent {
-    @apply bg-blue-950/80 text-blue-100 border-blue-800/40;
+    @apply bg-blue-100/60 text-blue-900 border-blue-300/40;
   }
 
   /* Tema neutral (fondo intermedio) */
   [data-background-theme="neutral"] .surface-primary {
-    @apply bg-slate-50/95 text-slate-900 border-slate-200/40 shadow-xl backdrop-blur-2xl;
+    @apply bg-slate-950/70 backdrop-blur-2xl text-slate-100 border-white/10 shadow-xl;
   }
 
   [data-background-theme="neutral"] .surface-secondary {
-    @apply bg-slate-100/90 text-slate-800 border-slate-300/40 shadow-lg;
+    @apply bg-slate-900/60 backdrop-blur-xl text-slate-200 border-white/10 shadow-lg;
   }
 
   [data-background-theme="neutral"] .surface-muted {
-    @apply bg-slate-200/70 text-slate-700 border-slate-400/25;
+    @apply bg-slate-800/50 text-slate-300 border-white/5;
   }
 
   [data-background-theme="neutral"] .surface-accent {
-    @apply bg-blue-100/75 text-blue-900 border-blue-300/35;
+    @apply bg-blue-900/50 text-blue-100 border-blue-500/30;
   }
 
   /* Sidebar específico */
@@ -97,15 +97,15 @@
   }
 
   [data-background-theme="dark"] .text-adaptive-primary {
-    @apply text-slate-900;
+    @apply text-white;
   }
 
   [data-background-theme="light"] .text-adaptive-primary {
-    @apply text-slate-100;
+    @apply text-slate-900;
   }
 
   [data-background-theme="neutral"] .text-adaptive-primary {
-    @apply text-slate-900;
+    @apply text-white;
   }
 
   .text-adaptive-secondary {
@@ -113,15 +113,15 @@
   }
 
   [data-background-theme="dark"] .text-adaptive-secondary {
-    @apply text-slate-600;
-  }
-
-  [data-background-theme="light"] .text-adaptive-secondary {
     @apply text-slate-300;
   }
 
+  [data-background-theme="light"] .text-adaptive-secondary {
+    @apply text-slate-600;
+  }
+
   [data-background-theme="neutral"] .text-adaptive-secondary {
-    @apply text-slate-500;
+    @apply text-slate-300;
   }
 
   /* Bordes adaptativos */
@@ -143,19 +143,19 @@
 
   /* Cards del dashboard */
   .card-dashboard {
-    @apply backdrop-blur-xl border rounded-lg p-5 transition-all duration-300 shadow-lg;
+    @apply backdrop-blur-2xl border rounded-[1.25rem] p-5 transition-all duration-300 shadow-xl;
   }
 
   [data-background-theme="dark"] .card-dashboard {
-    @apply bg-white/95 text-slate-900 border-white/25;
+    @apply bg-slate-950/60 text-slate-100 border-white/10;
   }
 
   [data-background-theme="light"] .card-dashboard {
-    @apply bg-slate-950/95 text-slate-100 border-slate-700/50;
+    @apply bg-white/70 text-slate-900 border-slate-200/50;
   }
 
   [data-background-theme="neutral"] .card-dashboard {
-    @apply bg-slate-50/80 text-slate-900 border-slate-200/35;
+    @apply bg-slate-950/70 text-slate-100 border-white/10;
   }
 
   /* Modal overlay */

@@ -106,9 +106,8 @@ function KanbanCard({ lead, onDragStart, onClick }: {
       onDragStart={(e) => onDragStart(e, lead.id)}
       onClick={onClick}
       className={cn(
-        'group cursor-pointer rounded-xl border bg-white dark:bg-slate-900 p-3.5 shadow-sm',
-        'transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 active:scale-95',
-        overdue ? 'border-l-4 border-l-red-400 border-r border-t border-b border-slate-200 dark:border-slate-700' : 'border-slate-200 dark:border-slate-700'
+        'group cursor-pointer rounded-xl p-3.5 surface-secondary hover:-translate-y-1 transition-transform duration-200 hover:shadow-xl active:scale-95',
+        overdue ? 'border-l-4 border-l-red-500' : ''
       )}
     >
       <div className="flex items-start gap-2.5">
@@ -116,7 +115,7 @@ function KanbanCard({ lead, onDragStart, onClick }: {
           {lead.name.charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{lead.name}</p>
+          <p className="text-sm font-semibold text-adaptive-primary truncate">{lead.name}</p>
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-semibold', srcColor)}>
               {sourceLabels[lead.source] ?? lead.source}
@@ -130,7 +129,7 @@ function KanbanCard({ lead, onDragStart, onClick }: {
         </div>
       </div>
 
-      <div className="mt-2.5 space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+      <div className="mt-2.5 space-y-1.5 text-xs text-adaptive-secondary">
         <div className="flex items-center gap-1.5">
           <Phone className="h-3 w-3 shrink-0" />
           <span className="truncate">{lead.phone}</span>
@@ -178,12 +177,12 @@ function KanbanColumn({ status, leads, onDrop, onDragOver, onCardClick }: {
       onDrop={(e) => { setIsDragOver(false); onDrop(e, status) }}
     >
       {/* Column Header */}
-      <div className={cn('flex items-center justify-between rounded-t-xl px-3 py-2.5', config.col)}>
+      <div className={cn('flex items-center justify-between rounded-t-xl px-3 py-2.5 border-b border-white/10 dark:border-white/5 surface-muted')}>
         <div className="flex items-center gap-2">
-          <span className={cn('h-2 w-2 rounded-full', config.dot)} />
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{config.label}</span>
+          <span className={cn('h-2 w-2 rounded-full shadow-sm', config.dot)} />
+          <span className="text-xs font-bold text-adaptive-primary">{config.label}</span>
         </div>
-        <span className="rounded-full bg-white dark:bg-slate-800 px-2 py-0.5 text-xs font-bold text-slate-600 dark:text-slate-300 shadow-sm">
+        <span className="rounded-full surface-primary px-2 py-0.5 text-xs font-bold text-adaptive-primary shadow-sm">
           {leads.length}
         </span>
       </div>
@@ -202,7 +201,7 @@ function KanbanColumn({ status, leads, onDrop, onDragOver, onCardClick }: {
           />
         ))}
         {leads.length === 0 && (
-          <div className="flex items-center justify-center py-8 text-xs text-slate-400 dark:text-slate-600">
+          <div className="flex items-center justify-center py-8 text-xs text-adaptive-secondary">
             Sin leads
           </div>
         )}
@@ -331,10 +330,10 @@ export default function LeadsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Gestión de Leads</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="text-blue-600 dark:text-blue-400 font-medium">{totalActive}</span> activos
-            · <span className="text-emerald-600 dark:text-emerald-400 font-medium">{totalSold}</span> vendidos
+          <h1 className="text-xl font-bold text-adaptive-primary">Gestión de Leads</h1>
+          <p className="text-sm text-adaptive-secondary mt-0.5">
+            <span className="text-blue-500 font-bold">{totalActive}</span> activos
+            · <span className="text-emerald-500 font-bold">{totalSold}</span> vendidos
             · {leads.length} total
           </p>
         </div>
@@ -384,8 +383,8 @@ export default function LeadsPage() {
                   className={cn(
                     'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-150',
                     filter === f.key
-                      ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                      ? 'surface-primary text-adaptive-primary shadow-sm'
+                      : 'text-adaptive-secondary hover:text-adaptive-primary'
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -469,19 +468,19 @@ export default function LeadsPage() {
       {view === 'list' && (
         <>
           {filteredLeads.length === 0 ? (
-            <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+            <Card className="surface-secondary">
               <CardContent className="py-14 text-center">
-                <Users className="h-10 w-10 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-                <p className="font-semibold text-slate-600 dark:text-slate-300">
+                <Users className="h-10 w-10 mx-auto mb-3 text-adaptive-secondary opacity-50" />
+                <p className="font-semibold text-adaptive-primary">
                   {search ? 'Sin resultados para tu búsqueda' : 'No hay leads registrados'}
                 </p>
-                <p className="text-sm text-slate-400 mt-1">
+                <p className="text-sm text-adaptive-secondary mt-1">
                   {!search && 'Crea tu primer lead con el botón "Nuevo Lead"'}
                 </p>
               </CardContent>
             </Card>
           ) : (
-            <Card className="divide-y divide-border/50 overflow-hidden bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+            <Card className="surface-primary divide-y divide-white/5 overflow-hidden">
               {filteredLeads.map((lead, idx) => {
                 const overdue = hasOverdueTask(lead)
                 const status = statusConfig[lead.status] ?? { label: lead.status, classes: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' }
@@ -504,7 +503,7 @@ export default function LeadsPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-sm text-foreground truncate">{lead.name}</p>
+                        <p className="font-semibold text-sm text-adaptive-primary truncate">{lead.name}</p>
                         <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold', status.classes)}>
                           <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
                           {status.label}
@@ -516,7 +515,7 @@ export default function LeadsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-adaptive-secondary">
                         <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{lead.phone}</span>
                         {lead.email && (
                           <span className="hidden sm:flex items-center gap-1"><Mail className="h-3 w-3" />{lead.email}</span>
