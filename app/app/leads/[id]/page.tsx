@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate, formatPrice, generateWhatsAppLink, processTemplate } from '@/lib/utils'
 import { 
   ArrowLeft, Phone, Mail, User, Car, MessageCircle, 
-  Calendar, CheckCircle, Clock, AlertCircle, Handshake
+  Calendar, CheckCircle, Clock, AlertCircle, Handshake, Lock
 } from 'lucide-react'
 import { LeadPromissoryNotesTab } from '@/components/leads/lead-promissory-notes-tab'
+import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
 
 interface Lead {
   id: string
@@ -127,6 +128,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [newActivityNote, setNewActivityNote] = useState('')
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [activeTab, setActiveTab] = useState<'info' | 'notes'>('info')
+  const { limits } = usePlanLimits()
 
   const fetchLead = useCallback(async () => {
     try {
@@ -353,40 +355,58 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Plantilla</Label>
-                <select
-                  value={selectedTemplate}
-                  onChange={(e) => setSelectedTemplate(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md border text-sm"
-                >
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.template}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                {generateWhatsAppMessage(selectedTemplate)}
-              </div>
-              <div className="space-y-2">
-                <Button 
-                  className="w-full bg-green-500 hover:bg-green-600"
-                  onClick={() => openWhatsApp(me?.whatsappCentral)}
-                >
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Escribir desde Central
-                </Button>
-                {lead.assignedTo?.whatsappNumber && (
-                  <Button 
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => openWhatsApp(lead.assignedTo?.whatsappNumber)}
+              {!limits.whatsappEnabled ? (
+                <div className="text-center py-4 space-y-3">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-950/30">
+                    <Lock className="h-5 w-5 text-green-400" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">WhatsApp no disponible en tu plan</p>
+                  <p className="text-xs text-gray-500">Activá esta función con el <strong>Plan Pro</strong>.</p>
+                  <Link
+                    href="/app/settings/billing"
+                    className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
                   >
-                    <MessageCircle className="h-4 w-4 mr-2" />
-                    Escribir desde {lead.assignedTo.name}
-                  </Button>
-                )}
-              </div>
+                    Ver planes
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label>Plantilla</Label>
+                    <select
+                      value={selectedTemplate}
+                      onChange={(e) => setSelectedTemplate(e.target.value)}
+                      className="w-full h-10 px-3 rounded-md border text-sm"
+                    >
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.template}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                    {generateWhatsAppMessage(selectedTemplate)}
+                  </div>
+                  <div className="space-y-2">
+                    <Button 
+                      className="w-full bg-green-500 hover:bg-green-600"
+                      onClick={() => openWhatsApp(me?.whatsappCentral)}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      Escribir desde Central
+                    </Button>
+                    {lead.assignedTo?.whatsappNumber && (
+                      <Button 
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => openWhatsApp(lead.assignedTo?.whatsappNumber)}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Escribir desde {lead.assignedTo.name}
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

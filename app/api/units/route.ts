@@ -30,6 +30,7 @@ import { requirePermission } from '@/lib/shared/authz'
 import type { UnitStatus, UnitType, Prisma } from '@prisma/client'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { requireRateLimit, RATE_LIMITS, getRequestIdentifier } from '@/lib/shared/rate-limit-memory'
+import { canAddUnit } from '@/lib/shared/plan-limits'
 
 const log = createLogger('API:Units')
 
@@ -223,6 +224,15 @@ export const POST = withTenantHandler(async (request: NextRequest): Promise<Next
 
     // Verify permission
     await requirePermission(user.id, user.companyId, 'units', 'manage_all')
+
+    // Plan limit check
+    const limitCheck = await canAddUnit(user.companyId)
+    if (!limitCheck.allowed) {
+      return errorResponse(
+        new ForbiddenError(limitCheck.reason ?? 'Límite de unidades alcanzado'),
+        { path: '/api/units', method: 'POST' }
+      )
+    }
 
     // 3. Validación del body con Zod
     const body = await request.json()

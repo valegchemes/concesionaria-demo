@@ -471,20 +471,22 @@ model RolePermission {
 }
 
 model SaasPlan {
-  id              String             @id @default(cuid())
-  name            String
-  description     String?
-  stripeProductId String             @unique
-  stripePriceId   String             @unique
-  price           Decimal            @db.Decimal(10, 2)
-  currency        String             @default("usd")
-  interval        String             @default("month")
-  isActive        Boolean            @default(true)
-  maxUsers        Int                @default(0)
-  maxUnits        Int                @default(0)
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  subscriptions   SaasSubscription[]
+  id               String             @id @default(cuid())
+  name             String
+  description      String?
+  stripeProductId  String             @unique
+  stripePriceId    String             @unique
+  price            Decimal            @db.Decimal(10, 2)
+  currency         String             @default("usd")
+  interval         String             @default("month")
+  isActive         Boolean            @default(true)
+  maxUsers         Int                @default(0)
+  maxUnits         Int                @default(0)
+  analyticsEnabled Boolean            @default(false)
+  whatsappEnabled  Boolean            @default(false)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  subscriptions    SaasSubscription[]
 
   @@map("SaasPlan")
 }

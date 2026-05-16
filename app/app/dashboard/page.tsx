@@ -5,9 +5,11 @@ import { redirect } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Users, Car, Handshake, TrendingUp, AlertCircle, Clock,
-  CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, Minus,
+  CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, Minus, Lock,
 } from 'lucide-react'
 import { AnalyticsDashboardLazy } from '@/components/dashboard/analytics-dashboard-lazy'
+import { getPlanLimits } from '@/lib/shared/plan-limits'
+import Link from 'next/link'
 
 async function getDashboardData(companyId: string, userId: string, role: string) {
   const isSeller = role === 'SELLER'
@@ -142,16 +144,20 @@ export default async function DashboardPage() {
 
   let companyName: string | undefined
 
+  let analyticsEnabled = false
+
   try {
-    const [data, company] = await Promise.all([
+    const [data, company, planLimits] = await Promise.all([
       getDashboardData(session.user.companyId, session.user.id, session.user.role),
       prisma.company.findUnique({
         where: { id: session.user.companyId },
         select: { name: true },
       }),
+      getPlanLimits(session.user.companyId),
     ])
     stats = data
     companyName = company?.name
+    analyticsEnabled = planLimits.analyticsEnabled
   } catch (e) {
     console.error('[Dashboard] DB error:', e)
   }
@@ -244,7 +250,25 @@ export default async function DashboardPage() {
         <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500">
           Analíticas de Ventas
         </h2>
-        {stats.deals.completed > 0 ? (
+        {!analyticsEnabled ? (
+          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+            <CardContent className="py-12 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-950/40">
+                <Lock className="h-6 w-6 text-violet-500" />
+              </div>
+              <p className="font-semibold text-gray-700 dark:text-gray-200">Analíticas no disponibles en tu plan</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Actualizá al <strong>Plan Medio</strong> o <strong>Plan Pro</strong> para ver gráficos de ventas, rendimiento y más.
+              </p>
+              <Link
+                href="/app/settings/billing"
+                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 transition-colors"
+              >
+                Ver planes
+              </Link>
+            </CardContent>
+          </Card>
+        ) : stats.deals.completed > 0 ? (
           <AnalyticsDashboardLazy
             companyId={session.user.companyId}
             companyName={companyName}

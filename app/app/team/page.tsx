@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Users, UserPlus, ShieldCheck, Mail, Phone,
-  Loader2, Trash2, AlertCircle, MessageCircle, Pencil, Camera, X
+  Loader2, Trash2, AlertCircle, MessageCircle, Pencil, Camera, X, Lock
 } from 'lucide-react'
 import Image from 'next/image'
+import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
 
 interface TeamMember {
   id: string
@@ -45,6 +47,7 @@ function getAvatarGradient(name: string): string {
 
 export default function TeamPage() {
   const router = useRouter()
+  const { limits } = usePlanLimits()
   const [me, setMe] = useState<CurrentUser | null>(null)
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
@@ -196,20 +199,33 @@ export default function TeamPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">Equipo de Ventas</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {members.length} miembro{members.length !== 1 ? 's' : ''} · {members.filter(m => m.role === 'ADMIN').length} administrador{members.filter(m => m.role === 'ADMIN').length !== 1 ? 'es' : ''}
+            {members.length} miembro{members.length !== 1 ? 's' : ''} de {limits.maxUsers} · {members.filter(m => m.role === 'ADMIN').length} administrador{members.filter(m => m.role === 'ADMIN').length !== 1 ? 'es' : ''}
           </p>
         </div>
         {isAdmin && (
-          <Button
-            onClick={() => setShowAddForm(!showAddForm)}
-            variant={showAddForm ? 'outline' : 'default'}
-            size="sm"
-            className="gap-1.5"
-          >
-            {showAddForm ? 'Cancelar' : (
-              <><UserPlus className="h-4 w-4" />Añadir Miembro</>
+          <div className="flex items-center gap-2">
+            {members.length >= limits.maxUsers && (
+              <Link
+                href="/app/settings/billing"
+                className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 hover:bg-amber-100 transition-colors"
+              >
+                <Lock className="h-3 w-3" />
+                Límite de plan ({limits.maxUsers} usuarios)
+              </Link>
             )}
-          </Button>
+            <Button
+              onClick={() => setShowAddForm(!showAddForm)}
+              variant={showAddForm ? 'outline' : 'default'}
+              size="sm"
+              className="gap-1.5"
+              disabled={members.length >= limits.maxUsers}
+              title={members.length >= limits.maxUsers ? `Tu plan permite hasta ${limits.maxUsers} usuario${limits.maxUsers === 1 ? '' : 's'}` : undefined}
+            >
+              {showAddForm ? 'Cancelar' : (
+                <><UserPlus className="h-4 w-4" />Añadir Miembro</>
+              )}
+            </Button>
+          </div>
         )}
       </div>
 

@@ -8,6 +8,7 @@ import { createAuditLog } from '@/lib/shared/audit-log'
 import { EmailSchema, NameSchema, PasswordSchema, PhoneSchema } from '@/lib/shared/validation'
 import { z } from 'zod'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { canAddUser } from '@/lib/shared/plan-limits'
 
 // PasswordSchema centralizado: min 8 chars + mayúscula + minúscula + número
 
@@ -61,6 +62,12 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
 
     const currentUser = await requirePermission('team', 'manage_all')
     const { name, email, password, role, whatsappNumber } = parsed.data
+
+    // Plan limit check
+    const limitCheck = await canAddUser(currentUser.companyId)
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.reason }, { status: 403 })
+    }
 
     // Check if user already exists in this company
     const existingUser = await prisma.user.findUnique({

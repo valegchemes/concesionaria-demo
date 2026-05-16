@@ -11,18 +11,20 @@ import {
   CardFooter,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, ShoppingCart, CheckCircle2, Clock, AlertCircle } from 'lucide-react'
+import { Loader2, ShoppingCart, CheckCircle2, Clock, AlertCircle, XCircle } from 'lucide-react'
 
 interface Plan {
   id: string
   name: string
   description?: string | null
-  stripePriceId: string // reused field — stores MP plan ID
+  stripePriceId: string
   price: string
   currency: string
   interval: string
   maxUsers: number
   maxUnits: number
+  analyticsEnabled: boolean
+  whatsappEnabled: boolean
 }
 
 interface Subscription {
@@ -173,58 +175,87 @@ export default function BillingPage() {
       )}
 
       {/* Plan cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {isFetching ? (
-          <div className="p-4 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md col-span-2">
+          <div className="p-4 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md col-span-3">
             Cargando planes...
           </div>
         ) : plans.length === 0 && !error ? (
-          <div className="p-4 bg-gray-50 text-gray-700 border border-gray-200 rounded-md col-span-2">
+          <div className="p-4 bg-gray-50 text-gray-700 border border-gray-200 rounded-md col-span-3">
             No hay planes disponibles en este momento. Por favor contacta a soporte.
           </div>
         ) : (
-          plans.map((plan) => (
-            <Card key={plan.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5 text-blue-500" />
-                  <CardTitle>{plan.name}</CardTitle>
-                </div>
-                <CardDescription>
-                  {plan.currency.toUpperCase()} {Number(plan.price).toLocaleString('es-AR')} /{' '}
-                  {plan.interval === 'month' ? 'mes' : plan.interval}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <p className="text-sm text-gray-600">
-                  {plan.description || 'Plan de suscripción mensual'}
-                </p>
-                <ul className="space-y-2 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                    Hasta {plan.maxUsers} usuarios
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                    Hasta {plan.maxUnits} unidades en inventario
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  onClick={() => handleCheckout(plan.stripePriceId)}
-                  disabled={loading}
-                  className="w-full"
-                >
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    'Pagar con Mercado Pago'
-                  )}
-                </Button>
-              </CardFooter>
-            </Card>
-          ))
+          plans.map((plan, idx) => {
+            const isPro = idx === plans.length - 1
+            return (
+              <Card key={plan.id} className={`flex flex-col relative ${
+                isPro ? 'border-violet-400 shadow-lg shadow-violet-100 dark:shadow-violet-950/30' : ''
+              }`}>
+                {isPro && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-violet-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                      Recomendado
+                    </span>
+                  </div>
+                )}
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className={`h-5 w-5 ${isPro ? 'text-violet-500' : 'text-blue-500'}`} />
+                    <CardTitle>{plan.name}</CardTitle>
+                  </div>
+                  <div>
+                    <span className="text-2xl font-black text-foreground">
+                      ${Number(plan.price).toLocaleString('es-AR')}
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-1">ARS / mes</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 space-y-2">
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      {plan.maxUsers === 1 ? '1 usuario' : `Hasta ${plan.maxUsers} usuarios`}
+                    </li>
+                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      Hasta {plan.maxUnits} unidades en inventario
+                    </li>
+                    <li className={`flex items-center gap-2 ${
+                      plan.analyticsEnabled ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'
+                    }`}>
+                      {plan.analyticsEnabled
+                        ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                        : <XCircle className="h-4 w-4 text-gray-300 shrink-0" />}
+                      Analíticas de ventas
+                    </li>
+                    <li className={`flex items-center gap-2 ${
+                      plan.whatsappEnabled ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'
+                    }`}>
+                      {plan.whatsappEnabled
+                        ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                        : <XCircle className="h-4 w-4 text-gray-300 shrink-0" />}
+                      Envío de WhatsApp a clientes
+                    </li>
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    onClick={() => handleCheckout(plan.stripePriceId)}
+                    disabled={loading}
+                    className={`w-full ${
+                      isPro ? 'bg-violet-600 hover:bg-violet-700' : ''
+                    }`}
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      'Pagar con Mercado Pago'
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
+          })
         )}
       </div>
     </div>

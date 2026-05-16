@@ -52,12 +52,14 @@ export const billingService = {
         id: true,
         name: true,
         description: true,
-        stripePriceId: true, // reusamos el campo para guardar el ID de precio de MP
+        stripePriceId: true,
         price: true,
         currency: true,
         interval: true,
         maxUsers: true,
         maxUnits: true,
+        analyticsEnabled: true,
+        whatsappEnabled: true,
       },
       orderBy: { price: 'asc' },
     })
@@ -76,6 +78,8 @@ export const billingService = {
         interval: true,
         maxUsers: true,
         maxUnits: true,
+        analyticsEnabled: true,
+        whatsappEnabled: true,
         isActive: true,
       },
     })
