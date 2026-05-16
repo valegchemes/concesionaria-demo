@@ -1,47 +1,48 @@
 import { prisma } from '@/lib/prisma'
-import { stripe } from './stripe'
+import { getMPPreference } from './mercadopago'
 import { createLogger } from '@/lib/shared/logger'
 import { SubscriptionStatus } from '@prisma/client'
 
 const log = createLogger('BillingService')
 
+// Status map shared between helpers
+const statusMap: Record<string, SubscriptionStatus> = {
+  authorized: 'ACTIVE',
+  paused: 'PAUSED',
+  cancelled: 'CANCELED',
+  pending: 'INCOMPLETE',
+}
+
 export const billingService = {
   /**
-   * Obtiene o crea un cliente en Stripe para un Tenant dado
+   * Obtiene o crea un registro de suscripción local para un Tenant dado.
+   * Con Mercado Pago no existe un "customerId" centralizado como en Stripe;
+   * devolvemos el companyId como identificador externo.
    */
-  async getOrCreateCustomer(companyId: string) {
+  async getOrCreateCustomer(companyId: string): Promise<string> {
     const company = await prisma.company.findUnique({
       where: { id: companyId },
-      include: { subscription: true }
+      include: { subscription: true },
     })
 
     if (!company) {
       throw new Error(`Company not found: ${companyId}`)
     }
 
-    if (company.subscription?.stripeCustomerId) {
-      return company.subscription.stripeCustomerId
+    // Si ya existe una suscripción local, reutilizamos el companyId
+    if (company.subscription) {
+      return companyId
     }
 
-    // Crear cliente en Stripe
-    const customer = await stripe.customers.create({
-      email: company.email,
-      name: company.name,
-      metadata: {
-        companyId: company.id
-      }
-    })
-
-    // Registrarlo en nuestra BD local creando una suscripción vacía
+    // Crear registro vacío de suscripción
     await prisma.saasSubscription.create({
       data: {
         companyId: company.id,
-        stripeCustomerId: customer.id,
-        status: 'INCOMPLETE'
-      }
+        status: 'INCOMPLETE',
+      },
     })
 
-    return customer.id
+    return companyId
   },
 
   async getAllowedPlans() {
@@ -51,7 +52,7 @@ export const billingService = {
         id: true,
         name: true,
         description: true,
-        stripePriceId: true,
+        stripePriceId: true, // reusamos el campo para guardar el ID de precio de MP
         price: true,
         currency: true,
         interval: true,
@@ -62,9 +63,9 @@ export const billingService = {
     })
   },
 
-  async getPlanByStripePriceId(stripePriceId: string) {
+  async getPlanByStripePriceId(planId: string) {
     return prisma.saasPlan.findUnique({
-      where: { stripePriceId },
+      where: { stripePriceId: planId },
       select: {
         id: true,
         name: true,
@@ -81,100 +82,114 @@ export const billingService = {
   },
 
   /**
-   * Sincroniza el estado de la suscripción desde Stripe hacia nuestra BD
-   * @param stripeSubscriptionId - ID de la suscripción en Stripe
-   * @param expectedCompanyId - ID de la empresa esperada (validación de ownership)
+   * Crea una preferencia de pago en Mercado Pago para el plan dado.
    */
-  async syncSubscriptionStatus(stripeSubscriptionId: string, expectedCompanyId?: string) {
-    log.info({ stripeSubscriptionId, expectedCompanyId }, 'Syncing subscription from Stripe')
-    
-    const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId)
+  async createCheckoutPreference({
+    companyId,
+    userId,
+    planId,
+    planName,
+    planDescription,
+    price,
+    currency,
+    successUrl,
+    failureUrl,
+    pendingUrl,
+  }: {
+    companyId: string
+    userId: string
+    planId: string
+    planName: string
+    planDescription: string | null
+    price: number
+    currency: string
+    successUrl: string
+    failureUrl: string
+    pendingUrl: string
+  }) {
+    const preference = getMPPreference()
 
-    // Validar que la suscripción tenga companyId en metadata
-    const companyId = subscription.metadata?.companyId
-    if (!companyId) {
-      throw new Error(`Subscription ${stripeSubscriptionId} missing companyId in metadata`)
-    }
-
-    // Validar ownership si se proporciona expectedCompanyId
-    if (expectedCompanyId && companyId !== expectedCompanyId) {
-      log.error(
-        { stripeSubscriptionId, expectedCompanyId, actualCompanyId: companyId },
-        'Subscription ownership mismatch'
-      )
-      throw new Error('Subscription does not belong to this company')
-    }
-
-    // Aquí guardamos el estado a nuestra BD
-    const localSub = await prisma.saasSubscription.findFirst({
-      where: { 
-        stripeSubscriptionId: subscription.id,
-        companyId // ✅ SIEMPRE filtrar por tenant
-      }
+    const result = await preference.create({
+      body: {
+        items: [
+          {
+            id: planId,
+            title: planName,
+            description: planDescription ?? planName,
+            quantity: 1,
+            unit_price: Number(price),
+            currency_id: currency.toUpperCase(),
+          },
+        ],
+        back_urls: {
+          success: successUrl,
+          failure: failureUrl,
+          pending: pendingUrl,
+        },
+        auto_return: 'approved',
+        external_reference: JSON.stringify({ companyId, userId, planId }),
+        statement_descriptor: 'AutoFlow CRM',
+        expires: false,
+      },
     })
 
-    if (localSub) {
-      // Mapeamos el status. Stripe y nosotros usamos nomenclaturas similares, 
-      // pero en prisma definimos un Enum.
-      const statusMap: Record<string, SubscriptionStatus> = {
-        'trailing': 'TRIALING',
-        'active': 'ACTIVE',
-        'past_due': 'PAST_DUE',
-        'canceled': 'CANCELED',
-        'unpaid': 'UNPAID',
-        'incomplete': 'INCOMPLETE',
-        'incomplete_expired': 'INCOMPLETE_EXPIRED',
-        'paused': 'PAUSED'
-      }
+    return result
+  },
 
+  /**
+   * Sincroniza el estado de la suscripción a partir de un pago de Mercado Pago.
+   */
+  async syncSubscriptionFromPayment({
+    paymentId,
+    status,
+    externalReference,
+  }: {
+    paymentId: string
+    status: string
+    externalReference: string | null
+  }) {
+    if (!externalReference) {
+      log.error({ paymentId }, 'Payment missing external_reference')
+      throw new Error('Payment missing external_reference')
+    }
+
+    let parsed: { companyId: string; userId: string; planId: string }
+    try {
+      parsed = JSON.parse(externalReference)
+    } catch {
+      log.error({ externalReference }, 'Invalid external_reference JSON')
+      throw new Error('Invalid external_reference format')
+    }
+
+    const { companyId, planId } = parsed
+    const mappedStatus = statusMap[status] ?? 'INCOMPLETE'
+
+    log.info({ paymentId, status, companyId, planId }, 'Syncing MP payment to subscription')
+
+    const existing = await prisma.saasSubscription.findFirst({
+      where: { companyId },
+    })
+
+    if (existing) {
       await prisma.saasSubscription.update({
-        where: { id: localSub.id },
+        where: { id: existing.id },
         data: {
-          status: statusMap[subscription.status] || 'INCOMPLETE',
-          currentPeriodStart: new Date(subscription.current_period_start * 1000),
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
-          trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
-        }
+          status: mappedStatus,
+          mpPaymentId: paymentId,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+        },
       })
     } else {
-      // Find customer
-      const customerId = subscription.customer as string
-      const localCustomer = await prisma.saasSubscription.findUnique({
-        where: { stripeCustomerId: customerId }
+      await prisma.saasSubscription.create({
+        data: {
+          companyId,
+          status: mappedStatus,
+          mpPaymentId: paymentId,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        },
       })
-
-      if (localCustomer) {
-        const statusMap: Record<string, SubscriptionStatus> = {
-          'trailing': 'TRIALING',
-          'active': 'ACTIVE',
-          'past_due': 'PAST_DUE',
-          'canceled': 'CANCELED',
-          'unpaid': 'UNPAID',
-          'incomplete': 'INCOMPLETE',
-          'incomplete_expired': 'INCOMPLETE_EXPIRED',
-          'paused': 'PAUSED'
-        }
-
-        // Validar que el customer pertenezca al mismo tenant
-        if (localCustomer.companyId !== companyId) {
-          throw new Error('Customer/Subscription company mismatch')
-        }
-
-        await prisma.saasSubscription.update({
-          where: { stripeCustomerId: customerId },
-          data: {
-            stripeSubscriptionId: subscription.id,
-            status: statusMap[subscription.status] || 'INCOMPLETE',
-            currentPeriodStart: new Date(subscription.current_period_start * 1000),
-            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-            cancelAtPeriodEnd: subscription.cancel_at_period_end,
-            canceledAt: subscription.canceled_at ? new Date(subscription.canceled_at * 1000) : null,
-            trialEndsAt: subscription.trial_end ? new Date(subscription.trial_end * 1000) : null,
-          }
-        })
-      }
     }
-  }
+  },
 }

@@ -1,2 +1,2 @@
-export * from './service'
-export * from './stripe'
+export { billingService } from './service'
+export { getMPPreference, getMPPayment } from './mercadopago'

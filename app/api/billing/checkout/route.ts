@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic'
 import { z } from 'zod'
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
-import { stripe } from '@/lib/domains/billing/stripe'
 import { billingService } from '@/lib/domains/billing/service'
 import { computedEnv } from '@/lib/env'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
@@ -22,30 +21,29 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
       return NextResponse.json({ error: 'Invalid or inactive plan' }, { status: 400 })
     }
 
-    const customerId = await billingService.getOrCreateCustomer(user.companyId)
-    const idempotencyKey = `checkout_${user.companyId}_${priceId}`
+    await billingService.getOrCreateCustomer(user.companyId)
 
-    const session = await stripe.checkout.sessions.create(
-      {
-        customer: customerId,
-        line_items: [{ price: priceId, quantity: 1 }],
-        mode: 'subscription',
-        success_url: `${computedEnv.PUBLIC_URL}/app/settings/billing?success=true`,
-        cancel_url: `${computedEnv.PUBLIC_URL}/app/settings/billing?canceled=true`,
-        metadata: {
-          companyId: user.companyId,
-          userId: user.id,
-          planId: plan.id,
-        },
-      },
-      { idempotencyKey }
-    )
+    const baseUrl = computedEnv.PUBLIC_URL ?? 'http://localhost:3000'
 
-    if (!session.url) {
-      return NextResponse.json({ error: 'Unable to create checkout session' }, { status: 500 })
+    const preference = await billingService.createCheckoutPreference({
+      companyId: user.companyId,
+      userId: user.id,
+      planId: plan.id,
+      planName: plan.name,
+      planDescription: plan.description ?? null,
+      price: Number(plan.price),
+      currency: plan.currency,
+      successUrl: `${baseUrl}/app/settings/billing?success=true`,
+      failureUrl: `${baseUrl}/app/settings/billing?canceled=true`,
+      pendingUrl: `${baseUrl}/app/settings/billing?pending=true`,
+    })
+
+    const initPoint = preference.init_point
+    if (!initPoint) {
+      return NextResponse.json({ error: 'Unable to create checkout preference' }, { status: 500 })
     }
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ url: initPoint })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unexpected error'
     return NextResponse.json({ error: message }, { status: 500 })

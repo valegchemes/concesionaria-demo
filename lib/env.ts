@@ -6,7 +6,12 @@
 import { z } from 'zod'
 
 const envSchema = z.object({
-  // Stripe - REQUIRED for webhooks
+  // Mercado Pago
+  MP_ACCESS_TOKEN: z.string().optional(),
+  MP_PUBLIC_KEY: z.string().optional(),
+  MP_WEBHOOK_SECRET: z.string().optional(),
+
+  // Stripe (deprecated - kept for compatibility during migration)
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
   STRIPE_PUBLIC_KEY: z.string().optional(),
   STRIPE_SECRET_KEY: z.string().optional(),

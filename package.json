@@ -47,6 +47,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.400.0",
+    "mercadopago": "^2.12.1",
     "next": "^16.2.6",
     "next-auth": "^4.24.14",
     "pdfkit": "^0.18.0",
