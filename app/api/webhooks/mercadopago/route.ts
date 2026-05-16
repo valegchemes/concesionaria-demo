@@ -100,7 +100,25 @@ export async function POST(req: NextRequest) {
     try {
       // 7. Consultar el pago en la API de MP
       const mpPayment = getMPPayment()
-      const payment = await mpPayment.get({ id: parseInt(dataId, 10) })
+      let payment
+      try {
+        payment = await mpPayment.get({ id: parseInt(dataId, 10) })
+      } catch (mpErr: any) {
+        // Si el pago no existe (error 404), es probable que sea una prueba del simulador
+        if (mpErr.status === 404 || mpErr.message?.includes('404')) {
+          log.warn({ dataId }, 'MP payment not found (likely simulation)')
+          await prisma.webhookEvent.update({
+            where: { eventId },
+            data: { 
+              status: 'processed', 
+              processedAt: new Date(),
+              error: 'Payment not found in MP (Simulation)'
+            },
+          })
+          return new NextResponse('OK (Simulation/Not Found)', { status: 202 })
+        }
+        throw mpErr // Otros errores (timeout, credenciales, etc)
+      }
 
       const status = payment.status ?? 'unknown'
       const externalReference = payment.external_reference ?? null
