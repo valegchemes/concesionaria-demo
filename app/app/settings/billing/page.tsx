@@ -49,6 +49,7 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isFetching, setIsFetching] = useState(true)
 
   useEffect(() => {
     if (searchParams.get('success')) setSuccessMsg(true)
@@ -58,6 +59,7 @@ export default function BillingPage() {
 
   useEffect(() => {
     async function loadData() {
+      setIsFetching(true)
       try {
         const [plansRes, subRes] = await Promise.all([
           fetch('/api/billing/plans'),
@@ -77,6 +79,8 @@ export default function BillingPage() {
         }
       } catch {
         setError('Error al cargar los datos de facturación')
+      } finally {
+        setIsFetching(false)
       }
     }
     loadData()
@@ -170,9 +174,13 @@ export default function BillingPage() {
 
       {/* Plan cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {plans.length === 0 && !error ? (
+        {isFetching ? (
           <div className="p-4 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md col-span-2">
             Cargando planes...
+          </div>
+        ) : plans.length === 0 && !error ? (
+          <div className="p-4 bg-gray-50 text-gray-700 border border-gray-200 rounded-md col-span-2">
+            No hay planes disponibles en este momento. Por favor contacta a soporte.
           </div>
         ) : (
           plans.map((plan) => (
