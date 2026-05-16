@@ -114,8 +114,8 @@ export default function BillingPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Suscripción</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-adaptive-primary">Suscripción</h1>
+        <p className="text-adaptive-secondary">
           Gestiona tu plan. Los pagos son procesados de forma segura por{' '}
           <strong>Mercado Pago</strong>.
         </p>
@@ -148,11 +148,11 @@ export default function BillingPage() {
 
       {/* Current subscription status */}
       {subscription && currentStatus && (
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className="border-l-4 border-l-blue-500 surface-secondary">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Suscripción actual</CardTitle>
+            <CardTitle className="text-base text-adaptive-primary">Suscripción actual</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm text-gray-600">
+          <CardContent className="space-y-1 text-sm text-adaptive-secondary">
             <div className="flex items-center gap-2">
               Estado:{' '}
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${currentStatus.color}`}>
@@ -160,12 +160,12 @@ export default function BillingPage() {
               </span>
             </div>
             {subscription.plan?.name && (
-              <div>Plan: <strong>{subscription.plan.name}</strong></div>
+              <div className="text-adaptive-primary">Plan: <strong>{subscription.plan.name}</strong></div>
             )}
             {subscription.currentPeriodEnd && (
-              <div>
+              <div className="text-adaptive-secondary">
                 Próxima renovación:{' '}
-                <strong>
+                <strong className="text-adaptive-primary">
                   {new Date(subscription.currentPeriodEnd).toLocaleDateString('es-AR')}
                 </strong>
               </div>
@@ -188,8 +188,8 @@ export default function BillingPage() {
           plans.map((plan, idx) => {
             const isPro = idx === plans.length - 1
             return (
-              <Card key={plan.id} className={`flex flex-col relative ${
-                isPro ? 'border-violet-400 shadow-lg shadow-violet-100 dark:shadow-violet-950/30' : ''
+              <Card key={plan.id} className={`flex flex-col relative surface-secondary ${
+                isPro ? 'border-violet-400 shadow-lg shadow-violet-900/30' : ''
               }`}>
                 {isPro && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -212,28 +212,28 @@ export default function BillingPage() {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-2">
                   <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <li className="flex items-center gap-2 text-adaptive-primary">
                       <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                       {plan.maxUsers === 1 ? '1 usuario' : `Hasta ${plan.maxUsers} usuarios`}
                     </li>
-                    <li className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+                    <li className="flex items-center gap-2 text-adaptive-primary">
                       <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
                       Hasta {plan.maxUnits} unidades en inventario
                     </li>
                     <li className={`flex items-center gap-2 ${
-                      plan.analyticsEnabled ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'
+                      plan.analyticsEnabled ? 'text-adaptive-primary' : 'text-adaptive-secondary opacity-50'
                     }`}>
                       {plan.analyticsEnabled
                         ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                        : <XCircle className="h-4 w-4 text-gray-300 shrink-0" />}
+                        : <XCircle className="h-4 w-4 text-adaptive-secondary shrink-0" />}
                       Analíticas de ventas
                     </li>
                     <li className={`flex items-center gap-2 ${
-                      plan.whatsappEnabled ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400'
+                      plan.whatsappEnabled ? 'text-adaptive-primary' : 'text-adaptive-secondary opacity-50'
                     }`}>
                       {plan.whatsappEnabled
                         ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                        : <XCircle className="h-4 w-4 text-gray-300 shrink-0" />}
+                        : <XCircle className="h-4 w-4 text-adaptive-secondary shrink-0" />}
                       Envío de WhatsApp a clientes
                     </li>
                   </ul>

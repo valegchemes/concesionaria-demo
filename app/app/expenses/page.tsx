@@ -129,11 +129,11 @@ export default function ExpensesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-xl font-bold text-adaptive-primary flex items-center gap-2">
             <Wallet className="h-5 w-5 text-rose-500" />
             Costos Mensuales
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-adaptive-secondary mt-0.5">
             Gestión de gastos operativos. Se descuentan automáticamente de la ganancia neta.
           </p>
         </div>
@@ -142,7 +142,7 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
         {/* Formulario */}
-        <Card className="md:col-span-1 bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+        <Card className="md:col-span-1 surface-secondary">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Calculator className="h-4 w-4 text-rose-500" />
@@ -199,7 +199,7 @@ export default function ExpensesPage() {
         <div className="md:col-span-2 space-y-5">
 
           {/* Total del mes + Gráfico de torta */}
-          <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+          <Card className="surface-secondary">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="space-y-0.5">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -281,7 +281,7 @@ export default function ExpensesPage() {
           </Card>
 
           {/* Desglose */}
-          <Card className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+          <Card className="surface-secondary">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Desglose de Gastos</CardTitle>
             </CardHeader>
@@ -306,8 +306,8 @@ export default function ExpensesPage() {
                           {getCategoryEmoji(expense.category)}
                         </span>
                         <div>
-                          <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{expense.category}</p>
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <p className="font-semibold text-sm text-adaptive-primary">{expense.category}</p>
+                          <div className="flex items-center gap-1.5 text-xs text-adaptive-secondary">
                             <span>{new Date(expense.date).toLocaleDateString('es-AR')}</span>
                             {expense.description && (
                               <><span>·</span><span>{expense.description}</span></>

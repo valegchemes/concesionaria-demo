@@ -215,14 +215,14 @@ export default function SettingsPage() {
   return (
     <div className="max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Configuracion</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-adaptive-primary">Configuracion</h1>
+        <p className="text-adaptive-secondary">
           Gestiona los ajustes de tu concesionaria y tu perfil de usuario.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Card className="col-span-1">
+        <Card className="col-span-1 surface-secondary">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-blue-500" />
@@ -346,7 +346,7 @@ export default function SettingsPage() {
         </Card>
 
         <div className="col-span-1 space-y-6">
-          <Card>
+          <Card className="surface-secondary">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <User className="h-5 w-5 text-gray-500" />
@@ -448,7 +448,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="surface-secondary">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-indigo-500" />

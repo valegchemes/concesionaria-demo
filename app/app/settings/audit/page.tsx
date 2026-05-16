@@ -61,19 +61,19 @@ export default function AuditPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="text-xl font-bold text-adaptive-primary flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-indigo-500" />
             Auditoría del Sistema
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-adaptive-secondary mt-0.5">
             Registro completo de todas las acciones realizadas en el sistema.
           </p>
         </div>
-        <span className="text-sm text-muted-foreground">{total} registros</span>
+        <span className="text-sm text-adaptive-secondary">{total} registros</span>
       </div>
 
       {/* Resource Filter */}
-      <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50 w-fit">
+      <div className="flex flex-wrap gap-1 p-1 rounded-lg surface-secondary backdrop-blur-sm shadow-sm w-fit">
         {resources.map(r => (
           <button
             key={r}
@@ -81,8 +81,8 @@ export default function AuditPage() {
             className={cn(
               'rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
               resource === r
-                ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'surface-primary text-adaptive-primary shadow-sm'
+                : 'text-adaptive-secondary hover:text-adaptive-primary'
             )}
           >
             {r}
@@ -91,7 +91,7 @@ export default function AuditPage() {
       </div>
 
       {/* Log Table */}
-      <Card className="overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+      <Card className="overflow-hidden surface-primary">
         <CardHeader className="pb-2 border-b border-border/50">
           <CardTitle className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
             <ClipboardList className="h-4 w-4" />
@@ -128,7 +128,7 @@ export default function AuditPage() {
 
                   {/* Resource & ID */}
                   <div className="flex-1 min-w-0">
-                    <span className="font-semibold text-slate-700 dark:text-slate-200">{entry.resource}</span>
+                    <span className="font-semibold text-adaptive-primary">{entry.resource}</span>
                     {entry.resourceId && (
                       <span className="ml-2 text-xs text-muted-foreground font-mono truncate">
                         #{entry.resourceId.slice(0, 8)}…

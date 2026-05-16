@@ -110,9 +110,9 @@ export default function DealsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Operaciones</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+          <h1 className="text-xl font-bold text-adaptive-primary">Operaciones</h1>
+          <p className="text-sm text-adaptive-secondary mt-0.5">
+            <span className="text-emerald-500 font-bold">
               {deals.filter(d => d.status === 'DELIVERED').length}
             </span> entregadas · {filteredDeals.length} total
           </p>
@@ -132,11 +132,11 @@ export default function DealsPage() {
       </div>
 
       {/* Filtros de estado */}
-      <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50 w-fit">
+      <div className="flex gap-1 p-1 rounded-lg surface-secondary backdrop-blur-sm shadow-sm w-fit">
         {['ALL', 'NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT', 'DELIVERED', 'CANCELED'].map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
-              statusFilter === s ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+              statusFilter === s ? 'surface-primary text-adaptive-primary shadow-sm' : 'text-adaptive-secondary hover:text-adaptive-primary'
             )}>
             {s === 'ALL' ? 'Todos' : statusConfig[s]?.label ?? s}
           </button>
@@ -145,26 +145,26 @@ export default function DealsPage() {
 
       {/* Buscador */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-adaptive-secondary" />
         <Input
           placeholder="Buscar por cliente o vehículo…"
-          className="pl-9 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm"
+          className="pl-9 surface-secondary backdrop-blur-sm text-adaptive-primary"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
       {filteredDeals.length === 0 ? (
-        <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-white/30">
+        <Card className="surface-secondary">
           <CardContent className="py-16 text-center">
-            <Handshake className="h-12 w-12 mx-auto mb-3 text-slate-300 dark:text-slate-600" />
-            <p className="font-semibold text-slate-600 dark:text-slate-300">No se encontraron operaciones.</p>
+            <Handshake className="h-12 w-12 mx-auto mb-3 text-adaptive-secondary opacity-50" />
+            <p className="font-semibold text-adaptive-primary">No se encontraron operaciones.</p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30">
+        <Card className="surface-primary overflow-hidden">
           {/* Cabecera de columnas */}
-          <div className="hidden md:grid grid-cols-[1fr_1.4fr_1.4fr_0.8fr_auto_auto] gap-x-4 px-5 py-3 bg-slate-50/80 dark:bg-slate-800/40 border-b border-border text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+          <div className="hidden md:grid grid-cols-[1fr_1.4fr_1.4fr_0.8fr_auto_auto] gap-x-4 px-5 py-3 surface-muted border-b border-white/10 text-[11px] font-bold uppercase tracking-widest text-adaptive-secondary">
             <span>Estado / Fecha</span>
             <span>Cliente</span>
             <span>Unidad</span>
@@ -204,19 +204,19 @@ export default function DealsPage() {
 
                   {/* Cliente */}
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{deal.lead.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{deal.lead.phone}</p>
+                    <p className="text-sm font-semibold text-adaptive-primary truncate">{deal.lead.name}</p>
+                    <p className="text-xs text-adaptive-secondary truncate">{deal.lead.phone}</p>
                   </div>
 
                   {/* Unidad */}
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{deal.unit.title}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{deal.unit.type.toLowerCase()}</p>
+                    <p className="text-sm font-medium text-adaptive-primary truncate">{deal.unit.title}</p>
+                    <p className="text-xs text-adaptive-secondary capitalize">{deal.unit.type.toLowerCase()}</p>
                   </div>
 
                   {/* Vendedor */}
                   <div className="min-w-0">
-                    <p className="text-sm text-foreground truncate">{deal.seller.name}</p>
+                    <p className="text-sm text-adaptive-primary truncate">{deal.seller.name}</p>
                   </div>
 
                   {/* Precio — verde si entregado */}

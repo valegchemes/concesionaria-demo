@@ -197,8 +197,8 @@ export default function TeamPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Equipo de Ventas</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-xl font-bold text-adaptive-primary">Equipo de Ventas</h1>
+          <p className="text-sm text-adaptive-secondary mt-0.5">
             {members.length} miembro{members.length !== 1 ? 's' : ''} de {limits.maxUsers} · {members.filter(m => m.role === 'ADMIN').length} administrador{members.filter(m => m.role === 'ADMIN').length !== 1 ? 'es' : ''}
           </p>
         </div>
@@ -302,10 +302,10 @@ export default function TeamPage() {
 
       {/* Grid de miembros */}
       {members.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm py-20 text-center">
-          <Users className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
-          <h3 className="mt-4 font-semibold text-slate-700 dark:text-slate-300">No hay equipo registrado</h3>
-          <p className="mt-1 text-sm text-slate-500">Añade a tu primer colaborador haciendo clic arriba.</p>
+        <div className="rounded-xl border border-white/10 surface-secondary py-20 text-center">
+          <Users className="mx-auto h-12 w-12 text-adaptive-secondary opacity-50" />
+          <h3 className="mt-4 font-semibold text-adaptive-primary">No hay equipo registrado</h3>
+          <p className="mt-1 text-sm text-adaptive-secondary">Añade a tu primer colaborador haciendo clic arriba.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -314,7 +314,7 @@ export default function TeamPage() {
             const isMe = member.id === me?.id
 
             return (
-              <Card key={member.id} className="group relative overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-sm border-white/30 hover:shadow-lg hover:shadow-black/10 transition-all duration-300">
+              <Card key={member.id} className="group relative overflow-hidden surface-primary hover:-translate-y-1 transition-transform duration-300">
                 {/* Acento de color en la parte superior */}
                 <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient} opacity-70`} />
 
@@ -333,7 +333,7 @@ export default function TeamPage() {
                       )}
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-slate-900 dark:text-white">
+                          <h3 className="font-bold text-adaptive-primary">
                             {member.name}
                           </h3>
                           {isMe && (
@@ -389,7 +389,7 @@ export default function TeamPage() {
 
                   {/* Contacto */}
                   <div className="mt-4 space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center gap-2 text-sm text-adaptive-secondary">
                       <Mail className="h-3.5 w-3.5 shrink-0" />
                       <span className="truncate">{member.email}</span>
                     </div>
