@@ -95,7 +95,7 @@ export class LeadService {
         status: (command.status || 'NEW') as LeadStatus,
       },
       include: {
-        activities: true,
+        activities: { include: { createdBy: { select: { name: true } } } },
         assignedTo: { select: { id: true, name: true, email: true } },
         createdBy: { select: { id: true, name: true } },
       },
@@ -122,7 +122,11 @@ export class LeadService {
     const lead = await prisma.lead.findFirst({
       where: { id, companyId, isActive: true },
       include: {
-        activities: { orderBy: { createdAt: 'desc' }, take: 10 },
+        activities: { 
+          orderBy: { createdAt: 'desc' }, 
+          take: 10,
+          include: { createdBy: { select: { name: true } } }
+        },
         assignedTo: { select: { id: true, name: true, email: true, whatsappNumber: true } },
         createdBy: { select: { id: true, name: true } },
         interestedUnit: { select: { id: true, title: true, priceArs: true, priceUsd: true } },
@@ -214,7 +218,7 @@ export class LeadService {
           notes: true,
           createdAt: true,
           assignedTo: { select: { id: true, name: true } },
-          _count: { select: { activities: true, tasks: true, deals: true } },
+          _count: { select: { activities: { include: { createdBy: { select: { name: true } } } }, tasks: true, deals: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
@@ -315,7 +319,7 @@ export class LeadService {
         updatedAt: new Date(),
       },
       include: {
-        activities: true,
+        activities: { include: { createdBy: { select: { name: true } } } },
         assignedTo: { select: { id: true, name: true, email: true } },
         createdBy: { select: { id: true, name: true } },
       },
