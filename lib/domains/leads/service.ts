@@ -123,15 +123,23 @@ export class LeadService {
       where: { id, companyId, isActive: true },
       include: {
         activities: { orderBy: { createdAt: 'desc' }, take: 10 },
-        assignedTo: { select: { id: true, name: true, email: true } },
+        assignedTo: { select: { id: true, name: true, email: true, whatsappNumber: true } },
         createdBy: { select: { id: true, name: true } },
-        interestedUnit: { select: { id: true, title: true } },
-        deals: { 
-          orderBy: { createdAt: 'desc' }, 
-          take: 5,
-          include: { unit: { select: { id: true, title: true } } }
+        interestedUnit: { select: { id: true, title: true, priceArs: true, priceUsd: true } },
+        deals: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          include: {
+            unit: { select: { id: true, title: true } },
+            seller: { select: { id: true, name: true, whatsappNumber: true } },
+            payments: { orderBy: { receivedAt: 'desc' } },
+          },
         },
-        tasks: { where: { isCompleted: false }, orderBy: { dueDate: 'asc' } },
+        tasks: {
+          where: { isCompleted: false },
+          orderBy: { dueDate: 'asc' },
+          include: { assignedTo: { select: { id: true, name: true } } },
+        },
       },
     })
 

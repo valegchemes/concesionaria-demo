@@ -6,13 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatDate, formatPrice, generateWhatsAppLink, processTemplate } from '@/lib/utils'
+import { formatDate, formatPrice, generateWhatsAppLink } from '@/lib/utils'
 import { 
-  ArrowLeft, Phone, Mail, User, Car, MessageCircle, 
-  Calendar, CheckCircle, Clock, AlertCircle, Handshake, Lock
+  ArrowLeft, Phone, Mail, User, Car, MessageCircle, Send,
+  Calendar, CheckCircle, Clock, AlertCircle, Handshake, Lock, X, ChevronDown
 } from 'lucide-react'
 import { LeadPromissoryNotesTab } from '@/components/leads/lead-promissory-notes-tab'
 import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
+import { generateDealWhatsAppMessage, type DealForMessage, type TaskForMessage } from '@/lib/utils/generate-deal-whatsapp-message'
 
 interface Lead {
   id: string
@@ -43,7 +44,7 @@ interface Lead {
     title: string
     dueDate: string
     isCompleted: boolean
-    assignedTo: { name: string }
+    assignedTo: { id: string; name: string } | null
   }[]
   deals: {
     id: string
@@ -51,11 +52,20 @@ interface Lead {
     finalPrice: number
     finalPriceCurrency: string
     depositAmount: number | null
+    depositDate: string | null
+    depositMethod: string | null
+    notes: string | null
     createdAt: string
-    unit: {
+    unit: { id: string; title: string }
+    seller: { id: string; name: string; whatsappNumber: string | null } | null
+    payments: {
       id: string
-      title: string
-    }
+      amount: number
+      currency: string
+      method: string
+      receivedAt: string
+      notes: string | null
+    }[]
   }[]
 }
 
@@ -115,6 +125,16 @@ const activityLabels: Record<string, string> = {
   TASK_COMPLETED: 'Tarea completada',
 }
 
+const DEAL_STATUS_LABELS: Record<string, string> = {
+  NEGOTIATION: 'En negociación',
+  RESERVED: 'Reservado',
+  APPROVED: 'Aprobado',
+  IN_PAYMENT: 'En proceso de pago',
+  DELIVERED: 'Entregado',
+  CANCELED: 'Cancelado',
+}
+
+
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap promise for Next.js 15
   const { id } = use(params)
@@ -129,6 +149,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [activeTab, setActiveTab] = useState<'info' | 'notes'>('info')
   const { limits } = usePlanLimits()
+
+  // WhatsApp deal modal state
+  const [waModalOpen, setWaModalOpen] = useState(false)
+  const [selectedDealId, setSelectedDealId] = useState<string>('')
+  const [waPreviewMessage, setWaPreviewMessage] = useState('')
+  const [waPhoneNumber, setWaPhoneNumber] = useState<string>('')
 
   const fetchLead = useCallback(async () => {
     try {
@@ -236,35 +262,91 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  function generateWhatsAppMessage(template: string): string {
-    if (!lead) return ''
-    return processTemplate(template, {
-      leadName: lead.name,
-      unitTitle: lead.interestedUnit?.title || '',
-      unitPriceARS: lead.interestedUnit?.priceArs?.toString() || '',
-      unitPriceUSD: lead.interestedUnit?.priceUsd?.toString() || '',
-      publicUnitUrl: `${window.location.origin}/u/${lead.interestedUnit?.id}`,
-      companyName: me?.companyName || '',
-    })
-  }
-
-  function openWhatsApp(fromNumber: string | null | undefined) {
-    if (!fromNumber) {
-      alert('No hay número de WhatsApp configurado')
+  function openDealWhatsAppModal() {
+    if (!lead || !me) return
+    // Pre-select first non-canceled deal
+    const defaultDeal = lead.deals.find(d => d.status !== 'CANCELED') ?? lead.deals[0]
+    if (!defaultDeal) {
+      alert('No hay operaciones registradas para este lead.')
       return
     }
-    const message = generateWhatsAppMessage(selectedTemplate)
-    const link = generateWhatsAppLink(fromNumber, message)
+    const dealId = defaultDeal.id
+    setSelectedDealId(dealId)
+
+    const tasks: TaskForMessage[] = lead.tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      dueDate: t.dueDate,
+      assignedTo: t.assignedTo,
+    }))
+
+    const msg = generateDealWhatsAppMessage({
+      lead: { name: lead.name, phone: lead.phone },
+      deal: defaultDeal as DealForMessage,
+      tasks,
+      companyName: me.companyName,
+    })
+    setWaPreviewMessage(msg)
+
+    // Pre-select phone: central > seller > assigned
+    const phone = me.whatsappCentral || defaultDeal.seller?.whatsappNumber || lead.assignedTo?.whatsappNumber || ''
+    setWaPhoneNumber(phone)
+
+    setWaModalOpen(true)
+  }
+
+  function onDealChange(dealId: string) {
+    if (!lead || !me) return
+    setSelectedDealId(dealId)
+    const deal = lead.deals.find(d => d.id === dealId)
+    if (!deal) return
+
+    const tasks: TaskForMessage[] = lead.tasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      dueDate: t.dueDate,
+      assignedTo: t.assignedTo,
+    }))
+
+    const msg = generateDealWhatsAppMessage({
+      lead: { name: lead.name, phone: lead.phone },
+      deal: deal as DealForMessage,
+      tasks,
+      companyName: me.companyName,
+    })
+    setWaPreviewMessage(msg)
+  }
+
+  function confirmSendWhatsApp() {
+    if (!waPhoneNumber) {
+      alert('Seleccioná un número de WhatsApp para enviar.')
+      return
+    }
+    const link = generateWhatsAppLink(waPhoneNumber, waPreviewMessage)
     window.open(link, '_blank')
-    addActivity('WHATSAPP_SENT', `Mensaje enviado desde ${fromNumber}`)
+    addActivity('WHATSAPP_SENT', `Mensaje enviado a ${waPhoneNumber}`)
+    setWaModalOpen(false)
   }
 
   if (loading) return <div>Cargando...</div>
   if (!lead) return <div>Lead no encontrado</div>
 
-  const overdueTasks = lead.tasks?.filter(t => 
+  const overdueTasks = lead.tasks?.filter(t =>
     !t.isCompleted && new Date(t.dueDate) < new Date()
   ) || []
+
+  // Build phone options for modal
+  const waPhoneOptions: { label: string; value: string }[] = []
+  if (me?.whatsappCentral) waPhoneOptions.push({ label: `Central (${me.whatsappCentral})`, value: me.whatsappCentral })
+  lead.deals.forEach(d => {
+    if (d.seller?.whatsappNumber && !waPhoneOptions.find(p => p.value === d.seller!.whatsappNumber)) {
+      waPhoneOptions.push({ label: `${d.seller.name} (${d.seller.whatsappNumber})`, value: d.seller.whatsappNumber })
+    }
+  })
+  if (lead.assignedTo?.whatsappNumber && !waPhoneOptions.find(p => p.value === lead.assignedTo!.whatsappNumber)) {
+    waPhoneOptions.push({ label: `${lead.assignedTo.name} (${lead.assignedTo.whatsappNumber})`, value: lead.assignedTo.whatsappNumber })
+  }
+
 
   return (
     <div className="space-y-6">
@@ -354,7 +436,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 WhatsApp
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               {!limits.whatsappEnabled ? (
                 <div className="text-center py-4 space-y-3">
                   <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-950/30">
@@ -369,43 +451,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     Ver planes
                   </Link>
                 </div>
+              ) : lead.deals.length === 0 ? (
+                <div className="text-center py-4 text-sm text-gray-500">
+                  <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-20" />
+                  <p>Sin operaciones registradas.</p>
+                  <p className="text-xs mt-1">Creá una operación para enviar un resumen por WhatsApp.</p>
+                </div>
               ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label>Plantilla</Label>
-                    <select
-                      value={selectedTemplate}
-                      onChange={(e) => setSelectedTemplate(e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border text-sm"
-                    >
-                      {templates.map((t) => (
-                        <option key={t.id} value={t.template}>{t.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                    {generateWhatsAppMessage(selectedTemplate)}
-                  </div>
-                  <div className="space-y-2">
-                    <Button 
-                      className="w-full bg-green-500 hover:bg-green-600"
-                      onClick={() => openWhatsApp(me?.whatsappCentral)}
-                    >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Escribir desde Central
-                    </Button>
-                    {lead.assignedTo?.whatsappNumber && (
-                      <Button 
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => openWhatsApp(lead.assignedTo?.whatsappNumber)}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-2" />
-                        Escribir desde {lead.assignedTo.name}
-                      </Button>
-                    )}
-                  </div>
-                </>
+                <Button
+                  className="w-full bg-green-500 hover:bg-green-600 gap-2"
+                  onClick={openDealWhatsAppModal}
+                >
+                  <Send className="h-4 w-4" />
+                  Enviar resumen por WhatsApp
+                </Button>
               )}
             </CardContent>
           </Card>
@@ -522,7 +581,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                           {task.title}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {formatDate(task.dueDate)} • {task.assignedTo.name}
+                          {formatDate(task.dueDate)} • {task.assignedTo?.name ?? '—'}
                         </p>
                       </div>
                     </div>
@@ -596,6 +655,93 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
         </div>
       </div>
+      )}
+
+      {/* WhatsApp deal confirmation modal */}
+      {waModalOpen && lead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 dark:bg-green-950/40">
+                  <MessageCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">Enviar WhatsApp</h3>
+                  <p className="text-xs text-gray-500">Revisá el mensaje antes de enviarlo</p>
+                </div>
+              </div>
+              <button onClick={() => setWaModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Operación</Label>
+                <div className="relative">
+                  <select
+                    value={selectedDealId}
+                    onChange={e => onDealChange(e.target.value)}
+                    className="w-full h-10 pl-3 pr-8 rounded-lg border bg-white dark:bg-slate-800 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    {lead.deals.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.unit.title} — {DEAL_STATUS_LABELS[d.status] ?? d.status} ({d.finalPriceCurrency} {Number(d.finalPrice).toLocaleString('es-AR')})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Enviar desde</Label>
+                {waPhoneOptions.length > 0 ? (
+                  <div className="relative">
+                    <select
+                      value={waPhoneNumber}
+                      onChange={e => setWaPhoneNumber(e.target.value)}
+                      className="w-full h-10 pl-3 pr-8 rounded-lg border bg-white dark:bg-slate-800 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-green-500"
+                    >
+                      {waPhoneOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  </div>
+                ) : (
+                  <Input
+                    value={waPhoneNumber}
+                    onChange={e => setWaPhoneNumber(e.target.value)}
+                    placeholder="Número de WhatsApp (ej: 5491112345678)"
+                    className="text-sm"
+                  />
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500">Vista previa del mensaje</Label>
+                <textarea
+                  value={waPreviewMessage}
+                  onChange={e => setWaPreviewMessage(e.target.value)}
+                  rows={12}
+                  className="w-full rounded-lg border bg-gray-50 dark:bg-slate-800 px-3 py-2.5 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
+                />
+                <p className="text-xs text-gray-400">Podés editar el mensaje antes de enviarlo.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 px-5 py-4 border-t dark:border-slate-800">
+              <Button variant="outline" className="flex-1" onClick={() => setWaModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700 gap-2 text-white"
+                onClick={confirmSendWhatsApp}
+              >
+                <Send className="h-4 w-4" />
+                Confirmar y abrir WhatsApp
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
