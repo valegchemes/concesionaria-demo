@@ -218,7 +218,7 @@ export class LeadService {
           notes: true,
           createdAt: true,
           assignedTo: { select: { id: true, name: true } },
-          _count: { select: { activities: { include: { createdBy: { select: { name: true } } } }, tasks: true, deals: true } },
+          _count: { select: { activities: true, tasks: true, deals: true } },
         },
         orderBy: { createdAt: 'desc' },
         skip,
