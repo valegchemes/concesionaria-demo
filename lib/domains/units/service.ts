@@ -14,6 +14,7 @@ import { Prisma, type DealStatus, type UnitType, type UnitStatus } from '@prisma
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
 import { prisma } from '@/lib/shared/prisma'
+import { deleteFiles, isVercelBlobUrl } from '@/lib/blob-server'
 import type {
   CreateUnitCommand,
   UpdateUnitCommand,
@@ -348,6 +349,73 @@ export class UnitService {
         `Cannot transition from ${currentStatus} to ${newStatus}`
       )
     }
+  }
+
+  /**
+   * Deep archive a unit (removes heavy data and files to save space)
+   * Designed to be called when a unit is effectively sold/delivered.
+   */
+  async archiveUnit(id: string, companyId: string): Promise<void> {
+    log.info({ unitId: id }, 'Deep archiving unit to save space')
+
+    // 1. Get all photos and digital documents
+    const unit = await prisma.unit.findFirst({
+      where: { id, companyId },
+      include: {
+        photos: true,
+        digitalDocuments: true,
+        attributes: true,
+      }
+    })
+
+    if (!unit) {
+      log.warn({ unitId: id }, 'Unit not found for archiving')
+      return
+    }
+
+    // 2. Collect URLs to delete from Blob Storage
+    const urlsToDelete: string[] = []
+    
+    for (const photo of unit.photos) {
+      if (isVercelBlobUrl(photo.url)) urlsToDelete.push(photo.url)
+    }
+    
+    for (const doc of unit.digitalDocuments) {
+      const meta = doc.metadata as { url?: string } | null;
+      if (meta?.url && typeof meta.url === 'string' && isVercelBlobUrl(meta.url)) {
+        urlsToDelete.push(meta.url)
+      }
+    }
+
+    // 3. Delete physical files from Blob Storage
+    if (urlsToDelete.length > 0) {
+      try {
+        await deleteFiles(urlsToDelete)
+        log.info({ unitId: id, count: urlsToDelete.length }, 'Deleted physical files from Blob storage')
+      } catch (err) {
+        log.error({ error: err instanceof Error ? err.message : String(err), unitId: id }, 'Error deleting physical files from blob storage during archiving')
+        // We continue with DB cleanup even if some blob deletes fail
+      }
+    }
+
+    // 4. Clean up DB (remove photos, docs, attributes, clear heavy fields)
+    await prisma.$transaction([
+      prisma.unitPhoto.deleteMany({ where: { unitId: id } }),
+      prisma.digitalDocument.deleteMany({ where: { unitId: id } }),
+      prisma.unitAttribute.deleteMany({ where: { unitId: id } }),
+      prisma.unit.update({
+        where: { id },
+        data: {
+          status: 'SOLD' as UnitStatus,
+          isActive: false,
+          description: null,
+          location: null,
+          tags: [],
+        }
+      })
+    ])
+
+    log.info({ unitId: id }, 'Unit deep archived successfully')
   }
 
   /**

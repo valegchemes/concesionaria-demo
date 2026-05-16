@@ -16,6 +16,7 @@ import { DealStatus, Prisma, UnitStatus, LeadStatus, PaymentMethod } from '@pris
 import { createLogger } from '@/lib/shared/logger'
 import { NotFoundError, ConflictError, ValidationError } from '@/lib/shared/errors'
 import { hasPermission } from '@/lib/shared/authz'
+import { unitService } from '@/lib/domains/units/service'
 import type {
   CreateDealCommand,
   UpdateDealCommand,
@@ -340,17 +341,12 @@ export class DealService {
 
     // Sincronizar estado de unidad y lead SOLO cuando el deal se marca como ENTREGADO (DELIVERED)
     if (command.status === 'DELIVERED') {
-      await Promise.all([
-        prisma.unit.update({
-          where: { id: deal.unitId },
-          data: { status: 'SOLD' as UnitStatus, isActive: false },
-        }),
-        prisma.lead.update({
-          where: { id: deal.leadId },
-          data: { status: 'SOLD' as LeadStatus },
-        }),
-      ])
-      log.info({ dealId: id, unitId: deal.unitId }, 'Unit soft-deleted and lead marked as SOLD')
+      await prisma.lead.update({
+        where: { id: deal.leadId },
+        data: { status: 'SOLD' as LeadStatus },
+      })
+      await unitService.archiveUnit(deal.unitId, companyId)
+      log.info({ dealId: id, unitId: deal.unitId }, 'Unit archived and lead marked as SOLD')
     } else if (command.status === 'RESERVED') {
       await Promise.all([
         prisma.unit.update({
@@ -396,7 +392,10 @@ export class DealService {
       timestamp: new Date().toISOString()
     }, 'Payment recording initiated')
 
-    return await withTransaction(async (tx) => {
+    let becameFullyPaid = false;
+    let unitIdForArchive = '';
+
+    const payment = await withTransaction(async (tx) => {
       // ── Pessimistic Row-Level Lock (SELECT FOR UPDATE) ────────────────────
       // Bloquea la fila del Deal en PostgreSQL para que ninguna transacción
       // concurrente pueda leer ni modificar el saldo hasta que esta termine.
@@ -452,22 +451,18 @@ export class DealService {
 
       // Auto-mark deal as completed if fully paid
       if (totalPayments + command.amount >= Number(deal.finalPrice)) {
+        becameFullyPaid = true;
+        unitIdForArchive = deal.unitId;
+
         await tx.deal.update({
           where: { id: dealId },
           data: { status: 'DELIVERED' as DealStatus, closedAt: new Date() }
         })
         
-        // Update unit and lead status
-        await Promise.all([
-          tx.unit.update({
-            where: { id: deal.unitId },
-            data: { status: 'SOLD' as UnitStatus, isActive: false }
-          }),
-          tx.lead.update({
-            where: { id: deal.leadId },
-            data: { status: 'SOLD' as LeadStatus }
-          })
-        ])
+        await tx.lead.update({
+          where: { id: deal.leadId },
+          data: { status: 'SOLD' as LeadStatus }
+        })
       }
 
       // Log successful payment with full context
@@ -485,6 +480,15 @@ export class DealService {
 
       return payment
     })
+
+    // If deal became fully paid, trigger unit archiving outside transaction
+    if (becameFullyPaid && unitIdForArchive) {
+      unitService.archiveUnit(unitIdForArchive, companyId).catch(err => {
+        log.error({ err, unitId: unitIdForArchive }, 'Failed to archive unit after payment completion')
+      })
+    }
+
+    return payment
   }
 
   /**
@@ -576,11 +580,8 @@ export class DealService {
       ...(completionNotes && { notes: completionNotes }),
     })
 
-    // Update unit to sold
-    await prisma.unit.update({
-      where: { id: deal.unitId },
-      data: { status: 'SOLD' as UnitStatus },
-    })
+    // Archive unit (sets status to SOLD, cleans up images and heavy fields)
+    await unitService.archiveUnit(deal.unitId, companyId)
 
     // Update lead to sold
     await prisma.lead.update({
