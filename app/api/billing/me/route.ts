@@ -18,7 +18,7 @@ export const GET = withTenantHandler(async (_req: NextRequest) => {
     // También devolvemos los conteos actuales para mostrar uso en la UI
     const [currentUsers, currentUnits] = await Promise.all([
       prisma.user.count({ where: { companyId: user.companyId } }),
-      prisma.unit.count({ where: { companyId: user.companyId } }),
+      prisma.unit.count({ where: { companyId: user.companyId, status: 'AVAILABLE', isActive: true } }),
     ])
 
     return NextResponse.json({

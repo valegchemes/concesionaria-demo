@@ -68,7 +68,7 @@ export async function canAddUser(companyId: string): Promise<{ allowed: boolean;
  */
 export async function canAddUnit(companyId: string): Promise<{ allowed: boolean; reason?: string }> {
   const limits = await getPlanLimits(companyId)
-  const currentUnits = await prisma.unit.count({ where: { companyId } })
+  const currentUnits = await prisma.unit.count({ where: { companyId, status: 'AVAILABLE', isActive: true } })
 
   if (currentUnits >= limits.maxUnits) {
     return {
