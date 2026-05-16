@@ -146,7 +146,10 @@ export const env: EnvConfig = new Proxy({} as EnvConfig, {
 export const computedEnv = {
   get PUBLIC_URL() {
     const e = getEnv()
-    const url = e.PUBLIC_URL || (e.NODE_ENV === 'production' ? undefined : 'http://localhost:3000')
+    const vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
+    const baseUrl = vercelUrl ? `https://${vercelUrl}` : undefined
+
+    const url = e.PUBLIC_URL || baseUrl || (e.NODE_ENV === 'production' ? undefined : 'http://localhost:3000')
     if (e.NODE_ENV === 'production' && !url) {
       throw new Error('PUBLIC_URL is required in production')
     }
