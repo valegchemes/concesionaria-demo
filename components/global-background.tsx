@@ -6,7 +6,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useBackgroundTheme } from '@/lib/hooks/use-background-theme'
+import { useTheme } from '@/components/theme-provider'
 
 interface GlobalBackgroundProps {
   avatarUrl?: string
@@ -16,13 +16,13 @@ const DEFAULT_BACKGROUND =
   'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'
 
 export function GlobalBackground({ avatarUrl }: GlobalBackgroundProps) {
-  const { updateTheme, theme } = useBackgroundTheme()
+  const { updateThemeImage, computedTheme } = useTheme()
   const bgImage = avatarUrl || DEFAULT_BACKGROUND
 
-  // Actualizar tema cuando cambia la imagen
+  // Actualizar la imagen en el provider para cálculo en modo auto
   useEffect(() => {
-    updateTheme(bgImage)
-  }, [bgImage, updateTheme])
+    updateThemeImage(bgImage)
+  }, [bgImage, updateThemeImage])
 
   return (
     <>
@@ -35,28 +35,28 @@ export function GlobalBackground({ avatarUrl }: GlobalBackgroundProps) {
         }}
       />
 
-      {/* Overlay adaptativo basado en el tema detectado */}
+      {/* Overlay adaptativo asegurando legibilidad 100% */}
       <div
         className={`
-          fixed inset-0 z-[-9] backdrop-blur-[6px] transition-all duration-500
-          ${theme === 'dark'
-            ? 'bg-gradient-to-br from-white/65 via-white/50 to-slate-100/60'
-            : theme === 'light'
-            ? 'bg-gradient-to-br from-slate-950/80 via-slate-950/70 to-slate-900/75'
-            : 'bg-gradient-to-br from-slate-600/40 via-slate-500/35 to-slate-400/45'
+          fixed inset-0 z-[-9] backdrop-blur-[8px] transition-all duration-500
+          ${computedTheme === 'dark'
+            ? 'bg-gradient-to-br from-slate-950/85 via-slate-900/80 to-slate-950/90' // Fondo oscuro estricto para modo oscuro
+            : computedTheme === 'light'
+            ? 'bg-gradient-to-br from-white/85 via-white/80 to-slate-50/90' // Fondo claro estricto para modo claro
+            : 'bg-gradient-to-br from-slate-900/60 via-slate-800/50 to-slate-950/70' // Neutral
           }
         `}
       />
 
-      {/* Vignette sutil para profundidad — adaptativa */}
+      {/* Vignette sutil para profundidad */}
       <div
         className={`
           fixed inset-0 z-[-8] transition-all duration-500
-          ${theme === 'dark'
-            ? 'bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.08)_100%)]'
-            : theme === 'light'
-            ? 'bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(255,255,255,0.06)_100%)]'
-            : 'bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.05)_100%)]'
+          ${computedTheme === 'dark'
+            ? 'bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(0,0,0,0.5)_100%)]'
+            : computedTheme === 'light'
+            ? 'bg-[radial-gradient(ellipse_at_center,_transparent_30%,_rgba(255,255,255,0.4)_100%)]'
+            : 'bg-[radial-gradient(ellipse_at_center,_transparent_40%,_rgba(0,0,0,0.3)_100%)]'
           }
         `}
       />

@@ -5,6 +5,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
 import { GlobalBackground } from '@/components/global-background'
+import { ThemeProvider } from '@/components/theme-provider'
 import { prisma } from '@/lib/shared/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -49,7 +50,7 @@ export default async function AppLayout({
   }
 
   return (
-    <>
+    <ThemeProvider>
       <GlobalBackground avatarUrl={user.avatarUrl || user.logoUrl} />
       <div className="min-h-screen flex bg-transparent">
         <AppSidebar user={user} />
@@ -60,6 +61,6 @@ export default async function AppLayout({
           </main>
         </div>
       </div>
-    </>
+    </ThemeProvider>
   )
 }

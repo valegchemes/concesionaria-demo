@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Bell, LogOut, Plus, Users, Car, Handshake, X, Clock } from 'lucide-react'
+import { Bell, LogOut, Plus, Users, Car, Handshake, X, Clock, Sun, Moon, Monitor } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { GlobalSearch } from './global-search'
+import { useTheme } from '@/components/theme-provider'
 import { cn } from '@/lib/utils'
 
 interface Activity {
@@ -34,6 +35,7 @@ function timeAgo(dateStr: string): string {
 
 export function AppHeaderActionsCore() {
   const router = useRouter()
+  const { mode, setMode } = useTheme()
   const [showNew, setShowNew] = useState(false)
   const [showNotif, setShowNotif] = useState(false)
   const [activities, setActivities] = useState<Activity[]>([])
@@ -105,6 +107,18 @@ export function AppHeaderActionsCore() {
       </div>
 
       <div className="flex items-center gap-1">
+        {/* Selector de Tema */}
+        <button
+          onClick={() => {
+            const nextMode = mode === 'auto' ? 'dark' : mode === 'dark' ? 'light' : 'auto'
+            setMode(nextMode)
+          }}
+          className="rounded-lg p-2 text-adaptive-secondary transition-colors hover:surface-secondary hover:text-adaptive-primary"
+          title={`Tema: ${mode === 'auto' ? 'Automático (según imagen)' : mode === 'dark' ? 'Oscuro' : 'Claro'}`}
+        >
+          {mode === 'auto' ? <Monitor className="h-5 w-5" /> : mode === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+        </button>
+
         {/* Botón + Nuevo */}
         <div className="relative" ref={newRef}>
           <button
