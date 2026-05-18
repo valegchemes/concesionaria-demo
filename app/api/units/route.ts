@@ -319,6 +319,34 @@ export const POST = withTenantHandler(async (request: NextRequest): Promise<Next
         })
       }
 
+      // Guardar en el diccionario personalizado de vehículos para uso futuro
+      if (data.brand && data.model) {
+        const brandStr = data.brand.trim()
+        const modelStr = data.model.trim()
+        if (brandStr && modelStr) {
+          // Primero buscamos si existe para evitar errores de Unique constraint en concurrencia
+          const exists = await tx.customVehicleDictionary.findUnique({
+            where: {
+              companyId_brand_model: {
+                companyId: user.companyId,
+                brand: brandStr,
+                model: modelStr
+              }
+            }
+          })
+          
+          if (!exists) {
+            await tx.customVehicleDictionary.create({
+              data: {
+                companyId: user.companyId,
+                brand: brandStr,
+                model: modelStr
+              }
+            })
+          }
+        }
+      }
+
       return newUnit
     })
 

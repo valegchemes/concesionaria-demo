@@ -1,0 +1,19 @@
+{
+  "Toyota": ["Corolla", "Hilux", "Yaris", "Etios", "SW4", "Rav4", "Camry"],
+  "Ford": ["Ranger", "Fiesta", "Focus", "EcoSport", "Ka", "Maverick", "F-150", "Mustang", "Territory", "Kuga"],
+  "Volkswagen": ["Amarok", "Gol", "Polo", "Vento", "Golf", "Nivus", "T-Cross", "Taos", "Suran", "Saveiro", "Up!"],
+  "Renault": ["Kangoo", "Clio", "Sandero", "Stepway", "Logan", "Duster", "Oroch", "Alaskan", "Kwid", "Captur"],
+  "Peugeot": ["208", "308", "408", "2008", "3008", "5008", "Partner", "207", "206", "Expert"],
+  "Fiat": ["Cronos", "Toro", "Argo", "Mobi", "Strada", "Fiorino", "Pulse", "Fastback", "Palio", "Siena"],
+  "Chevrolet": ["Cruze", "Tracker", "Onix", "Prisma", "S10", "Spin", "Equinox", "Trailblazer"],
+  "Nissan": ["Frontier", "Kicks", "Versa", "Sentra", "March", "Note", "X-Trail"],
+  "Citroën": ["C3", "C4 Cactus", "C4 Lounge", "Berlingo", "C5 Aircross", "C3 Aircross", "Jumpy"],
+  "Jeep": ["Renegade", "Compass", "Commander", "Wrangler", "Grand Cherokee"],
+  "Honda": ["Civic", "HR-V", "CR-V", "Fit", "City", "Accord"],
+  "BMW": ["Serie 1", "Serie 2", "Serie 3", "Serie 4", "Serie 5", "X1", "X2", "X3", "X4", "X5", "X6", "M2", "M3", "M4"],
+  "Audi": ["A1", "A3", "A4", "A5", "A6", "Q2", "Q3", "Q5", "Q7", "Q8", "TT"],
+  "Mercedes-Benz": ["Clase A", "Clase C", "Clase E", "GLA", "GLB", "GLC", "GLE", "Sprinter", "Vito", "Clase G"],
+  "RAM": ["1500", "2500", "Rampage"],
+  "Hyundai": ["Creta", "Tucson", "Santa Fe", "H1", "Veloster", "Kona"],
+  "Kia": ["Sportage", "Sorento", "Rio", "Cerato", "Carnival", "Seltos"]
+}

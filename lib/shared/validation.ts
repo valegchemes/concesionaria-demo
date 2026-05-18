@@ -132,6 +132,8 @@ export const UnitStatusEnum = z.enum(['AVAILABLE', 'IN_PREP', 'RESERVED', 'SOLD'
 export const CreateUnitSchema = z.object({
   title: NameSchema,
   type: UnitTypeEnum,
+  brand: z.string().trim().optional(),
+  model: z.string().trim().optional(),
   priceArs: CurrencySchema.optional().nullable(),
   priceUsd: CurrencySchema.optional().nullable(),
   acquisitionCostArs: CurrencySchema.optional().nullable(),

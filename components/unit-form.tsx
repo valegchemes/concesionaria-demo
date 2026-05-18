@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CreateUnitSchema, type UnitType } from '@/lib/shared/validation'
+import { CreatableCombobox } from '@/components/creatable-combobox'
 
 const ImageUploader = dynamic(
   () => import('@/components/image-uploader').then((mod) => mod.ImageUploader),
@@ -64,6 +65,18 @@ export function UnitForm() {
   const [images, setImages] = useState<string[]>([])
 
   const [formData, setFormData] = useState<UnitFormData>(initialFormData)
+  const [dictionary, setDictionary] = useState<{brand: string, models: string[]}[]>([])
+  const [isLoadingDictionary, setIsLoadingDictionary] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/units/dictionary')
+      .then(res => res.json())
+      .then(data => {
+        if (data.data) setDictionary(data.data)
+      })
+      .catch(err => console.error('Error fetching dictionary:', err))
+      .finally(() => setIsLoadingDictionary(false))
+  }, [])
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -72,6 +85,14 @@ export function UnitForm() {
     setFormData((prev) => ({
       ...prev,
       [name]: name === 'year' ? parseInt(value) || prev.year : value,
+    }))
+  }
+
+  const handleFieldChange = (name: keyof UnitFormData, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+      ...(name === 'brand' && prev.brand !== value ? { model: '' } : {}), // Resetear modelo al cambiar la marca
     }))
   }
 
@@ -98,7 +119,9 @@ export function UnitForm() {
         priceUsd: parseFormatted(formData.priceUsd),
         priceArs: parseFormatted(formData.priceArs),
         description: formData.description,
-        domain: formData.brand.toLowerCase(),
+        domain: formData.brand.toLowerCase(), // Mantener compatibilidad anterior
+        brand: formData.brand,
+        model: formData.model,
         photos: images.map((url, index) => ({ url, order: index })),
       }
 
@@ -172,11 +195,23 @@ export function UnitForm() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <Label htmlFor="brand">Marca *</Label>
-          <Input id="brand" name="brand" placeholder="ej: Toyota" value={formData.brand} onChange={handleInputChange} required />
+          <CreatableCombobox 
+            options={dictionary.map(d => d.brand)}
+            value={formData.brand}
+            onChange={(val) => handleFieldChange('brand', val)}
+            placeholder={isLoadingDictionary ? 'Cargando marcas...' : 'Seleccionar marca o crear...'}
+            disabled={isLoadingDictionary}
+          />
         </div>
         <div>
           <Label htmlFor="model">Modelo *</Label>
-          <Input id="model" name="model" placeholder="ej: Corolla" value={formData.model} onChange={handleInputChange} required />
+          <CreatableCombobox 
+            options={dictionary.find(d => d.brand.toLowerCase() === formData.brand.toLowerCase())?.models || []}
+            value={formData.model}
+            onChange={(val) => handleFieldChange('model', val)}
+            placeholder={!formData.brand ? 'Selecciona una marca primero' : 'Seleccionar modelo o crear...'}
+            disabled={!formData.brand || isLoadingDictionary}
+          />
         </div>
         <div>
           <Label htmlFor="year">Año</Label>

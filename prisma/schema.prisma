@@ -37,6 +37,7 @@ model Company {
   expenses           CompanyExpense[]
   promissoryNotes    PromissoryNote[]
   digitalDocuments   DigitalDocument[]
+  customVehicleDictionary CustomVehicleDictionary[]
 
   @@map("Company")
 }
@@ -706,4 +707,18 @@ model WebhookEvent {
   @@index([expiresAt])
   @@index([source, status])
   @@map("WebhookEvent")
+}
+
+model CustomVehicleDictionary {
+  id        String   @id @default(cuid())
+  brand     String
+  model     String
+  companyId String
+  createdAt DateTime @default(now())
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  @@unique([companyId, brand, model])
+  @@index([companyId])
+  @@map("CustomVehicleDictionary")
 }
