@@ -84,11 +84,11 @@ export function GlobalSearch() {
 
   return (
     <div className="relative w-96" ref={containerRef}>
-      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-adaptive-secondary" />
       <Input
         type="search"
         placeholder="Buscar leads, unidades, operaciones..."
-        className="pl-9 w-full bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+        className="pl-9 w-full surface-secondary border-transparent text-adaptive-primary placeholder:text-adaptive-secondary focus:surface-primary transition-colors"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value)
@@ -102,10 +102,10 @@ export function GlobalSearch() {
 
       {/* Dropdown Results */}
       {isOpen && query.trim().length >= 2 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-slate-200 overflow-hidden z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 surface-primary rounded-lg shadow-lg border border-white/20 overflow-hidden z-50 backdrop-blur-md">
           <div className="max-h-96 overflow-y-auto p-2">
             {!isLoading && results.length === 0 && (
-              <div className="p-4 text-center text-sm text-slate-500">
+              <div className="p-4 text-center text-sm text-adaptive-secondary">
                 No se encontraron resultados para &quot;{query}&quot;
               </div>
             )}
@@ -115,20 +115,20 @@ export function GlobalSearch() {
                 key={`${result.type}-${result.id}`}
                 href={result.url}
                 onClick={handleSelect}
-                className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-md transition-colors group cursor-pointer"
+                className="flex items-center gap-3 p-3 hover:surface-secondary rounded-md transition-colors group cursor-pointer"
               >
-                <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-full surface-muted flex items-center justify-center shrink-0">
                   <TypeIcon type={result.type} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 truncate">
+                  <p className="text-sm font-medium text-adaptive-primary truncate">
                     {result.title}
                   </p>
-                  <p className="text-xs text-slate-500 truncate">
+                  <p className="text-xs text-adaptive-secondary truncate">
                     {result.subtitle}
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 text-adaptive-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
             ))}
           </div>

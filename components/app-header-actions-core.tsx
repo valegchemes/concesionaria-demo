@@ -121,13 +121,13 @@ export function AppHeaderActionsCore() {
           </button>
 
           {showNew && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-white/20 bg-white/90 shadow-2xl backdrop-blur-xl dark:bg-slate-900/90">
+            <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-white/20 surface-primary shadow-2xl backdrop-blur-xl">
               <div className="p-1">
                 {quickActions.map((action) => (
                   <button
                     key={action.href}
                     onClick={() => { setShowNew(false); router.push(action.href) }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-adaptive-primary transition-colors hover:surface-secondary"
                   >
                     <action.icon className={cn('h-4 w-4', action.color)} />
                     {action.label}
@@ -145,8 +145,8 @@ export function AppHeaderActionsCore() {
             className={cn(
               'relative rounded-lg p-2 transition-colors',
               showNotif
-                ? 'bg-slate-200/80 text-slate-700 dark:bg-slate-700 dark:text-white'
-                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-white'
+                ? 'surface-secondary text-adaptive-primary'
+                : 'text-adaptive-secondary hover:surface-secondary hover:text-adaptive-primary'
             )}
           >
             <Bell className="h-5 w-5" />
@@ -154,37 +154,37 @@ export function AppHeaderActionsCore() {
           </button>
 
           {showNotif && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/20 bg-white/90 shadow-2xl backdrop-blur-xl dark:bg-slate-900/90">
-              <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
-                <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Actividad Reciente</p>
-                <button onClick={() => setShowNotif(false)} className="rounded p-1 text-slate-400 hover:text-slate-600">
+            <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/20 surface-primary shadow-2xl backdrop-blur-xl">
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                <p className="text-sm font-semibold text-adaptive-primary">Actividad Reciente</p>
+                <button onClick={() => setShowNotif(false)} className="rounded p-1 text-adaptive-secondary hover:text-adaptive-primary">
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               <div className="max-h-72 overflow-y-auto">
                 {loadingNotif ? (
-                  <div className="flex items-center justify-center py-8 text-slate-400">
+                  <div className="flex items-center justify-center py-8 text-adaptive-secondary">
                     <Clock className="h-5 w-5 animate-spin mr-2" />
                     Cargando...
                   </div>
                 ) : activities.length === 0 ? (
-                  <div className="py-8 text-center text-sm text-slate-400">Sin actividad reciente</div>
+                  <div className="py-8 text-center text-sm text-adaptive-secondary">Sin actividad reciente</div>
                 ) : (
                   activities.map((act) => (
                     <button
                       key={act.id}
                       onClick={() => { setShowNotif(false); router.push(act.href) }}
-                      className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                      className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:surface-secondary"
                     >
-                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full surface-muted">
                         {activityIcon(act.type)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{act.title}</p>
-                        <p className="truncate text-xs text-slate-500">{act.subtitle}</p>
+                        <p className="truncate text-sm font-medium text-adaptive-primary">{act.title}</p>
+                        <p className="truncate text-xs text-adaptive-secondary">{act.subtitle}</p>
                       </div>
-                      <span className="shrink-0 text-[10px] font-medium text-slate-400">{timeAgo(act.time)}</span>
+                      <span className="shrink-0 text-[10px] font-medium text-adaptive-secondary opacity-70">{timeAgo(act.time)}</span>
                     </button>
                   ))
                 )}
@@ -196,7 +196,7 @@ export function AppHeaderActionsCore() {
         {/* Cerrar sesión */}
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+          className="rounded-lg p-2 text-adaptive-secondary transition-colors hover:surface-secondary hover:text-red-500"
           title="Cerrar sesión"
         >
           <LogOut className="h-4 w-4" />
