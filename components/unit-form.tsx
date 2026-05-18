@@ -26,6 +26,10 @@ type UnitFormData = {
   brand: string
   model: string
   year: number
+  domain: string
+  engineNumber: string
+  frameNumber: string
+  kilometraje: string
   acquisitionCostArs: string
   acquisitionCostUsd: string
   priceUsd: string
@@ -38,6 +42,10 @@ const initialFormData: UnitFormData = {
   brand: '',
   model: '',
   year: new Date().getFullYear(),
+  domain: '',
+  engineNumber: '',
+  frameNumber: '',
+  kilometraje: '',
   acquisitionCostArs: '',
   acquisitionCostUsd: '',
   priceUsd: '',
@@ -119,7 +127,10 @@ export function UnitForm() {
         priceUsd: parseFormatted(formData.priceUsd),
         priceArs: parseFormatted(formData.priceArs),
         description: formData.description,
-        domain: formData.brand.toLowerCase(), // Mantener compatibilidad anterior
+        domain: formData.domain.trim() || undefined,
+        engineNumber: formData.engineNumber.trim() || undefined,
+        frameNumber: formData.frameNumber.trim() || undefined,
+        attributes: formData.kilometraje.trim() ? [{ key: 'kilometraje', value: formData.kilometraje.trim() }] : undefined,
         brand: formData.brand,
         model: formData.model,
         photos: images.map((url, index) => ({ url, order: index })),
@@ -216,6 +227,25 @@ export function UnitForm() {
         <div>
           <Label htmlFor="year">Año</Label>
           <Input id="year" name="year" type="number" value={formData.year} onChange={handleInputChange} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div>
+          <Label htmlFor="domain">Patente</Label>
+          <Input id="domain" name="domain" placeholder="ej: AB123CD" value={formData.domain} onChange={handleInputChange} />
+        </div>
+        <div>
+          <Label htmlFor="kilometraje">Kilometraje</Label>
+          <Input id="kilometraje" name="kilometraje" type="number" placeholder="ej: 45000" value={formData.kilometraje} onChange={handleInputChange} />
+        </div>
+        <div>
+          <Label htmlFor="engineNumber">N° Motor</Label>
+          <Input id="engineNumber" name="engineNumber" placeholder="Opcional" value={formData.engineNumber} onChange={handleInputChange} />
+        </div>
+        <div>
+          <Label htmlFor="frameNumber">N° Chasis</Label>
+          <Input id="frameNumber" name="frameNumber" placeholder="Opcional" value={formData.frameNumber} onChange={handleInputChange} />
         </div>
       </div>
 
