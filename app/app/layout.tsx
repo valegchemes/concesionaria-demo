@@ -6,6 +6,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { AppHeader } from '@/components/app-header'
 import { GlobalBackground } from '@/components/global-background'
 import { ThemeProvider } from '@/components/theme-provider'
+import { SubscriptionGuard } from '@/components/subscription-guard'
 import { prisma } from '@/lib/shared/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -24,13 +25,19 @@ export default async function AppLayout({
 
   // Fetch avatarUrl and logoUrl fresh from DB (not from JWT to avoid cookie overflow)
   // Also fetch company name to avoid staleness if user changed it in settings
-  let dbUser: { avatarUrl: string | null; company: { name: string; logoUrl: string | null } | null } | null = null
+  let dbUser: { avatarUrl: string | null; company: { name: string; logoUrl: string | null; subscription: { status: string } | null } | null } | null = null
   try {
     dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
         avatarUrl: true,
-        company: { select: { name: true, logoUrl: true } },
+        company: { 
+          select: { 
+            name: true, 
+            logoUrl: true,
+            subscription: { select: { status: true } }
+          } 
+        },
       },
     })
   } catch (e) {
@@ -56,9 +63,11 @@ export default async function AppLayout({
         <AppSidebar user={user} />
         <div className="flex-1 flex flex-col bg-transparent">
           <AppHeader user={user} />
-          <main className="flex-1 p-6 overflow-auto bg-transparent">
-            {children}
-          </main>
+          <SubscriptionGuard status={dbUser?.company?.subscription?.status || null}>
+            <main className="flex-1 p-6 overflow-auto bg-transparent">
+              {children}
+            </main>
+          </SubscriptionGuard>
         </div>
       </div>
     </ThemeProvider>

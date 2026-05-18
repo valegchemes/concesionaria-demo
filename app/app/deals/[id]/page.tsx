@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft, User, Car, Handshake, DollarSign, Calendar, Clock, CreditCard, UserCircle, 
-  MessageCircle, Send, X, Lock
+  MessageCircle, Send, X, Lock, AlertTriangle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -499,6 +499,17 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
                   className="w-full rounded-lg border bg-gray-50 dark:bg-slate-800 px-3 py-2.5 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-green-500 resize-y"
                 />
                 <p className="text-xs text-gray-400">Podés editar el mensaje antes de enviarlo.</p>
+              </div>
+
+              {/* T&C Warning */}
+              <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900 rounded-lg p-3 flex gap-3 items-start">
+                <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-orange-800 dark:text-orange-400">Términos y Condiciones de Envío</p>
+                  <p className="text-[11px] leading-relaxed text-orange-700 dark:text-orange-500">
+                    Al utilizar la función de envío de WhatsApp, aceptás la responsabilidad total sobre el contenido enviado. El uso indebido, envío masivo de SPAM, o incumplimiento de las políticas de comercio de Meta puede resultar en el <strong>bloqueo temporal o permanente de tu número telefónico</strong>. AutoManager CRM no se hace responsable por los baneos impuestos por WhatsApp.
+                  </p>
+                </div>
               </div>
             </div>
             <div className="flex gap-3 px-5 py-4 border-t dark:border-slate-800">

@@ -11,7 +11,7 @@ import {
   CardFooter,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, ShoppingCart, CheckCircle2, Clock, AlertCircle, XCircle } from 'lucide-react'
+import { Loader2, ShoppingCart, CheckCircle2, Clock, AlertCircle, Building2 } from 'lucide-react'
 
 interface Plan {
   id: string
@@ -185,77 +185,118 @@ export default function BillingPage() {
             No hay planes disponibles en este momento. Por favor contacta a soporte.
           </div>
         ) : (
-          plans.map((plan, idx) => {
-            const isPro = idx === plans.length - 1
-            return (
-              <Card key={plan.id} className={`flex flex-col relative surface-secondary ${
-                isPro ? 'border-violet-400 shadow-lg shadow-violet-900/30' : ''
-              }`}>
-                {isPro && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-violet-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                      Recomendado
-                    </span>
-                  </div>
-                )}
-                <CardHeader className="pb-3">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className={`h-5 w-5 ${isPro ? 'text-violet-500' : 'text-blue-500'}`} />
-                    <CardTitle>{plan.name}</CardTitle>
-                  </div>
-                  <div>
-                    <span className="text-2xl font-black text-foreground">
-                      ${Number(plan.price).toLocaleString('es-AR')}
-                    </span>
-                    <span className="text-sm text-muted-foreground ml-1">ARS / mes</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 space-y-2">
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2 text-adaptive-primary">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                      {plan.maxUsers === 1 ? '1 usuario' : `Hasta ${plan.maxUsers} usuarios`}
-                    </li>
-                    <li className="flex items-center gap-2 text-adaptive-primary">
-                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                      Hasta {plan.maxUnits} unidades en inventario
-                    </li>
-                    <li className={`flex items-center gap-2 ${
-                      plan.analyticsEnabled ? 'text-adaptive-primary' : 'text-adaptive-secondary opacity-50'
-                    }`}>
-                      {plan.analyticsEnabled
-                        ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                        : <XCircle className="h-4 w-4 text-adaptive-secondary shrink-0" />}
-                      Analíticas de ventas
-                    </li>
-                    <li className={`flex items-center gap-2 ${
-                      plan.whatsappEnabled ? 'text-adaptive-primary' : 'text-adaptive-secondary opacity-50'
-                    }`}>
-                      {plan.whatsappEnabled
-                        ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
-                        : <XCircle className="h-4 w-4 text-adaptive-secondary shrink-0" />}
-                      Envío de WhatsApp a clientes
-                    </li>
-                  </ul>
-                </CardContent>
-                <CardFooter>
-                  <Button
-                    onClick={() => handleCheckout(plan.stripePriceId)}
-                    disabled={loading}
-                    className={`w-full ${
-                      isPro ? 'bg-violet-600 hover:bg-violet-700' : ''
-                    }`}
-                  >
-                    {loading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      'Pagar con Mercado Pago'
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            )
-          })
+          <>
+            {plans.map((plan, idx) => {
+              const isPro = plan.name.toLowerCase().includes('pro')
+              return (
+                <Card key={plan.id} className={`flex flex-col relative surface-secondary transition-all ${
+                  isPro ? 'border-2 border-violet-500 shadow-xl shadow-violet-900/20 md:-translate-y-2' : ''
+                }`}>
+                  {isPro && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-violet-600 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-md">
+                        Recomendado
+                      </span>
+                    </div>
+                  )}
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className={`h-5 w-5 ${isPro ? 'text-violet-500' : 'text-blue-500'}`} />
+                      <CardTitle className="text-xl">{plan.name}</CardTitle>
+                    </div>
+                    <div className="flex items-baseline mt-2">
+                      <span className="text-3xl font-black text-adaptive-primary">
+                        ${Number(plan.price).toLocaleString('es-AR')}
+                      </span>
+                      <span className="text-sm font-medium text-adaptive-secondary ml-1.5">ARS / mes</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 space-y-4 mt-2">
+                    <ul className="space-y-3 text-sm">
+                      <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                        {plan.maxUsers === 1 ? '1 usuario incluido' : `Hasta ${plan.maxUsers} usuarios`}
+                      </li>
+                      <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                        Hasta {plan.maxUnits} unidades en inventario
+                      </li>
+                      {plan.analyticsEnabled && (
+                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          Analíticas de ventas avanzadas
+                        </li>
+                      )}
+                      {plan.whatsappEnabled && (
+                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          Envío automático por WhatsApp
+                        </li>
+                      )}
+                    </ul>
+                  </CardContent>
+                  <CardFooter>
+                    <Button
+                      onClick={() => handleCheckout(plan.stripePriceId)}
+                      disabled={loading}
+                      className={`w-full font-semibold ${
+                        isPro ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''
+                      }`}
+                    >
+                      {loading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        'Pagar con Mercado Pago'
+                      )}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )
+            })}
+            
+            {/* Enterprise Plan Card */}
+            <Card className="flex flex-col relative surface-muted border-dashed border-2">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-slate-500" />
+                  <CardTitle className="text-xl">Plan Enterprise</CardTitle>
+                </div>
+                <div className="flex items-baseline mt-2">
+                  <span className="text-2xl font-bold text-adaptive-primary">
+                    A convenir
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-4 mt-2">
+                <p className="text-sm text-adaptive-secondary">
+                  Para concesionarias con operaciones a gran escala que requieren soluciones a medida.
+                </p>
+                <ul className="space-y-3 text-sm">
+                  <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                    <CheckCircle2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                    Usuarios e Inventario Ilimitados
+                  </li>
+                  <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                    <CheckCircle2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                    Soporte Prioritario 24/7
+                  </li>
+                  <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                    <CheckCircle2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                    Migración de datos incluida
+                  </li>
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button
+                  variant="outline"
+                  className="w-full font-semibold"
+                  onClick={() => window.open('mailto:soporte@automanager.com', '_blank')}
+                >
+                  Contactar con Soporte
+                </Button>
+              </CardFooter>
+            </Card>
+          </>
         )}
       </div>
     </div>
