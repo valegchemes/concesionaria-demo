@@ -56,7 +56,7 @@ export function generateWhatsAppLink(phone: string, message: string): string {
   // then encode for use in the URL query string.
   const normalizedMessage = message.normalize('NFC')
   const encodedMessage = encodeURIComponent(normalizedMessage)
-  return `https://wa.me/${formattedPhone}?text=${encodedMessage}`
+  return `https://api.whatsapp.com/send?phone=${formattedPhone}&text=${encodedMessage}`
 }
 
 export function processTemplate(template: string, variables: Record<string, string | number | undefined>): string {
