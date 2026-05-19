@@ -18,6 +18,8 @@ import { UnitPdfTemplate } from '@/components/units/unit-pdf-template'
 import { PromissoryNotesTab } from '@/components/units/promissory-notes-tab'
 import { DigitalDocumentsTab } from '@/components/units/digital-documents-tab'
 import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
+import { FinancingTab } from '@/components/units/financing-tab'
+import { GestoriaTab } from '@/components/units/gestoria-tab'
 
 interface CostItem {
   id: string
@@ -86,9 +88,32 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const pdfRef = useRef<HTMLDivElement>(null)
   const [company, setCompany] = useState<any>(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
-  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'costs' | 'docs'>('details')
+  const [activeTab, setActiveTab] = useState<any>('details')
   const [userRole, setUserRole] = useState<string>('SELLER')
   const { limits, loading: limitsLoading } = usePlanLimits()
+
+  async function saveUnitAttributes(updatedAttrs: { key: string; value: string }[]) {
+    try {
+      const res = await fetch(`/api/units/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          attributes: updatedAttrs,
+        }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setUnit(updated.data)
+        setAttributesForm(updated.data.attributes || [])
+        return true
+      }
+      return false
+    } catch (e) {
+      console.error(e)
+      return false
+    }
+  }
 
   useEffect(() => { fetchUnit() }, [id])
 
@@ -252,14 +277,21 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 border-b border-border">
-        {([['details', 'Detalles'], ['notes', 'Pagarés y Cuotas'], ['costs', 'Costos'], ['docs', 'Documentación']] as const).map(([tab, label]) => {
+      <div className="flex gap-1 border-b border-border overflow-x-auto scrollbar-none">
+        {[
+          ['details', 'Detalles'],
+          ['cotizar', 'Cotizar 💰'],
+          ['notes', 'Pagarés y Cuotas'],
+          ['costs', 'Costos 📈'],
+          ['gestoria', 'Gestoría 🚥'],
+          ['docs', 'Documentación']
+        ].map(([tab, label]) => {
           const isRestricted = (tab === 'notes' || tab === 'docs') && !limitsLoading && !limits.documentsEnabled
           return (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex-shrink-0 flex items-center gap-2 ${
                 activeTab === tab
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -517,37 +549,87 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           )}
 
           {(activeTab === 'details' || activeTab === 'costs') && (
-          <Card className="border border-border">
-            <CardHeader className="bg-muted/50 rounded-t-lg border-b border-border pb-4">
-              <div className="flex items-center justify-between">
+          <Card className="border border-border overflow-hidden">
+            <CardHeader className="bg-muted/50 border-b border-border pb-6">
+              <div className="flex items-center justify-between mb-4">
                 <CardTitle className="flex items-center gap-2 text-foreground">
-                  <TrendingUp className="h-5 w-5" />
-                  Costo Total de la Unidad
+                  <TrendingUp className="h-5 w-5 text-indigo-600" />
+                  Rendimiento y Costos de la Unidad
                 </CardTitle>
                 <Button size="sm" variant="outline" onClick={() => { setShowCostForm(!showCostForm); setCostError('') }}>
                   <Plus className="h-4 w-4 mr-1" />Agregar Gasto
                 </Button>
               </div>
 
+              {/* Advanced Diagnostics visual dashboard */}
+              {priceArs > 0 && totalCostArs > 0 && (
+                <div className="mb-5 bg-background rounded-2xl p-4 border border-border space-y-3.5 shadow-sm">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <span>Desglose Financiero</span>
+                    <span className="text-slate-500">Precio de Venta: {formatPrice(priceArs, 'ARS')}</span>
+                  </div>
+
+                  {/* Profit Visual Bar Gauge */}
+                  <div className="space-y-1">
+                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                      <div 
+                        style={{ width: `${Math.min(100, Math.round((totalCostArs / priceArs) * 100))}%` }} 
+                        className="bg-indigo-500 h-full transition-all" 
+                        title="Inversión total"
+                      />
+                      {marginArs !== null && marginArs > 0 && (
+                        <div 
+                          style={{ width: `${Math.min(100, Math.round((marginArs / priceArs) * 100))}%` }} 
+                          className="bg-emerald-500 h-full transition-all" 
+                          title="Margen de ganancia"
+                        />
+                      )}
+                    </div>
+                    <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                      <span>Costo Total: {Math.round((totalCostArs / priceArs) * 100)}%</span>
+                      {marginArs !== null && marginArs > 0 && (
+                        <span className="text-emerald-600">Ganancia Estimada: {Math.round((marginArs / priceArs) * 100)}%</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Net Margin & ROI breakdown */}
+                  <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Margen Neto Estimado</span>
+                      <p className={`text-xl font-black ${marginArs !== null && marginArs >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {marginArs !== null && marginArs >= 0 ? '+' : ''}{marginArs !== null ? formatPrice(marginArs, 'ARS') : 'Sin precio'}
+                      </p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Retorno de Inversión (ROI)</span>
+                      <p className={`text-xl font-black ${marginArs !== null && marginArs >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {totalCostArs > 0 && marginArs !== null ? `${Math.round((marginArs / totalCostArs) * 100)}%` : '0%'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Summary totals */}
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1"><ShoppingCart className="h-3 w-3" />Costo de adquisición ARS</p>
-                  <p className="text-lg font-bold text-foreground">{formatPrice(acqCostArs, 'ARS')}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><ShoppingCart className="h-3 w-3" />Adquisición ARS</p>
+                  <p className="text-base font-bold text-foreground">{formatPrice(acqCostArs, 'ARS')}</p>
                 </div>
                 <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Wrench className="h-3 w-3" />Gastos adicionales ARS</p>
-                  <p className="text-lg font-bold text-foreground">{formatPrice(costItems.reduce((s, c) => s + (Number(c.amountArs) || 0), 0), 'ARS')}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Wrench className="h-3 w-3" />Gastos de taller ARS</p>
+                  <p className="text-base font-bold text-foreground">{formatPrice(costItems.reduce((s, c) => s + (Number(c.amountArs) || 0), 0), 'ARS')}</p>
                 </div>
               </div>
-              <div className="mt-3 p-3 bg-primary/10 rounded-lg flex items-center justify-between border border-primary/20">
-                <span className="font-semibold text-primary">Costo Total ARS</span>
-                <span className="text-2xl font-black text-primary">{formatPrice(totalCostArs, 'ARS')}</span>
+              <div className="mt-3 p-3 bg-indigo-50/70 dark:bg-indigo-950/20 rounded-lg flex items-center justify-between border border-indigo-100 dark:border-indigo-900/50">
+                <span className="font-semibold text-indigo-700 dark:text-indigo-400 text-sm">Costo Total ARS</span>
+                <span className="text-xl font-black text-indigo-700 dark:text-indigo-400">{formatPrice(totalCostArs, 'ARS')}</span>
               </div>
               {totalCostUsd > 0 && (
                 <div className="mt-2 p-2 bg-muted rounded-lg flex items-center justify-between border border-border">
-                  <span className="text-sm font-medium text-foreground">Costo Total USD</span>
-                  <span className="text-lg font-bold text-foreground">${totalCostUsd.toLocaleString()}</span>
+                  <span className="text-xs font-medium text-foreground">Costo Total USD</span>
+                  <span className="text-base font-bold text-foreground">${totalCostUsd.toLocaleString()} USD</span>
                 </div>
               )}
             </CardHeader>
@@ -717,6 +799,20 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
             </Link>
           </div>
         ) : <DigitalDocumentsTab unitId={unit.id} />
+      )}
+
+      {/* Financing tab */}
+      {activeTab === 'cotizar' && (
+        <FinancingTab unit={unit} company={company} />
+      )}
+
+      {/* Gestoría checklist tab */}
+      {activeTab === 'gestoria' && (
+        <GestoriaTab 
+          unitId={unit.id} 
+          attributes={unit.attributes || []} 
+          onSaveAttributes={saveUnitAttributes} 
+        />
       )}
     </div>
   )

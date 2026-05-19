@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CreateUnitSchema, type UnitType } from '@/lib/shared/validation'
 import { CreatableCombobox } from '@/components/creatable-combobox'
+import { Sparkles, Camera, Check, AlertTriangle, Loader2, RefreshCw, X, FileSpreadsheet } from 'lucide-react'
 
 const ImageUploader = dynamic(
   () => import('@/components/image-uploader').then((mod) => mod.ImageUploader),
@@ -71,6 +72,82 @@ export function UnitForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
+
+  const [isScanOpen, setIsScanOpen] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [scanSuccess, setScanSuccess] = useState(false)
+  const [scanWarning, setScanWarning] = useState<string | null>(null)
+
+  const handleScan = async (mockId?: string, file?: File) => {
+    setIsScanning(true)
+    setScanError(null)
+    setScanSuccess(false)
+    setScanWarning(null)
+
+    try {
+      let body: any = {}
+      if (mockId) {
+        body = { mockId }
+      } else if (file) {
+        const reader = new FileReader()
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = (err) => reject(err)
+        })
+        reader.readAsDataURL(file)
+        const base64 = await base64Promise
+        body = { image: base64 }
+      } else {
+        throw new Error('Selecciona un archivo o un ejemplo de prueba.')
+      }
+
+      const res = await fetch('/api/units/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+
+      if (!res.ok) {
+        const errJson = await res.json()
+        throw new Error(errJson.error || 'Error al escanear la cédula')
+      }
+
+      const resJson = await res.json()
+      if (resJson.success && resJson.data) {
+        const data = resJson.data
+        setFormData(prev => ({
+          ...prev,
+          type: data.type || prev.type,
+          brand: data.brand || prev.brand,
+          model: data.model || prev.model,
+          year: data.year ? Number(data.year) : prev.year,
+          domain: data.domain || prev.domain,
+          engineNumber: data.engineNumber || prev.engineNumber,
+          frameNumber: data.frameNumber || prev.frameNumber,
+          kilometraje: data.kilometraje || prev.kilometraje,
+          description: data.description || prev.description
+        }))
+        
+        setScanSuccess(true)
+        if (resJson.warning) {
+          setScanWarning(resJson.warning)
+        }
+        
+        // Auto-close dialog upon success after a brief visual confirmation
+        setTimeout(() => {
+          setIsScanOpen(false)
+          setScanSuccess(false)
+        }, 1200)
+      } else {
+        throw new Error('No se pudo extraer la información del vehículo.')
+      }
+    } catch (err: any) {
+      setScanError(err.message || 'Error al procesar el escaneo.')
+    } finally {
+      setIsScanning(false)
+    }
+  }
 
   const [formData, setFormData] = useState<UnitFormData>(initialFormData)
   const [dictionary, setDictionary] = useState<{brand: string, models: string[]}[]>([])
@@ -171,14 +248,140 @@ export function UnitForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">
-          Agregar Nueva Unidad
-        </h2>
-        <p className="text-sm text-gray-700">
-          Complete el formulario para agregar una nueva unidad a tu catálogo
-        </p>
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-2xl text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
+            Agregar Nueva Unidad
+          </h2>
+          <p className="text-sm opacity-90">
+            Complete el formulario o escanee una Cédula para cargar la información al instante.
+          </p>
+        </div>
+        <Button
+          type="button"
+          onClick={() => { setIsScanOpen(true); setScanError(null); setScanSuccess(false); }}
+          className="bg-white hover:bg-slate-50 text-indigo-700 font-bold px-4 py-2.5 rounded-xl shadow-md border-none flex items-center gap-2 self-start md:self-auto transition-transform hover:scale-[1.03]"
+        >
+          <Sparkles className="h-4 w-4 animate-pulse text-indigo-600" />
+          Carga Rápida con IA
+        </Button>
       </div>
+
+      {/* Stunning AI Scanner Modal / Drawer Overlay */}
+      {isScanOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="bg-indigo-700 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-amber-400" />
+                <h3 className="font-bold text-lg">Escáner de Cédulas Automotor</h3>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsScanOpen(false)}
+                className="p-1 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
+              {scanError && (
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-rose-600" />
+                  <p className="text-sm font-medium">{scanError}</p>
+                </div>
+              )}
+
+              {scanSuccess ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 animate-bounce">
+                    <Check className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-bold text-slate-800">¡Cédula Escaneada con Éxito!</h4>
+                  <p className="text-sm text-slate-500">Auto-completando los campos del vehículo...</p>
+                  {scanWarning && (
+                    <p className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg max-w-sm mx-auto">{scanWarning}</p>
+                  )}
+                </div>
+              ) : isScanning ? (
+                <div className="text-center py-12 space-y-5">
+                  <div className="relative w-28 h-20 bg-slate-100 rounded-xl border-2 border-indigo-200 mx-auto overflow-hidden flex items-center justify-center">
+                    {/* Visual laser scanner scanning line */}
+                    <div className="absolute left-0 right-0 h-0.5 bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] animate-[bounce_2s_infinite]" />
+                    <Camera className="h-8 w-8 text-indigo-400 opacity-60" />
+                  </div>
+                  <div className="flex flex-col items-center gap-1.5">
+                    <Loader2 className="h-6 w-6 text-indigo-600 animate-spin" />
+                    <span className="font-semibold text-slate-700 text-sm">Analizando imagen mediante IA...</span>
+                    <span className="text-xs text-slate-400">Leyendo marca, modelo, año, patente y números de chasis/motor</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* File Upload Selector */}
+                  <div className="relative border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 hover:bg-slate-100/70 transition-colors flex flex-col items-center justify-center gap-2 group cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleScan(undefined, file)
+                      }}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                    <Camera className="h-10 w-10 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                    <span className="font-semibold text-slate-700 text-sm">Saca una foto o subí la Cédula</span>
+                    <span className="text-xs text-slate-400">Formatos compatibles: JPG, PNG.</span>
+                  </div>
+
+                  {/* Interactive Samples / Mocks */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-indigo-600" />
+                      <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Simulador Express de Prueba</span>
+                    </div>
+                    <p className="text-xs text-slate-500">¿Querés probar la experiencia al instante? Elegí una de las cédulas de muestra cargadas en el simulador:</p>
+                    <div className="grid grid-cols-2 gap-3.5">
+                      {[
+                        { id: 'cronos', label: 'Fiat Cronos 2023', domain: 'AF329JK' },
+                        { id: 'hilux', label: 'Toyota Hilux 2021', domain: 'AE529OP' },
+                        { id: 'fiesta', label: 'Ford Fiesta 2017', domain: 'AB829KL' },
+                        { id: 'tornado', label: 'Honda XR 250 (Moto)', domain: 'A157JKL' },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => handleScan(item.id)}
+                          className="p-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 hover:border-indigo-300 transition-all text-left flex flex-col shadow-sm text-xs font-semibold"
+                        >
+                          <span className="text-slate-800 mb-0.5">{item.label}</span>
+                          <span className="text-indigo-600 font-mono text-[10px]">Patente: {item.domain}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsScanOpen(false)}
+                className="px-4 py-2 text-slate-600 text-xs font-semibold rounded-xl"
+              >
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
