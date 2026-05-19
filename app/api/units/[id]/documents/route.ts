@@ -49,6 +49,7 @@ export const GET = withTenantHandler(withErrorHandling(
       where: { unitId, companyId: user.companyId },
       include: {
         lead: { select: { id: true, name: true, phone: true } },
+        unit: { select: { id: true, title: true } },
       },
       orderBy: { createdAt: 'desc' },
     })

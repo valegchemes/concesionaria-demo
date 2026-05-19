@@ -26,6 +26,7 @@ interface DigitalDoc {
   status: string
   createdAt: string
   lead: { id: string; name: string; phone: string }
+  unit?: { id: string; title: string }
 }
 
 // ── Config maps ───────────────────────────────────────────────────────────────
@@ -42,12 +43,23 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; icon: React.Ele
 }
 
 // ── WhatsApp message builder ──────────────────────────────────────────────────
-function buildWhatsAppUrl(phone: string, docType: string, ref: string | null, docId: string) {
+function buildWhatsAppUrl(
+  phone: string,
+  docType: string,
+  ref: string | null,
+  docId: string,
+  buyerName?: string,
+  unitTitle?: string
+) {
   const typeLabel = DOC_TYPES.find(t => t.value === docType)?.label ?? docType
   const refStr = ref ? ` N° ${ref}` : ''
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const downloadUrl = `${baseUrl}/api/public/documents/${docId}/download`
-  const msg = `Hola 👋, te hacemos llegar tu *${typeLabel}${refStr}*.\n\nPodés descargar el PDF firmado ingresando aquí:\n${downloadUrl}\n\nCualquier consulta, estamos a tu disposición. 🙌`
+  
+  const greeting = buyerName ? `Hola ${buyerName} \u{1F44B}` : `Hola \u{1F44B}`
+  const vehicleStr = unitTitle ? ` correspondiente al vehículo *${unitTitle}*` : ''
+
+  const msg = `${greeting}, te hacemos llegar tu *${typeLabel}${refStr}*${vehicleStr}.\n\nPodés descargar el PDF firmado ingresando aquí:\n${downloadUrl}\n\nCualquier consulta, estamos a tu disposición. \u{1F64C}`
   const number = phone.replace(/\D/g, '')
   return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`
 }
@@ -229,7 +241,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                           {/* WhatsApp quick-send */}
                           {doc.lead.phone && (
                             <a
-                              href={buildWhatsAppUrl(doc.lead.phone, doc.type, doc.referenceNumber, doc.id)}
+                              href={buildWhatsAppUrl(doc.lead.phone, doc.type, doc.referenceNumber, doc.id, doc.lead?.name, doc.unit?.title)}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Enviar aviso por WhatsApp"
