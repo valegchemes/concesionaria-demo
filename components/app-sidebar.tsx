@@ -15,6 +15,7 @@ import {
   Wallet,
   ChevronRight,
   ShieldCheck,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,6 +27,7 @@ const navGroups = [
       { name: 'Leads',        href: '/app/leads',     icon: Users,           color: 'text-violet-400' },
       { name: 'Unidades',     href: '/app/units',     icon: Car,             color: 'text-emerald-400' },
       { name: 'Operaciones',  href: '/app/deals',     icon: Handshake,       color: 'text-amber-400' },
+      { name: 'Documentos',   href: '/app/documents', icon: FileText,        color: 'text-indigo-400' },
     ],
   },
   {

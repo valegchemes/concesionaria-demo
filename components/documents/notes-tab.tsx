@@ -162,7 +162,7 @@ function PaymentModal({ noteId, installment, onClose, onSuccess }: {
 
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
-export default function NotesPage() {
+export function NotesTab() {
   const router = useRouter()
   const [notes, setNotes] = useState<PromissoryNote[]>([])
   const [loading, setLoading] = useState(true)
@@ -231,23 +231,7 @@ export default function NotesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link href="/app/dashboard">
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-xl font-bold text-adaptive-primary flex items-center gap-2">
-            <FileText className="h-5 w-5 text-blue-500" />
-            Flujo y Detalle de Pagarés
-          </h1>
-          <p className="text-sm text-adaptive-secondary mt-0.5">
-            Seguimiento de cuotas, cobros y pendientes en la empresa
-          </p>
-        </div>
-      </div>
+
 
       {/* KPI summaries */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

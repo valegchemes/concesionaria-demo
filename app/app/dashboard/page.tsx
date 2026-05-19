@@ -301,7 +301,7 @@ export default async function DashboardPage() {
               icon={Receipt}
               accentColor="border-l-emerald-500"
               iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
-              href="/app/notes?status=PAID"
+              href="/app/documents?tab=notes&status=PAID"
             />
             <KpiCard
               title="Cuotas Pendientes"
@@ -310,7 +310,7 @@ export default async function DashboardPage() {
               icon={Banknote}
               accentColor="border-l-blue-500"
               iconColor="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400"
-              href="/app/notes?status=PENDING"
+              href="/app/documents?tab=notes&status=PENDING"
             />
             <KpiCard
               title="Cuotas Vencidas"
@@ -321,7 +321,7 @@ export default async function DashboardPage() {
               iconColor={stats.notes.overdueArs > 0
                 ? "bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400"
                 : "bg-muted text-muted-foreground"}
-              href="/app/notes?status=OVERDUE"
+              href="/app/documents?tab=notes&status=OVERDUE"
             />
           </div>
         </div>
