@@ -34,7 +34,7 @@ export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
     include: { plan: true },
   })
 
-  if (!subscription || subscription.status !== 'ACTIVE' || !subscription.plan) {
+  if (!subscription || (subscription.status !== 'ACTIVE' && subscription.status !== 'INCOMPLETE') || !subscription.plan) {
     return FREE_LIMITS
   }
 
