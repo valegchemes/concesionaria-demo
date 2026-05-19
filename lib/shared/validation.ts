@@ -3,46 +3,58 @@
 
 import { z } from "zod"
 
+/**
+ * Sanitiza una cadena de texto eliminando etiquetas HTML potencialmente peligrosas (mitigación XSS)
+ */
+export function sanitizeString(val: string | null | undefined): string {
+  if (!val) return ""
+  return val
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Elimina etiquetas script
+    .replace(/<[^>]+>/g, '') // Elimina cualquier otra etiqueta HTML
+    .trim()
+}
+
 // ============================================================================
 // Common Field Validators
 // ============================================================================
 
-export const StringSchema = z.string().trim().min(1, "This field is required")
-export const OptionalStringSchema = z.string().trim().optional().or(z.literal(""))
+export const StringSchema = z.string().trim().min(1, "Este campo es requerido").transform(sanitizeString)
+export const OptionalStringSchema = z.string().trim().transform(sanitizeString).optional().or(z.literal(""))
 
 export const EmailSchema = z
   .string()
-  .email("Invalid email address")
+  .email("Dirección de email inválida")
   .toLowerCase()
   .trim()
 
 export const PasswordSchema = z
   .string()
-  .min(8, "Password must be at least 8 characters")
-  .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-  .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-  .regex(/[0-9]/, "Password must contain at least one number")
+  .min(8, "La contraseña debe tener al menos 8 caracteres")
+  .regex(/[A-Z]/, "La contraseña debe contener al menos una letra mayúscula")
+  .regex(/[a-z]/, "La contraseña debe contener al menos una letra minúscula")
+  .regex(/[0-9]/, "La contraseña debe contener al menos un número")
 
 export const PhoneSchema = z
   .string()
-  .regex(/^[+\d\s\-()]+$/, "Invalid phone format")
-  .min(7, "Phone number too short")
-  .max(20, "Phone number too long")
-  .transform(v => v.replace(/\s/g, "")) // Remove spaces
+  .regex(/^[+\d\s\-()]+$/, "Formato de teléfono inválido")
+  .min(7, "Número de teléfono demasiado corto")
+  .max(20, "Número de teléfono demasiado largo")
+  .transform(v => v.replace(/\s/g, "")) // Elimina espacios
 
 export const NameSchema = z
   .string()
   .trim()
-  .min(2, "Name must be at least 2 characters")
-  .max(100, "Name must be at most 100 characters")
-  .refine(v => !/[<>{}[\]]/g.test(v), "Invalid characters in name")
+  .min(2, "El nombre debe tener al menos 2 caracteres")
+  .max(100, "El nombre debe tener como máximo 100 caracteres")
+  .transform(sanitizeString)
+  .refine(v => !/[<>{}[\]]/g.test(v), "Caracteres inválidos en el nombre")
 
 export const SlugSchema = z
   .string()
   .toLowerCase()
-  .regex(/^[a-z0-9-]+$/, "Slug can only contain lowercase letters, numbers, and dashes")
+  .regex(/^[a-z0-9-]+$/, "El slug solo puede contener letras minúsculas, números y guiones")
 
-export const URLSchema = z.string().url("Invalid URL")
+export const URLSchema = z.string().url("URL inválida")
 
 export const CurrencySchema = z
   .number()
@@ -111,7 +123,7 @@ export const CreateLeadSchema = z.object({
   phone: PhoneSchema,
   source: LeadSourceEnum.default("WEBSITE"),
   status: LeadStatusEnum.default("NEW"),
-  notes: z.string().max(500).optional().or(z.literal("")),
+  notes: z.string().max(500).transform(sanitizeString).optional().or(z.literal("")),
   assignedToId: z.string().optional().nullable(),
   interestedUnitId: z.string().optional().nullable(),
 })
@@ -132,22 +144,22 @@ export const UnitStatusEnum = z.enum(['AVAILABLE', 'IN_PREP', 'RESERVED', 'SOLD'
 export const CreateUnitSchema = z.object({
   title: NameSchema,
   type: UnitTypeEnum,
-  brand: z.string().trim().optional(),
-  model: z.string().trim().optional(),
+  brand: z.string().trim().transform(sanitizeString).optional(),
+  model: z.string().trim().transform(sanitizeString).optional(),
   priceArs: CurrencySchema.optional().nullable(),
   priceUsd: CurrencySchema.optional().nullable(),
   acquisitionCostArs: CurrencySchema.optional().nullable(),
   acquisitionCostUsd: CurrencySchema.optional().nullable(),
-  description: z.string().max(2000).optional().or(z.literal("")).nullable(),
+  description: z.string().max(2000).transform(sanitizeString).optional().or(z.literal("")).nullable(),
   year: z.number().int().min(1800).max(2100).optional().nullable(),
-  location: z.string().max(200).optional().or(z.literal("")).nullable(),
+  location: z.string().max(200).transform(sanitizeString).optional().or(z.literal("")).nullable(),
   status: UnitStatusEnum.default('AVAILABLE'),
-  vin: z.string().optional().or(z.literal("")).nullable(),
-  domain: z.string().optional().or(z.literal("")).nullable(),
-  engineNumber: z.string().optional().or(z.literal("")).nullable(),
-  frameNumber: z.string().optional().or(z.literal("")).nullable(),
-  hin: z.string().optional().or(z.literal("")).nullable(),
-  registrationNumber: z.string().optional().or(z.literal("")).nullable(),
+  vin: z.string().transform(sanitizeString).optional().or(z.literal("")).nullable(),
+  domain: z.string().transform(sanitizeString).optional().or(z.literal("")).nullable(),
+  engineNumber: z.string().transform(sanitizeString).optional().or(z.literal("")).nullable(),
+  frameNumber: z.string().transform(sanitizeString).optional().or(z.literal("")).nullable(),
+  hin: z.string().transform(sanitizeString).optional().or(z.literal("")).nullable(),
+  registrationNumber: z.string().transform(sanitizeString).optional().or(z.literal("")).nullable(),
   tags: z.array(z.string()).optional(),
   photos: z.array(z.object({ url: z.string(), order: z.number() })).optional(),
   attributes: z.array(z.object({ key: z.string(), value: z.string() })).optional(),
