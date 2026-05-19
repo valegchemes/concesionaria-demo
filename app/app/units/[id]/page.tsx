@@ -286,7 +286,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           ['gestoria', 'Gestoría 🚥'],
           ['docs', 'Documentación']
         ].map(([tab, label]) => {
-          const isRestricted = (tab === 'notes' || tab === 'docs') && !limitsLoading && !limits.documentsEnabled
+          const isRestricted = (tab === 'cotizar' || tab === 'gestoria' || tab === 'notes' || tab === 'docs') && !limitsLoading && !limits.documentsEnabled
           return (
             <button
               key={tab}
@@ -563,52 +563,65 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
               {/* Advanced Diagnostics visual dashboard */}
               {priceArs > 0 && totalCostArs > 0 && (
-                <div className="mb-5 bg-background rounded-2xl p-4 border border-border space-y-3.5 shadow-sm">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <span>Desglose Financiero</span>
-                    <span className="text-slate-500">Precio de Venta: {formatPrice(priceArs, 'ARS')}</span>
+                !limitsLoading && !limits.documentsEnabled ? (
+                  <div className="mb-5 bg-slate-50 border border-slate-200/60 rounded-2xl p-6 text-center flex flex-col items-center justify-center space-y-3 relative overflow-hidden min-h-[140px] shadow-sm">
+                    <div className="absolute inset-0 bg-white/20 backdrop-blur-[1px] pointer-events-none" />
+                    <Lock className="h-6 w-6 text-amber-500 animate-pulse" />
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-slate-800">Diagnóstico de Ganancia y ROI Exclusivo del Plan Pro</p>
+                      <p className="text-[10px] text-slate-500 max-w-[280px] mx-auto leading-relaxed">
+                        Actualizá tu suscripción al Plan Pro para calcular automáticamente el margen neto real y el retorno de inversión de esta unidad.
+                      </p>
+                    </div>
                   </div>
+                ) : (
+                  <div className="mb-5 bg-background rounded-2xl p-4 border border-border space-y-3.5 shadow-sm">
+                    <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      <span>Desglose Financiero</span>
+                      <span className="text-slate-500">Precio de Venta: {formatPrice(priceArs, 'ARS')}</span>
+                    </div>
 
-                  {/* Profit Visual Bar Gauge */}
-                  <div className="space-y-1">
-                    <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
-                      <div 
-                        style={{ width: `${Math.min(100, Math.round((totalCostArs / priceArs) * 100))}%` }} 
-                        className="bg-indigo-500 h-full transition-all" 
-                        title="Inversión total"
-                      />
-                      {marginArs !== null && marginArs > 0 && (
+                    {/* Profit Visual Bar Gauge */}
+                    <div className="space-y-1">
+                      <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
                         <div 
-                          style={{ width: `${Math.min(100, Math.round((marginArs / priceArs) * 100))}%` }} 
-                          className="bg-emerald-500 h-full transition-all" 
-                          title="Margen de ganancia"
+                          style={{ width: `${Math.min(100, Math.round((totalCostArs / priceArs) * 100))}%` }} 
+                          className="bg-indigo-500 h-full transition-all" 
+                          title="Inversión total"
                         />
-                      )}
+                        {marginArs !== null && marginArs > 0 && (
+                          <div 
+                            style={{ width: `${Math.min(100, Math.round((marginArs / priceArs) * 100))}%` }} 
+                            className="bg-emerald-500 h-full transition-all" 
+                            title="Margen de ganancia"
+                          />
+                        )}
+                      </div>
+                      <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                        <span>Costo Total: {Math.round((totalCostArs / priceArs) * 100)}%</span>
+                        {marginArs !== null && marginArs > 0 && (
+                          <span className="text-emerald-600">Ganancia Estimada: {Math.round((marginArs / priceArs) * 100)}%</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex justify-between text-[10px] font-bold text-slate-400">
-                      <span>Costo Total: {Math.round((totalCostArs / priceArs) * 100)}%</span>
-                      {marginArs !== null && marginArs > 0 && (
-                        <span className="text-emerald-600">Ganancia Estimada: {Math.round((marginArs / priceArs) * 100)}%</span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Net Margin & ROI breakdown */}
-                  <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Margen Neto Estimado</span>
-                      <p className={`text-xl font-black ${marginArs !== null && marginArs >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {marginArs !== null && marginArs >= 0 ? '+' : ''}{marginArs !== null ? formatPrice(marginArs, 'ARS') : 'Sin precio'}
-                      </p>
-                    </div>
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase">Retorno de Inversión (ROI)</span>
-                      <p className={`text-xl font-black ${marginArs !== null && marginArs >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {totalCostArs > 0 && marginArs !== null ? `${Math.round((marginArs / totalCostArs) * 100)}%` : '0%'}
-                      </p>
+                    {/* Net Margin & ROI breakdown */}
+                    <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Margen Neto Estimado</span>
+                        <p className={`text-xl font-black ${marginArs !== null && marginArs >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {marginArs !== null && marginArs >= 0 ? '+' : ''}{marginArs !== null ? formatPrice(marginArs, 'ARS') : 'Sin precio'}
+                        </p>
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Retorno de Inversión (ROI)</span>
+                        <p className={`text-xl font-black ${marginArs !== null && marginArs >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {totalCostArs > 0 && marginArs !== null ? `${Math.round((marginArs / totalCostArs) * 100)}%` : '0%'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )
               )}
 
               {/* Summary totals */}
@@ -803,16 +816,48 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Financing tab */}
       {activeTab === 'cotizar' && (
-        <FinancingTab unit={unit} company={company} />
+        !limitsLoading && !limits.documentsEnabled ? (
+          <div className="mt-8 text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="h-16 w-16 rounded-2xl bg-amber-500/10 flex items-center justify-center ring-1 ring-amber-500/20">
+                <Lock className="h-8 w-8 text-amber-500 animate-pulse" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold">Función no disponible</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto">
+              El simulador interactivo de financiación y la exportación de propuestas a PDF son exclusivos del Plan Pro.
+            </p>
+            <Link href="/app/settings/billing">
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white mt-4">Actualizar Plan</Button>
+            </Link>
+          </div>
+        ) : <FinancingTab unit={unit} company={company} />
       )}
 
       {/* Gestoría checklist tab */}
       {activeTab === 'gestoria' && (
-        <GestoriaTab 
-          unitId={unit.id} 
-          attributes={unit.attributes || []} 
-          onSaveAttributes={saveUnitAttributes} 
-        />
+        !limitsLoading && !limits.documentsEnabled ? (
+          <div className="mt-8 text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="h-16 w-16 rounded-2xl bg-amber-500/10 flex items-center justify-center ring-1 ring-amber-500/20">
+                <Lock className="h-8 w-8 text-amber-500 animate-pulse" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold">Función no disponible</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto">
+              El checklist y semáforo de seguimiento de gestoría legal son exclusivos del Plan Pro.
+            </p>
+            <Link href="/app/settings/billing">
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white mt-4">Actualizar Plan</Button>
+            </Link>
+          </div>
+        ) : (
+          <GestoriaTab 
+            unitId={unit.id} 
+            attributes={unit.attributes || []} 
+            onSaveAttributes={saveUnitAttributes} 
+          />
+        )
       )}
     </div>
   )

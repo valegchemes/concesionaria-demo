@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CreateUnitSchema, type UnitType } from '@/lib/shared/validation'
 import { CreatableCombobox } from '@/components/creatable-combobox'
-import { Sparkles, Camera, Check, AlertTriangle, Loader2, RefreshCw, X, FileSpreadsheet } from 'lucide-react'
+import { Sparkles, Camera, Check, AlertTriangle, Loader2, RefreshCw, X, FileSpreadsheet, Lock } from 'lucide-react'
+import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
 
 const ImageUploader = dynamic(
   () => import('@/components/image-uploader').then((mod) => mod.ImageUploader),
@@ -72,6 +74,7 @@ export function UnitForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [images, setImages] = useState<string[]>([])
+  const { limits, loading: limitsLoading } = usePlanLimits()
 
   const [isScanOpen, setIsScanOpen] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
@@ -289,14 +292,29 @@ export function UnitForm() {
 
             {/* Modal Body */}
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
-              {scanError && (
+              {!limitsLoading && !limits.documentsEnabled ? (
+                <div className="text-center py-8 space-y-5 flex flex-col items-center">
+                  <div className="h-16 w-16 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-200 text-amber-500 ring-4 ring-amber-50">
+                    <Lock className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-2 max-w-sm">
+                    <h4 className="text-lg font-bold text-slate-800">Función Exclusiva del Plan Pro</h4>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      El escaneo inteligente de cédulas y carga express por IA está disponible únicamente para suscriptores del Plan Pro. ¡Ahorrá tiempo cargando vehículos al instante!
+                    </p>
+                  </div>
+                  <Link href="/app/settings/billing" className="w-full pt-2">
+                    <Button type="button" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-sm">
+                      Actualizar al Plan Pro 🚀
+                    </Button>
+                  </Link>
+                </div>
+              ) : scanError ? (
                 <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5 text-rose-600" />
                   <p className="text-sm font-medium">{scanError}</p>
                 </div>
-              )}
-
-              {scanSuccess ? (
+              ) : scanSuccess ? (
                 <div className="text-center py-8 space-y-4">
                   <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 animate-bounce">
                     <Check className="h-8 w-8" />
