@@ -44,6 +44,10 @@ const planDescriptions: Record<string, { subtitle: string; badge: string; detail
     detailedFeatures: [
       'Acceso completo de hasta 8 usuarios para todo tu personal.',
       'Hasta 100 vehículos activos simultáneos en catálogo.',
+      'Carga exprés de stock con IA (escaneo inteligente de cédulas y autofill).',
+      'Cotizador interactivo de financiación (sistema francés) y propuestas PDF.',
+      'Checklist y semáforo dinámico de Gestoría legal para transferencias.',
+      'Diagnósticos financieros avanzados de ROI y Margen Neto Real.',
       'Envío inteligente y automatizado por WhatsApp (normalización UTF-8 libre de caracteres rotos).',
       'Generación inteligente de Pagarés, cálculo automatizado de cuotas e historial de cobranza.',
       'Boletos de compraventa, contratos de consignación y recibos de pago con firma digital.',
