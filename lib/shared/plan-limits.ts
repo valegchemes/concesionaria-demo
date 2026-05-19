@@ -29,12 +29,41 @@ const FREE_LIMITS: PlanLimits = {
  * This is the single source of truth for enforcement in API routes.
  */
 export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
+  // 1. Developer Bypass (Superadmin): Siempre tiene Plan Pro Activo sin importar suscripción.
+  const devUserCount = await prisma.user.count({
+    where: { companyId, email: 'valegchemes@gmail.com' }
+  })
+  
+  const isDeveloper = devUserCount > 0
+
+  if (isDeveloper) {
+    const proPlan = await prisma.saasPlan.findFirst({
+      where: { name: { contains: 'Pro' } },
+      orderBy: { price: 'desc' }
+    })
+    
+    if (proPlan) {
+      return {
+        planName: 'Plan Pro (Developer)',
+        maxUsers: proPlan.maxUsers,
+        maxUnits: proPlan.maxUnits,
+        analyticsEnabled: proPlan.analyticsEnabled,
+        whatsappEnabled: proPlan.whatsappEnabled,
+        documentsEnabled: proPlan.documentsEnabled,
+        auditEnabled: proPlan.auditEnabled,
+        isActive: true,
+      }
+    }
+  }
+
+  // 2. Normal Tenant Flow
   const subscription = await prisma.saasSubscription.findUnique({
     where: { companyId },
     include: { plan: true },
   })
 
-  if (!subscription || (subscription.status !== 'ACTIVE' && subscription.status !== 'INCOMPLETE') || !subscription.plan) {
+  // Los inquilinos normales SI O SI deben tener su pago confirmado y la suscripción ACTIVE
+  if (!subscription || subscription.status !== 'ACTIVE' || !subscription.plan) {
     return FREE_LIMITS
   }
 
