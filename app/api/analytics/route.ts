@@ -718,7 +718,7 @@ async function getSalesVsProfit(
     },
   })
 
-  const isDaily = timeRange === '7d' || timeRange === '30d'
+  const isDaily = timeRange === '7d' || timeRange === '30d' || timeRange === 'this_month'
   const byPeriod = new Map<
     string,
     {

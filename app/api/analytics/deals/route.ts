@@ -22,7 +22,7 @@ const log = createLogger('API:Analytics:Deals')
 export const maxDuration = 30
 
 const QuerySchema = z.object({
-  timeRange: z.enum(['7d', '30d', '90d', '1y', 'all']).default('30d'),
+  timeRange: z.enum(['7d', '30d', '90d', '1y', 'all', 'this_month']).default('30d'),
   type: z.enum(['revenue', 'all']).default('all'),
   sellerId: z.string().optional(),
   date: z.string().optional(),
