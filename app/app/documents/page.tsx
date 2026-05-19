@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { FileText, Banknote, FileSignature, Plus } from 'lucide-react'
+import { FileText, Banknote, FileSignature, Plus, Lock, ShieldAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { NotesTab } from '@/components/documents/notes-tab'
 import { GlobalDigitalDocumentsTab } from '@/components/documents/digital-documents-tab'
 import { GlobalCreateDocumentModal } from '@/components/documents/create-document-modal'
+import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
 
 export default function DocumentsHubPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'notes' | 'digital'>('notes')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const { limits, loading } = usePlanLimits()
 
   // Sync tab with URL
   useEffect(() => {
@@ -30,6 +32,41 @@ export default function DocumentsHubPage() {
     router.replace(`/app/documents?tab=${tab}`)
   }
 
+  // ── Plan gate ──────────────────────────────────────────────────────────────
+  if (!loading && !limits.documentsEnabled) {
+    return (
+      <div className="max-w-2xl mx-auto mt-16 text-center space-y-6">
+        <div className="flex justify-center">
+          <div className="h-20 w-20 rounded-2xl bg-amber-500/10 flex items-center justify-center ring-1 ring-amber-500/20">
+            <ShieldAlert className="h-10 w-10 text-amber-500" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-adaptive-primary">Función no disponible en tu plan</h2>
+          <p className="text-adaptive-secondary max-w-md mx-auto">
+            La generación de <strong>pagarés, cuotas y boletos de compraventa</strong> es una función exclusiva del{' '}
+            <strong className="text-indigo-500">Plan Pro</strong>.
+          </p>
+        </div>
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 text-sm text-amber-700 dark:text-amber-400 text-left space-y-2 max-w-md mx-auto">
+          <p className="font-semibold flex items-center gap-1.5"><Lock className="h-4 w-4" /> Incluido solo en Plan Pro:</p>
+          <ul className="list-disc list-inside space-y-1 ml-1">
+            <li>Pagarés con cuotas e historial de pagos</li>
+            <li>Boletos de compraventa con firma digital</li>
+            <li>Recibos de pago</li>
+            <li>Contratos y documentos digitales</li>
+          </ul>
+        </div>
+        <Button
+          onClick={() => router.push('/app/settings/billing')}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20 gap-2"
+        >
+          Ver planes y actualizar
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
       {/* Header */}
@@ -43,7 +80,7 @@ export default function DocumentsHubPage() {
             Centro de gestión de pagarés, recibos, y boletos de compraventa
           </p>
         </div>
-        <Button 
+        <Button
           onClick={() => setShowCreateModal(true)}
           className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20"
         >

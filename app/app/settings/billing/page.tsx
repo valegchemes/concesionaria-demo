@@ -25,6 +25,7 @@ interface Plan {
   maxUnits: number
   analyticsEnabled: boolean
   whatsappEnabled: boolean
+  documentsEnabled: boolean
 }
 
 interface Subscription {
@@ -231,6 +232,17 @@ export default function BillingPage() {
                         <li className="flex items-start gap-2 text-adaptive-primary font-medium">
                           <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
                           Envío automático por WhatsApp
+                        </li>
+                      )}
+                      {plan.documentsEnabled ? (
+                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          Pagarés, cuotas y boletos de compraventa
+                        </li>
+                      ) : (
+                        <li className="flex items-start gap-2 text-muted-foreground line-through">
+                          <CheckCircle2 className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
+                          Pagarés, cuotas y boletos de compraventa
                         </li>
                       )}
                     </ul>

@@ -6,6 +6,7 @@ export interface PlanLimits {
   maxUnits: number
   analyticsEnabled: boolean
   whatsappEnabled: boolean
+  documentsEnabled: boolean
   isActive: boolean
 }
 
@@ -16,6 +17,7 @@ const FREE_LIMITS: PlanLimits = {
   maxUnits: 5,
   analyticsEnabled: false,
   whatsappEnabled: false,
+  documentsEnabled: false,
   isActive: false,
 }
 
@@ -41,6 +43,7 @@ export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
     maxUnits: plan.maxUnits,
     analyticsEnabled: plan.analyticsEnabled,
     whatsappEnabled: plan.whatsappEnabled,
+    documentsEnabled: plan.documentsEnabled,
     isActive: true,
   }
 }

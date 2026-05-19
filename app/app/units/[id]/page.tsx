@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatPrice } from '@/lib/utils'
 import {
   ArrowLeft, ExternalLink, Users, Plus, Trash2, TrendingUp,
-  ShoppingCart, Wrench, DollarSign, AlertCircle, FileText, Loader2
+  ShoppingCart, Wrench, DollarSign, AlertCircle, FileText, Loader2, Lock, ShieldAlert
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -17,6 +17,7 @@ import { useRef } from 'react'
 import { UnitPdfTemplate } from '@/components/units/unit-pdf-template'
 import { PromissoryNotesTab } from '@/components/units/promissory-notes-tab'
 import { DigitalDocumentsTab } from '@/components/units/digital-documents-tab'
+import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
 
 interface CostItem {
   id: string
@@ -87,6 +88,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'costs' | 'docs'>('details')
   const [userRole, setUserRole] = useState<string>('SELLER')
+  const { limits, loading: limitsLoading } = usePlanLimits()
 
   useEffect(() => { fetchUnit() }, [id])
 
@@ -251,19 +253,23 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Tab Navigation */}
       <div className="flex gap-1 border-b border-border">
-        {([['details', 'Detalles'], ['notes', 'Pagarés y Cuotas'], ['costs', 'Costos'], ['docs', 'Documentación']] as const).map(([tab, label]) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-primary text-foreground'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+        {([['details', 'Detalles'], ['notes', 'Pagarés y Cuotas'], ['costs', 'Costos'], ['docs', 'Documentación']] as const).map(([tab, label]) => {
+          const isRestricted = (tab === 'notes' || tab === 'docs') && !limitsLoading && !limits.documentsEnabled
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === tab
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+              {isRestricted && <Lock className="h-3 w-3 text-amber-500" />}
+            </button>
+          )
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -348,7 +354,24 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
         {/* Right column */}
         <div className="lg:col-span-2 space-y-6">
 
-          {activeTab === 'notes' && <PromissoryNotesTab unitId={unit.id} />}
+          {activeTab === 'notes' && (
+            !limitsLoading && !limits.documentsEnabled ? (
+              <div className="mt-8 text-center space-y-4">
+                <div className="flex justify-center">
+                  <div className="h-16 w-16 rounded-2xl bg-amber-500/10 flex items-center justify-center ring-1 ring-amber-500/20">
+                    <ShieldAlert className="h-8 w-8 text-amber-500" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold">Función no disponible</h3>
+                <p className="text-muted-foreground max-w-sm mx-auto">
+                  La generación de pagarés es exclusiva del Plan Pro.
+                </p>
+                <Link href="/app/settings/billing">
+                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white mt-4">Actualizar Plan</Button>
+                </Link>
+              </div>
+            ) : <PromissoryNotesTab unitId={unit.id} />
+          )}
 
           {activeTab === 'details' && isEditing ? (
             <form onSubmit={onSubmit}>
@@ -678,7 +701,22 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
       {/* Documentación Digital tab */}
       {activeTab === 'docs' && (
-        <DigitalDocumentsTab unitId={unit.id} />
+        !limitsLoading && !limits.documentsEnabled ? (
+          <div className="mt-8 text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="h-16 w-16 rounded-2xl bg-amber-500/10 flex items-center justify-center ring-1 ring-amber-500/20">
+                <ShieldAlert className="h-8 w-8 text-amber-500" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold">Función no disponible</h3>
+            <p className="text-muted-foreground max-w-sm mx-auto">
+              La generación de boletos de compraventa, recibos y contratos es exclusiva del Plan Pro.
+            </p>
+            <Link href="/app/settings/billing">
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white mt-4">Actualizar Plan</Button>
+            </Link>
+          </div>
+        ) : <DigitalDocumentsTab unitId={unit.id} />
       )}
     </div>
   )

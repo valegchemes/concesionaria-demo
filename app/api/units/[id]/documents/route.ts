@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { getPlanLimits } from '@/lib/shared/plan-limits'
 
 const CreateDocSchema = z.object({
   type: z.enum(['BOLETO_COMPRAVENTA', 'RECIBO', 'CONTRATO']),
@@ -63,6 +64,17 @@ export const POST = withTenantHandler(withErrorHandling(
   async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
     const { id: unitId } = await params
+
+    // ── Plan enforcement ──────────────────────────────────────────────────────
+    const limits = await getPlanLimits(user.companyId)
+    if (!limits.documentsEnabled) {
+      const { NextResponse } = await import('next/server')
+      return NextResponse.json(
+        { error: 'Tu plan actual no incluye la generación de documentos. Actualizá al Plan Pro para acceder a esta función.' },
+        { status: 403 }
+      )
+    }
+
     const body = await req.json()
     const data = CreateDocSchema.parse(body)
 

@@ -1,9 +1,10 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { getPlanLimits } from '@/lib/shared/plan-limits'
 
 const CreateNoteSchema = z.object({
   amount: z.number().positive(),
@@ -45,6 +46,16 @@ export const GET = withTenantHandler(withErrorHandling(async (_req: NextRequest,
 export const POST = withTenantHandler(withErrorHandling(async (req: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const user = await getCurrentUser()
   const { id: leadId } = await params
+
+  // ── Plan enforcement ─────────────────────────────────────────────────────
+  const limits = await getPlanLimits(user.companyId)
+  if (!limits.documentsEnabled) {
+    return NextResponse.json(
+      { error: 'Tu plan actual no incluye la generación de pagarés. Actualizá al Plan Pro para acceder a esta función.' },
+      { status: 403 }
+    )
+  }
+
   const body = await req.json()
   const data = CreateNoteSchema.parse(body)
 
