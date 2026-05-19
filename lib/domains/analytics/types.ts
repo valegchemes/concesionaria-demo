@@ -9,8 +9,11 @@ import type { Decimal } from '@prisma/client/runtime/library'
 // ============================================================================
 // Enums y Schemas Zod
 // ============================================================================
+// Enums y Schemas Zod
+// ============================================================================
 
-export const TimeRangeEnum = z.enum(['7d', '30d', '90d', '1y', 'all'])
+export const TimeRangeEnum = z.enum(['7d', '30d', '90d', '1y', 'all', 'this_month'])
+
 export const CurrencyEnum = z.enum(['ARS', 'USD', 'BOTH'])
 
 export const AnalyticsQuerySchema = z.object({
@@ -232,6 +235,9 @@ export function getDateRangeFromTimeRange(timeRange: TimeRange): { start: Date; 
     case '30d':
       start.setDate(end.getDate() - 30)
       return { start, end, label: 'Últimos 30 días' }
+    case 'this_month':
+      start.setDate(1) // Día 1 del mes actual
+      return { start, end, label: 'Este mes' }
     case '90d':
       start.setDate(end.getDate() - 90)
       return { start, end, label: 'Últimos 90 días' }

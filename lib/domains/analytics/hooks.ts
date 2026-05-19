@@ -345,6 +345,7 @@ export function useTimeRange(defaultRange: TimeRange = '30d'): UseTimeRangeRetur
 
   const options = useMemo(() => [
     { value: '7d' as TimeRange, label: 'Últimos 7 días' },
+    { value: 'this_month' as TimeRange, label: 'Este mes' },
     { value: '30d' as TimeRange, label: 'Últimos 30 días' },
     { value: '90d' as TimeRange, label: 'Últimos 90 días' },
     { value: '1y' as TimeRange, label: 'Último año' },

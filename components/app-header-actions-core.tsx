@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Bell, LogOut, Plus, Users, Car, Handshake, X, Clock, Sun, Moon, Monitor } from 'lucide-react'
+import { Bell, LogOut, Plus, Users, Car, Handshake, X, Clock, Sun, Moon, Monitor, RefreshCw } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { GlobalSearch } from './global-search'
@@ -107,6 +107,15 @@ export function AppHeaderActionsCore() {
       </div>
 
       <div className="flex items-center gap-1">
+        {/* Actualizar / Recargar página */}
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg p-2 text-adaptive-secondary transition-colors hover:surface-secondary hover:text-adaptive-primary"
+          title="Actualizar página"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
+
         {/* Selector de Tema */}
         <button
           onClick={() => {
@@ -116,7 +125,7 @@ export function AppHeaderActionsCore() {
           className="rounded-lg p-2 text-adaptive-secondary transition-colors hover:surface-secondary hover:text-adaptive-primary"
           title={`Tema: ${mode === 'auto' ? 'Automático (según imagen)' : mode === 'dark' ? 'Oscuro' : 'Claro'}`}
         >
-          {mode === 'auto' ? <Monitor className="h-5 w-5" /> : mode === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          {mode === 'auto' ? <Monitor className="h-4 w-4" /> : mode === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </button>
 
         {/* Botón + Nuevo */}
