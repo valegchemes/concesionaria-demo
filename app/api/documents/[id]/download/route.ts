@@ -27,6 +27,11 @@ export const GET = withTenantHandler(async (
   try {
     const doc = await prisma.digitalDocument.findFirst({
       where: { id, companyId: user.companyId },
+      include: {
+        company: {
+          select: { signatureUrl: true }
+        }
+      }
     })
 
     if (!doc) {
@@ -147,6 +152,15 @@ export const GET = withTenantHandler(async (
         pdf.moveDown(3)
         const sigTop = pdf.y
         // Vendedor
+        if (doc.company?.signatureUrl && doc.company.signatureUrl.startsWith('data:image')) {
+          try {
+            const base64Data = doc.company.signatureUrl.replace(/^data:image\/\w+;base64,/, '')
+            const imageBuffer = Buffer.from(base64Data, 'base64')
+            pdf.image(imageBuffer, 55, sigTop - 10, { fit: [175, 45], align: 'center' })
+          } catch (e) {
+            console.error('Failed to embed company signature image', e)
+          }
+        }
         pdf.moveTo(55, sigTop + 40).lineTo(230, sigTop + 40).strokeColor(dark).lineWidth(0.8).stroke()
         pdf.fontSize(8).font('Helvetica').fillColor(muted)
           .text('Firma Vendedor / Concesionaria', 55, sigTop + 45, { width: 175, align: 'center' })

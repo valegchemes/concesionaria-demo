@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Building2, User, Globe, Loader2, Save } from 'lucide-react'
+import { Building2, User, Globe, Loader2, Save, PenLine, CheckCircle, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import SignaturePad, { type SignaturePadHandle } from '@/components/units/signature-pad'
 
 interface CurrentUser {
   id: string
@@ -36,6 +37,10 @@ export default function SettingsPage() {
   const [currencyPref, setCurrencyPref] = useState('BOTH')
   const [logoUrl, setLogoUrl] = useState('')
   const [logoFile, setLogoFile] = useState<File | null>(null)
+  
+  const sigRef = useRef<SignaturePadHandle | null>(null)
+  const [showSig, setShowSig] = useState(false)
+  const [signatureUrl, setSignatureUrl] = useState('')
 
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
@@ -72,6 +77,7 @@ export default function SettingsPage() {
           setWhatsappCentral(companyData.whatsappCentral || '')
           setCurrencyPref(companyData.currencyPreference || 'BOTH')
           setLogoUrl(companyData.logoUrl || '')
+          setSignatureUrl(companyData.signatureUrl || '')
         }
       } catch (err) {
         console.error('Error fetching settings:', err)
@@ -110,6 +116,7 @@ export default function SettingsPage() {
           whatsappCentral,
           currencyPreference: currencyPref,
           logoUrl: finalLogoUrl,
+          signatureUrl: signatureUrl,
         }),
       })
 
@@ -331,6 +338,31 @@ export default function SettingsPage() {
                 </select>
               </div>
 
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <PenLine className="h-4 w-4 text-indigo-500" />
+                  Firma Digital de la Empresa (Aparece en Documentos)
+                </Label>
+                {signatureUrl ? (
+                  <div className="relative rounded-lg border border-green-500/30 bg-green-500/10 p-2 flex items-center gap-3">
+                    <img src={signatureUrl} alt="Firma Empresa" className="h-14 object-contain invert dark:invert-0 bg-white dark:bg-transparent rounded px-2" />
+                    <div className="flex-1">
+                      <p className="text-xs text-green-500 font-medium flex items-center gap-1">
+                        <CheckCircle className="h-3.5 w-3.5" /> Firma guardada
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setSignatureUrl('')} className="text-green-500 hover:text-red-500 transition-colors">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline" size="sm" className="gap-1.5 w-full border-dashed py-6" onClick={() => setShowSig(true)}>
+                    <PenLine className="h-4 w-4" />
+                    Dibujar Firma
+                  </Button>
+                )}
+              </div>
+
               <Button type="submit" disabled={loading || !isCompanyAdmin} className="w-full">
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Guardar Empresa
@@ -471,6 +503,49 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
+
+      {showSig && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-card text-card-foreground rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-foreground flex items-center gap-2">
+                <PenLine className="h-5 w-5 text-indigo-500" />
+                Firma de la Concesionaria
+              </h3>
+              <button onClick={() => setShowSig(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-muted-foreground">Firmá dentro del recuadro para establecer la firma automática de la concesionaria.</p>
+
+            <div className="rounded-xl border-2 border-dashed border-border bg-background overflow-hidden relative">
+              <SignaturePad ref={sigRef} />
+              <style dangerouslySetInnerHTML={{__html: `
+                .dark canvas { filter: invert(1); }
+              `}} />
+            </div>
+
+            <div className="flex items-center gap-2 justify-between">
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => sigRef.current?.clear()}>
+                <RotateCcw className="h-3.5 w-3.5" /> Limpiar
+              </Button>
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowSig(false)}>
+                  Cancelar
+                </Button>
+                <Button type="button" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5" onClick={() => {
+                  if (sigRef.current && !sigRef.current.isEmpty()) {
+                    setSignatureUrl(sigRef.current.toDataURL('image/png'))
+                  }
+                  setShowSig(false)
+                }}>
+                  <CheckCircle className="h-3.5 w-3.5" /> Confirmar Firma
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

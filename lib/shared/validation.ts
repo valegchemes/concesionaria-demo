@@ -183,6 +183,7 @@ export const UpdateCompanySchema = z.object({
   city: z.string().max(100).optional().or(z.literal('')),
   currencyPreference: z.enum(['ARS', 'USD', 'BOTH']).optional(),
   logoUrl: z.string().optional().or(z.literal('')),
+  signatureUrl: z.string().optional().or(z.literal('')),
 })
 
 // ============================================================================

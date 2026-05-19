@@ -29,6 +29,7 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
         city: true,
         currencyPreference: true,
         logoUrl: true,
+        signatureUrl: true,
       }
     })
 
@@ -62,6 +63,7 @@ export const PATCH = withTenantHandler(async (request: NextRequest) => {
         city: true,
         currencyPreference: true,
         logoUrl: true,
+        signatureUrl: true,
       },
     })
 
