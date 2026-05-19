@@ -378,37 +378,37 @@ _Los montos son simulados y sujetos a aprobación crediticia. Cualquier duda, es
           </div>
 
           {/* Diagnostics Display Card */}
-          <div className="flex flex-col justify-between h-full bg-slate-50 border border-slate-200/60 p-6 rounded-2xl space-y-6">
+          <div className="flex flex-col justify-between h-full bg-slate-50 dark:bg-slate-900/60 border border-slate-200/60 dark:border-slate-800 p-6 rounded-2xl space-y-6">
             <div className="space-y-4">
               <div>
-                <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">Simulación Consolidada</span>
-                <h4 className="text-lg font-bold text-slate-800 mt-1">{unit.title}</h4>
+                <span className="text-xs uppercase font-bold text-slate-400 dark:text-slate-300 tracking-wider">Simulación Consolidada</span>
+                <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-1">{unit.title}</h4>
               </div>
 
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Saldo neto a financiar:</span>
-                  <span className="font-semibold text-slate-800">
+                  <span className="text-slate-500 dark:text-slate-400">Saldo neto a financiar:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
                     {financingType === 'usd' ? `US$ ${totalToFinance.toLocaleString('es-AR')}` : formatPrice(totalToFinance, 'ARS')}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Tasa de interés:</span>
-                  <span className="font-semibold text-slate-800">{interestRate}% TNA / French</span>
+                  <span className="text-slate-500 dark:text-slate-400">Tasa de interés:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{interestRate}% TNA / French</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Plazo elegido:</span>
-                  <span className="font-semibold text-slate-800">{months} meses</span>
+                  <span className="text-slate-500 dark:text-slate-400">Plazo elegido:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">{months} meses</span>
                 </div>
-                <div className="flex justify-between text-sm border-t border-slate-200 pt-3">
-                  <span className="text-slate-500">Intereses Totales:</span>
-                  <span className="font-semibold text-slate-800">
+                <div className="flex justify-between text-sm border-t border-slate-200 dark:border-slate-800 pt-3">
+                  <span className="text-slate-500 dark:text-slate-400">Intereses Totales:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-100">
                     {financingType === 'usd' ? `US$ ${totalInterest.toLocaleString('es-AR')}` : formatPrice(totalInterest, 'ARS')}
                   </span>
                 </div>
               </div>
 
-              {/* Master visual display for cuota amount */}
+              {/* Master master display for cuota amount */}
               <div className="bg-indigo-600 rounded-2xl p-5 text-white shadow-md text-center space-y-1 mt-4">
                 <span className="text-xs text-white/80 font-medium tracking-wide uppercase">Cuota Mensual Estimada</span>
                 <p className="text-3xl font-black">
@@ -433,7 +433,7 @@ _Los montos son simulados y sujetos a aprobación crediticia. Cualquier duda, es
               <Button
                 onClick={downloadFinancingPdf}
                 variant="outline"
-                className="border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl py-5 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-transform hover:scale-[1.02]"
+                className="border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-xl py-5 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-transform hover:scale-[1.02]"
               >
                 <Download className="h-4 w-4 text-indigo-600" />
                 Descargar PDF

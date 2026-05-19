@@ -340,7 +340,7 @@ export default async function DashboardPage() {
               </div>
               <p className="font-semibold text-adaptive-primary">Analíticas no disponibles en tu plan</p>
               <p className="mt-1 text-sm text-adaptive-secondary">
-                Actualizá al <strong>Plan Medio</strong> o <strong>Plan Pro</strong> para ver gráficos de ventas, rendimiento y más.
+                Actualizá tu suscripción para ver gráficos de ventas, rendimiento y más.
               </p>
               <Link
                 href="/app/settings/billing"
