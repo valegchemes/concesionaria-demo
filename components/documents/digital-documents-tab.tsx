@@ -30,10 +30,12 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; icon: React.Ele
   DRAFT:     { label: 'Borrador',  bg: 'bg-muted text-muted-foreground',   icon: FileText },
 }
 
-function buildWhatsAppUrl(phone: string, docType: string, ref: string | null) {
+function buildWhatsAppUrl(phone: string, docType: string, ref: string | null, docId: string) {
   const typeLabel = DOC_TYPES.find(t => t.value === docType)?.label ?? docType
   const refStr = ref ? ` N° ${ref}` : ''
-  const msg = `Hola 👋, te hacemos llegar tu *${typeLabel}${refStr}*. Cualquier consulta, estamos a tu disposición. 🙌`
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const downloadUrl = `${baseUrl}/api/public/documents/${docId}/download`
+  const msg = `Hola 👋, te hacemos llegar tu *${typeLabel}${refStr}*.\n\nPodés descargar el PDF firmado ingresando aquí:\n${downloadUrl}\n\nCualquier consulta, estamos a tu disposición. 🙌`
   const number = phone.replace(/\D/g, '')
   return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`
 }
@@ -134,7 +136,7 @@ export function GlobalDigitalDocumentsTab() {
                           </Button>
                           {doc.lead?.phone && (
                             <a
-                              href={buildWhatsAppUrl(doc.lead.phone, doc.type, doc.referenceNumber)}
+                              href={buildWhatsAppUrl(doc.lead.phone, doc.type, doc.referenceNumber, doc.id)}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Enviar aviso por WhatsApp"
