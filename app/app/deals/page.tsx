@@ -10,6 +10,8 @@ import { formatPrice, formatDate } from '@/lib/utils'
 import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign, FileDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { exportToExcel } from '@/lib/utils/export'
+import { KanbanBoard } from './KanbanBoard'
+import { LayoutList, Columns3 } from 'lucide-react'
 
 interface Deal {
   id: string
@@ -37,6 +39,8 @@ export default function DealsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [userRole, setUserRole] = useState<string>('SELLER')
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban')
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -44,18 +48,25 @@ export default function DealsPage() {
       const urlStatus = params.get('status')
       if (urlStatus) setStatusFilter(urlStatus)
     }
-    fetchDeals()
+    fetchInitialData()
   }, [])
 
-  async function fetchDeals() {
+  async function fetchInitialData() {
     try {
-      const res = await fetch('/api/deals', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
+      const [dealsRes, meRes] = await Promise.all([
+        fetch('/api/deals', { cache: 'no-store' }),
+        fetch('/api/me', { cache: 'no-store' }),
+      ])
+      if (dealsRes.ok) {
+        const data = await dealsRes.json()
         setDeals(data.data || [])
       }
+      if (meRes.ok) {
+        const me = await meRes.json()
+        setUserRole(me.role)
+      }
     } catch (err) {
-      console.error('Error fetching deals:', err)
+      console.error('Error fetching data:', err)
     } finally {
       setLoading(false)
     }
@@ -102,6 +113,25 @@ export default function DealsPage() {
     exportToExcel(rows, `Operaciones_${new Date().toISOString().split('T')[0]}`, 'Operaciones')
   }
 
+  async function handleStatusChange(dealId: string, newStatus: string) {
+    // Optimistic update
+    const previousDeals = [...deals]
+    setDeals(deals.map(d => d.id === dealId ? { ...d, status: newStatus } : d))
+
+    try {
+      const res = await fetch(`/api/deals/${dealId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (!res.ok) throw new Error('Update failed')
+    } catch (err) {
+      console.error(err)
+      setDeals(previousDeals) // Revert on failure
+      alert('Error al actualizar el estado de la operación')
+    }
+  }
+
   const totalRevenue = deals
     .filter(d => d.status === 'DELIVERED')
     .reduce((sum, d) => sum + (d.finalPriceCurrency === 'ARS' ? d.finalPrice : 0), 0)
@@ -127,10 +157,28 @@ export default function DealsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport}>
-            <FileDown className="h-4 w-4" />
-            Exportar
-          </Button>
+          <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50">
+            <button
+              onClick={() => setViewMode('list')}
+              title="Vista Lista"
+              className={cn('rounded-md p-1.5 transition-all', viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600')}
+            >
+              <LayoutList className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('kanban')}
+              title="Vista Kanban"
+              className={cn('rounded-md p-1.5 transition-all', viewMode === 'kanban' ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-600')}
+            >
+              <Columns3 className="h-4 w-4" />
+            </button>
+          </div>
+          {userRole === 'ADMIN' && (
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport}>
+              <FileDown className="h-4 w-4" />
+              Exportar
+            </Button>
+          )}
           <Link href="/app/deals/new">
             <Button size="sm" className="gap-1.5">
               <Plus className="h-4 w-4" />
@@ -170,6 +218,8 @@ export default function DealsPage() {
             <p className="font-semibold text-adaptive-primary">No se encontraron operaciones.</p>
           </CardContent>
         </Card>
+      ) : viewMode === 'kanban' ? (
+        <KanbanBoard deals={filteredDeals} onStatusChange={handleStatusChange} />
       ) : (
         <Card className="surface-primary overflow-hidden">
           {/* Cabecera de columnas */}

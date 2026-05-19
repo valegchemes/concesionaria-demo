@@ -53,6 +53,7 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
       password: PasswordSchema,
       role: z.enum(['ADMIN', 'MANAGER', 'SELLER']).optional(),
       whatsappNumber: PhoneSchema.optional().or(z.literal('')),
+      commissionRate: z.coerce.number().min(0).max(100).optional(),
     })
 
     const parsed = CreateUserSchema.safeParse(body)
@@ -61,7 +62,7 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
     }
 
     const currentUser = await requirePermission('team', 'manage_all')
-    const { name, email, password, role, whatsappNumber } = parsed.data
+    const { name, email, password, role, whatsappNumber, commissionRate } = parsed.data
 
     // Plan limit check
     const limitCheck = await canAddUser(currentUser.companyId)
@@ -92,6 +93,7 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
         password: hashedPassword,
         role: role || 'SELLER',
         whatsappNumber,
+        commissionRate: commissionRate || 0,
         companyId: currentUser.companyId,
       },
       select: {
@@ -99,6 +101,7 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
         name: true,
         email: true,
         role: true,
+        commissionRate: true,
       },
     })
 
@@ -183,6 +186,7 @@ export const PUT = withTenantHandler(async (request: NextRequest) => {
       role: z.enum(['ADMIN', 'MANAGER', 'SELLER']).optional(),
       whatsappNumber: PhoneSchema.optional().or(z.literal('')),
       avatarUrl: z.string().url().optional().or(z.literal('')).nullable(),
+      commissionRate: z.coerce.number().min(0).max(100).optional(),
     })
 
     const parsed = UpdateUserSchema.safeParse(body)
@@ -191,7 +195,7 @@ export const PUT = withTenantHandler(async (request: NextRequest) => {
     }
 
     const currentUser = await requirePermission('team', 'manage_all')
-    const { id, name, email, password, role, whatsappNumber, avatarUrl } = parsed.data
+    const { id, name, email, password, role, whatsappNumber, avatarUrl, commissionRate } = parsed.data
 
     // Check if user exists and belongs to the company
     const existingUser = await prisma.user.findFirst({
@@ -210,12 +214,14 @@ export const PUT = withTenantHandler(async (request: NextRequest) => {
       whatsappNumber?: string | null
       avatarUrl?: string | null
       password?: string
+      commissionRate?: number
     } = {
       ...(name && { name }),
       ...(email && { email }),
       ...(role && { role }),
       ...(whatsappNumber !== undefined && { whatsappNumber }),
       ...(avatarUrl !== undefined && { avatarUrl }),
+      ...(commissionRate !== undefined && { commissionRate }),
     }
 
     if (password && password.length > 0) {
@@ -232,6 +238,7 @@ export const PUT = withTenantHandler(async (request: NextRequest) => {
         role: true,
         whatsappNumber: true,
         avatarUrl: true,
+        commissionRate: true,
       },
     })
 

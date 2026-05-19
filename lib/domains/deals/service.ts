@@ -169,7 +169,7 @@ export class DealService {
         payments: { orderBy: { createdAt: 'desc' } },
         closingCosts: { orderBy: { id: 'asc' } },
         tradeIn: true,
-        seller: { select: { id: true, name: true, email: true, whatsappNumber: true } },
+        seller: { select: { id: true, name: true, email: true, whatsappNumber: true, commissionRate: true } },
       },
     }) as unknown as DealWithRelations
 
@@ -316,12 +316,23 @@ export class DealService {
     command: UpdateDealCommand,
     currentDeal?: { status: string; unitId: string; leadId: string; finalPrice: Prisma.Decimal }
   ): Promise<DealWithRelations> {
-    // Get current deal if not provided
-    const deal = currentDeal || await this.getById(id, companyId)
+    // Get current deal if not provided or missing commission data
+    const deal = currentDeal && 'seller' in currentDeal ? currentDeal : await this.getById(id, companyId)
 
     // Validate status transition
     if (command.status && command.status !== deal.status) {
       await this.validateStatusTransition(deal.status, command.status)
+    }
+
+    // Calcular comisión si se marca como ENTREGADO
+    let commissionValue: number | undefined = undefined
+    if (command.status === 'DELIVERED' && deal.status !== 'DELIVERED') {
+      // Necesitamos asegurar que tenemos la comisión del seller. Fetch si es necesario:
+      const sellerIdToUse = (deal as any).seller?.id || (deal as any).sellerId;
+      const sellerData = await prisma.user.findUnique({ where: { id: sellerIdToUse }, select: { commissionRate: true } })
+      if (sellerData?.commissionRate && Number(sellerData.commissionRate) > 0) {
+        commissionValue = Number(command.finalPrice || deal.finalPrice) * (Number(sellerData.commissionRate) / 100)
+      }
     }
 
     // Update deal
@@ -334,6 +345,7 @@ export class DealService {
         ...(command.finalPriceCurrency && { finalPriceCurrency: command.finalPriceCurrency }),
         // Setear closedAt cuando se cierra el deal (para analíticas correctas)
         ...(command.status && ['DELIVERED', 'CANCELED'].includes(command.status) && { closedAt: new Date() }),
+        ...(commissionValue !== undefined && { commissionValue }),
         updatedAt: new Date(),
       },
       include: {
@@ -462,9 +474,20 @@ export class DealService {
         becameFullyPaid = true;
         unitIdForArchive = deal.unitId;
 
+        // Calcular comisión al auto-completar
+        const sellerData = await tx.user.findUnique({ where: { id: deal.sellerId }, select: { commissionRate: true } })
+        let commissionValue = 0
+        if (sellerData?.commissionRate && Number(sellerData.commissionRate) > 0) {
+          commissionValue = Number(deal.finalPrice) * (Number(sellerData.commissionRate) / 100)
+        }
+
         await tx.deal.update({
           where: { id: dealId },
-          data: { status: 'DELIVERED' as DealStatus, closedAt: new Date() }
+          data: { 
+            status: 'DELIVERED' as DealStatus, 
+            closedAt: new Date(),
+            commissionValue 
+          }
         })
         
         await tx.lead.update({

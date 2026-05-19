@@ -223,6 +223,8 @@ export default function LeadsPage() {
   const [selectedSeller, setSelectedSeller] = useState<string>('ALL')
   const dragId = useRef<string | null>(null)
 
+  const [userRole, setUserRole] = useState<string>('SELLER')
+
   useEffect(() => { 
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
@@ -231,37 +233,34 @@ export default function LeadsPage() {
       if (urlFilter) setFilter(urlFilter)
       if (urlView === 'list' || urlView === 'kanban') setView(urlView)
     }
-    fetchLeads()
-    fetchMeAndTeam()
+    fetchInitialData()
   }, [])
 
-  async function fetchMeAndTeam() {
+  async function fetchInitialData() {
     try {
-      const meRes = await fetch('/api/me')
-      if (meRes.ok) {
-        const meData = await meRes.json()
-        setMe(meData)
-        if (meData.role === 'ADMIN' || meData.role === 'MANAGER') {
-          const teamRes = await fetch('/api/users')
-          if (teamRes.ok) {
-            setTeam(await teamRes.json())
-          }
-        }
-      }
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  async function fetchLeads() {
-    try {
-      const res = await fetch('/api/leads', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
+      const [leadsRes, teamRes, meRes] = await Promise.all([
+        fetch('/api/leads', { cache: 'no-store' }),
+        fetch('/api/users', { cache: 'no-store' }),
+        fetch('/api/me', { cache: 'no-store' }),
+      ])
+      
+      if (leadsRes.ok) {
+        const data = await leadsRes.json()
         setLeads(data.data || [])
       }
-    } catch (error) {
-      console.error('Error fetching leads:', error)
+      
+      if (teamRes.ok) {
+        const teamData = await teamRes.json()
+        setTeam(teamData)
+      }
+
+      if (meRes.ok) {
+        const meData = await meRes.json()
+        setUserRole(meData.role)
+        setMe(meData)
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err)
     } finally {
       setLoading(false)
     }
@@ -292,7 +291,7 @@ export default function LeadsPage() {
       })
     } catch {
       console.error('Failed to update lead status')
-      fetchLeads() // revert on error
+      fetchInitialData() // revert on error
     }
   }
 

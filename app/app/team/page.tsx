@@ -21,6 +21,7 @@ interface TeamMember {
   role: string
   whatsappNumber?: string
   avatarUrl?: string
+  commissionRate: number
 }
 
 interface CurrentUser {
@@ -56,13 +57,13 @@ export default function TeamPage() {
   const [showAddForm, setShowAddForm] = useState(false)
 
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '',
+    name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '', commissionRate: 0,
   })
 
   // Edit State
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
   const [editFormData, setEditFormData] = useState({
-    name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '', avatarUrl: ''
+    name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '', avatarUrl: '', commissionRate: 0,
   })
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editError, setEditError] = useState('')
@@ -97,7 +98,7 @@ export default function TeamPage() {
       })
       if (res.ok) {
         setShowAddForm(false)
-        setFormData({ name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '' })
+        setFormData({ name: '', email: '', password: '', role: 'SELLER', whatsappNumber: '', commissionRate: 0 })
         await fetchInitialData()
         router.refresh()
       } else {
@@ -268,6 +269,11 @@ export default function TeamPage() {
                   <Input id="whatsappNumber" placeholder="54911..." value={formData.whatsappNumber}
                     onChange={(e) => setFormData({ ...formData, whatsappNumber: e.target.value })} />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="commissionRate">Comisión (%)</Label>
+                  <Input id="commissionRate" type="number" min="0" max="100" step="0.1" placeholder="Ej: 2.5" value={formData.commissionRate}
+                    onChange={(e) => setFormData({ ...formData, commissionRate: parseFloat(e.target.value) || 0 })} />
+                </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="role">Rol en el sistema</Label>
                   <select
@@ -366,7 +372,8 @@ export default function TeamPage() {
                               password: '', // Blank
                               role: member.role,
                               whatsappNumber: member.whatsappNumber || '',
-                              avatarUrl: member.avatarUrl || ''
+                              avatarUrl: member.avatarUrl || '',
+                              commissionRate: member.commissionRate || 0
                             })
                           }}
                           className="rounded-lg p-1.5 text-blue-400 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-950/30"
@@ -473,6 +480,10 @@ export default function TeamPage() {
                 <div className="space-y-2">
                   <Label>WhatsApp</Label>
                   <Input placeholder="54911..." value={editFormData.whatsappNumber} onChange={e => setEditFormData({...editFormData, whatsappNumber: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Comisión (%)</Label>
+                  <Input type="number" min="0" max="100" step="0.1" placeholder="Ej: 2.5" value={editFormData.commissionRate} onChange={e => setEditFormData({...editFormData, commissionRate: parseFloat(e.target.value) || 0})} />
                 </div>
                 {me?.id !== editingMember.id && (
                   <div className="space-y-2">
