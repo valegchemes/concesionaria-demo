@@ -104,6 +104,23 @@ export interface CostAnalysisAnalytics {
   }
 }
 
+export interface NotesSummary {
+  /** Total cobrado de cuotas en el periodo */
+  collectedAmount: MoneyAmount
+  /** Total pendiente de cuotas (PENDING + OVERDUE) al momento del reporte */
+  pendingAmount: MoneyAmount
+  /** Total de cuotas vencidas sin pagar */
+  overdueAmount: MoneyAmount
+  /** Cantidad de pagarés activos */
+  activeNotes: number
+  /** Cantidad de cuotas pagas en el periodo */
+  paidInstallmentsCount: number
+  /** Cantidad de cuotas pendientes */
+  pendingInstallmentsCount: number
+  /** Cantidad de cuotas vencidas */
+  overdueInstallmentsCount: number
+}
+
 export interface DashboardSummary {
   period: {
     start: string
@@ -118,6 +135,7 @@ export interface DashboardSummary {
     avgDealSize: number
   }
   inventory: UnitMetrics
+  notesSummary: NotesSummary
 }
 
 // ============================================================================

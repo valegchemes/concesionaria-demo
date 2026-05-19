@@ -23,6 +23,7 @@ import { ValidationError, ForbiddenError, isAppError } from '@/lib/shared/errors
 import { createLogger } from '@/lib/shared/logger'
 import type {
   DashboardSummary,
+  NotesSummary,
   SalesVsProfitAnalytics,
   TopSellersAnalytics,
   CostAnalysisAnalytics,
@@ -105,6 +106,15 @@ function createFallbackResponse(type: string): unknown {
           availableUnits: 0,
           reservedUnits: 0,
           avgTimeToSell: 0,
+        },
+        notesSummary: {
+          collectedAmount: emptyMoney,
+          pendingAmount: emptyMoney,
+          overdueAmount: emptyMoney,
+          activeNotes: 0,
+          paidInstallmentsCount: 0,
+          pendingInstallmentsCount: 0,
+          overdueInstallmentsCount: 0,
         },
         _fallback: true,
         _message: 'Datos temporalmente no disponibles - intente en unos minutos',
@@ -582,6 +592,66 @@ async function getDashboardSummary(
     revenue.totalConverted - totalCosts.totalConverted
   )
 
+  // ── Notes Summary: cobrado vs pendiente (SEPARADO de ingresos por ventas) ──
+  const [paidInstallmentsInPeriod, pendingInstallments, overdueInstallments, activeNotesCount] =
+    await prisma.$transaction([
+      // Pagos de cuotas realizados en el periodo
+      prisma.installmentPayment.findMany({
+        where: {
+          installment: {
+            promissoryNote: { companyId },
+          },
+          createdAt: { gte: start, lte: end },
+        },
+        select: { amount: true },
+      }),
+      // Cuotas pendientes (PENDING) — sin filtro de fecha: son el saldo actual
+      prisma.installment.findMany({
+        where: {
+          status: 'PENDING',
+          promissoryNote: { companyId },
+        },
+        select: { amount: true },
+      }),
+      // Cuotas vencidas (OVERDUE)
+      prisma.installment.findMany({
+        where: {
+          status: 'OVERDUE',
+          promissoryNote: { companyId },
+        },
+        select: { amount: true },
+      }),
+      // Pagarés activos (con alguna cuota pendiente o vencida)
+      prisma.promissoryNote.count({
+        where: {
+          companyId,
+          isActive: true,
+          installments: { some: { status: { in: ['PENDING', 'OVERDUE'] } } },
+        },
+      }),
+    ])
+
+  const collectedArs = paidInstallmentsInPeriod.reduce(
+    (sum, p) => sum + decimalToNumber(p.amount), 0
+  )
+  const pendingArs = pendingInstallments.reduce(
+    (sum, i) => sum + decimalToNumber(i.amount), 0
+  )
+  const overdueArs = overdueInstallments.reduce(
+    (sum, i) => sum + decimalToNumber(i.amount), 0
+  )
+
+  const notesSummary: NotesSummary = {
+    collectedAmount: createMoneyAmount(collectedArs, 0, userExchangeRate),
+    pendingAmount: createMoneyAmount(pendingArs, 0, userExchangeRate),
+    overdueAmount: createMoneyAmount(overdueArs, 0, userExchangeRate),
+    activeNotes: activeNotesCount,
+    paidInstallmentsCount: paidInstallmentsInPeriod.length,
+    pendingInstallmentsCount: pendingInstallments.length,
+    overdueInstallmentsCount: overdueInstallments.length,
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   const inventoryMap = new Map(inventoryMetrics.map(item => [item.status, item._count._all]))
   const totalUnits = Array.from(inventoryMap.values()).reduce((a, b) => a + b, 0)
 
@@ -607,6 +677,7 @@ async function getDashboardSummary(
       reservedUnits: inventoryMap.get('RESERVED') || 0,
       avgTimeToSell: 0,
     },
+    notesSummary,
   }
 }
 

@@ -7,10 +7,12 @@ import { Label } from '@/components/ui/label'
 import { formatPrice } from '@/lib/utils'
 import {
   Plus, ChevronDown, ChevronUp, Clock, CheckCircle2,
-  AlertCircle, Banknote, X, Loader2
+  AlertCircle, Banknote, X, Loader2, User
 } from 'lucide-react'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+interface LeadOption { id: string; name: string; phone: string }
 
 interface Payment {
   id: string
@@ -37,6 +39,7 @@ interface PromissoryNote {
   issueDate: string
   dueDate: string
   notes?: string
+  lead: { id: string; name: string }
   installments: Installment[]
 }
 
@@ -124,23 +127,17 @@ function PaymentModal({ noteId, installment, onClose, onSuccess }: {
             <div className="relative">
               <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                type="number"
-                step="0.01"
-                value={amount}
+                type="number" step="0.01" value={amount}
                 onChange={e => setAmount(e.target.value)}
                 className="pl-9 text-lg font-bold bg-background text-foreground"
-                placeholder="0.00"
-                autoFocus
+                placeholder="0.00" autoFocus
               />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Método de Pago</Label>
-            <select
-              value={method}
-              onChange={e => setMethod(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm"
-            >
+            <select value={method} onChange={e => setMethod(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm">
               {Object.entries(methodLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
@@ -163,12 +160,14 @@ function PaymentModal({ noteId, installment, onClose, onSuccess }: {
 
 // ─── Create Note Form ─────────────────────────────────────────────────────────
 
-function CreateNoteForm({ unitId, onSuccess, onCancel }: {
+function CreateNoteForm({ unitId, leads, onSuccess, onCancel }: {
   unitId: string
+  leads: LeadOption[]
   onSuccess: () => void
   onCancel: () => void
 }) {
   const [form, setForm] = useState({
+    leadId: '',
     amount: '', currency: 'ARS', issueDate: new Date().toISOString().split('T')[0],
     dueDate: '', installmentCount: '12', notes: '',
   })
@@ -177,16 +176,28 @@ function CreateNoteForm({ unitId, onSuccess, onCancel }: {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!form.leadId) { setError('Seleccioná un cliente'); return }
     if (!form.amount || !form.dueDate) { setError('Completá todos los campos requeridos'); return }
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/units/${unitId}/notes`, {
+      // ✅ Corrección: los pagarés se crean a través del lead, no de la unidad
+      const res = await fetch(`/api/leads/${form.leadId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, amount: Number(form.amount), installmentCount: Number(form.installmentCount) }),
+        body: JSON.stringify({
+          amount: Number(form.amount),
+          currency: form.currency,
+          installmentsCount: Number(form.installmentCount),
+          issueDate: new Date(form.issueDate).toISOString(),
+          notes: form.notes || undefined,
+          unitId,
+        }),
       })
-      if (!res.ok) throw new Error(await res.text())
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || 'Error al crear el pagaré')
+      }
       onSuccess()
     } catch (e: any) {
       setError(e.message || 'Error al crear el pagaré')
@@ -199,14 +210,31 @@ function CreateNoteForm({ unitId, onSuccess, onCancel }: {
     <div className="border-2 border-dashed border-border rounded-xl bg-muted p-5">
       <h4 className="font-bold text-foreground mb-4">Nuevo Pagaré</h4>
       <form onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Lead selector */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-1">
+            <User className="h-3 w-3" /> Cliente (Lead) *
+          </Label>
+          <select value={form.leadId} onChange={e => setForm(p => ({ ...p, leadId: e.target.value }))}
+            className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm" required>
+            <option value="">Seleccioná un cliente...</option>
+            {leads.map(l => (
+              <option key={l.id} value={l.id}>{l.name} — {l.phone}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Monto Total *</Label>
-            <Input type="number" step="0.01" placeholder="0.00" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} className="bg-background" />
+            <Input type="number" step="0.01" placeholder="0.00" value={form.amount}
+              onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} className="bg-background" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Moneda</Label>
-            <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm">
+            <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}
+              className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm">
               <option value="ARS">ARS — Pesos</option>
               <option value="USD">USD — Dólares</option>
             </select>
@@ -215,24 +243,29 @@ function CreateNoteForm({ unitId, onSuccess, onCancel }: {
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Fecha Emisión *</Label>
-            <Input type="date" value={form.issueDate} onChange={e => setForm(p => ({ ...p, issueDate: e.target.value }))} className="bg-background" />
+            <Input type="date" value={form.issueDate}
+              onChange={e => setForm(p => ({ ...p, issueDate: e.target.value }))} className="bg-background" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase text-muted-foreground">Vencimiento *</Label>
-            <Input type="date" value={form.dueDate} onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} className="bg-background" />
+            <Input type="date" value={form.dueDate}
+              onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} className="bg-background" />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold uppercase text-muted-foreground">N° Cuotas *</Label>
-            <Input type="number" min="1" max="120" value={form.installmentCount} onChange={e => setForm(p => ({ ...p, installmentCount: e.target.value }))} className="bg-background" />
+            <Input type="number" min="1" max="120" value={form.installmentCount}
+              onChange={e => setForm(p => ({ ...p, installmentCount: e.target.value }))} className="bg-background" />
           </div>
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold uppercase text-muted-foreground">Notas (opcional)</Label>
-          <Input placeholder="Observaciones del pagaré..." value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="bg-background" />
+          <Input placeholder="Observaciones del pagaré..." value={form.notes}
+            onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="bg-background" />
         </div>
         {form.amount && form.installmentCount && (
           <p className="text-xs text-muted-foreground bg-background rounded p-2 border border-border">
-            Se generarán <strong>{form.installmentCount}</strong> cuotas de <strong>{Number(form.currency === 'USD' ? '' : '') || ''}{(Number(form.amount) / Number(form.installmentCount)).toFixed(2)} {form.currency}</strong> cada una.
+            Se generarán <strong>{form.installmentCount}</strong> cuotas de{' '}
+            <strong>{(Number(form.amount) / Number(form.installmentCount)).toFixed(2)} {form.currency}</strong> cada una.
           </p>
         )}
         {error && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
@@ -251,6 +284,7 @@ function CreateNoteForm({ unitId, onSuccess, onCancel }: {
 
 export function PromissoryNotesTab({ unitId }: Props) {
   const [notes, setNotes] = useState<PromissoryNote[]>([])
+  const [leads, setLeads] = useState<LeadOption[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [expandedNote, setExpandedNote] = useState<string | null>(null)
@@ -269,7 +303,17 @@ export function PromissoryNotesTab({ unitId }: Props) {
     }
   }, [unitId])
 
-  useEffect(() => { fetchNotes() }, [fetchNotes])
+  const fetchLeads = useCallback(async () => {
+    try {
+      const res = await fetch('/api/leads')
+      if (res.ok) {
+        const json = await res.json()
+        setLeads(json.data || [])
+      }
+    } catch (e) { console.error(e) }
+  }, [])
+
+  useEffect(() => { fetchNotes(); fetchLeads() }, [fetchNotes, fetchLeads])
 
   if (loading) return (
     <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -294,6 +338,7 @@ export function PromissoryNotesTab({ unitId }: Props) {
       {showForm && (
         <CreateNoteForm
           unitId={unitId}
+          leads={leads}
           onSuccess={() => { setShowForm(false); fetchNotes() }}
           onCancel={() => setShowForm(false)}
         />
@@ -315,7 +360,7 @@ export function PromissoryNotesTab({ unitId }: Props) {
 
         return (
           <div key={note.id} className="border border-border rounded-xl overflow-hidden shadow-sm">
-            {/* Note header — clickable to expand */}
+            {/* Note header */}
             <button
               className="w-full flex items-center justify-between p-4 bg-card hover:bg-muted/50 transition-colors text-left"
               onClick={() => setExpandedNote(isExpanded ? null : note.id)}
@@ -328,8 +373,13 @@ export function PromissoryNotesTab({ unitId }: Props) {
                   <p className="font-bold text-foreground text-base">
                     {note.currency === 'USD' ? `$${Number(note.amount).toLocaleString()} USD` : formatPrice(note.amount, 'ARS')}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Emitido: {new Date(note.issueDate).toLocaleDateString('es-AR')} · Vence: {new Date(note.dueDate).toLocaleDateString('es-AR')}
+                  <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                    <User className="h-3 w-3" />
+                    <span className="font-medium">{note.lead?.name ?? '—'}</span>
+                    <span>·</span>
+                    Emitido: {new Date(note.issueDate).toLocaleDateString('es-AR')}
+                    <span>·</span>
+                    Vence: {new Date(note.dueDate).toLocaleDateString('es-AR')}
                   </p>
                 </div>
               </div>
@@ -373,7 +423,7 @@ export function PromissoryNotesTab({ unitId }: Props) {
                       const rowBg =
                         inst.status === 'OVERDUE' ? 'bg-destructive/10' :
                         nearDue ? 'bg-yellow-500/10' :
-                        inst.status === 'PAID' ? 'bg-background' : 'bg-background'
+                        'bg-background'
 
                       return (
                         <tr key={inst.id} className={`border-b border-border last:border-0 ${rowBg}`}>
@@ -393,12 +443,9 @@ export function PromissoryNotesTab({ unitId }: Props) {
                           </td>
                           <td className="px-4 py-3 text-right">
                             {inst.status !== 'PAID' ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
+                              <Button size="sm" variant="outline"
                                 className="h-7 text-xs border-green-500/30 text-green-500 hover:bg-green-500/10"
-                                onClick={() => setPaymentModal({ noteId: note.id, installment: inst })}
-                              >
+                                onClick={() => setPaymentModal({ noteId: note.id, installment: inst })}>
                                 Registrar Pago
                               </Button>
                             ) : (

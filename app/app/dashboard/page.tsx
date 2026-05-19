@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Users, Car, Handshake, TrendingUp, AlertCircle, Clock,
   CheckCircle, XCircle, ArrowUpRight, ArrowDownRight, Minus, Lock,
+  Banknote, Receipt, TriangleAlert,
 } from 'lucide-react'
 import { AnalyticsDashboardLazy } from '@/components/dashboard/analytics-dashboard-lazy'
 import { getPlanLimits } from '@/lib/shared/plan-limits'
@@ -20,6 +21,7 @@ async function getDashboardData(companyId: string, userId: string, role: string)
     totalLeads, activeLeads, newLeads, lostLeads,
     totalUnits, availableUnits, soldUnits,
     activeDeals, completedDeals, canceledDeals,
+    paidInstallmentsThisMonth, pendingInstallments, overdueInstallments,
   ] = await prisma.$transaction([
     prisma.lead.count({ where: leadWhere }),
     prisma.lead.count({ where: { ...leadWhere, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } } }),
@@ -31,17 +33,46 @@ async function getDashboardData(companyId: string, userId: string, role: string)
     prisma.deal.count({ where: { ...dealWhere, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } } }),
     prisma.deal.count({ where: { ...dealWhere, status: 'DELIVERED' } }),
     prisma.deal.count({ where: { ...dealWhere, status: 'CANCELED' } }),
+    // Pagos de cuotas realizados en los últimos 30 días
+    prisma.installmentPayment.findMany({
+      where: {
+        installment: { promissoryNote: { companyId } },
+        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+      },
+      select: { amount: true },
+    }),
+    // Cuotas pendientes totales
+    prisma.installment.findMany({
+      where: { status: 'PENDING', promissoryNote: { companyId } },
+      select: { amount: true },
+    }),
+    // Cuotas vencidas totales
+    prisma.installment.findMany({
+      where: { status: 'OVERDUE', promissoryNote: { companyId } },
+      select: { amount: true },
+    }),
   ])
+
+  const collectedArs = paidInstallmentsThisMonth.reduce((sum: number, p: { amount: { toString: () => string } }) => sum + Number(p.amount.toString()), 0)
+  const pendingArs = pendingInstallments.reduce((sum: number, i: { amount: { toString: () => string } }) => sum + Number(i.amount.toString()), 0)
+  const overdueArs = overdueInstallments.reduce((sum: number, i: { amount: { toString: () => string } }) => sum + Number(i.amount.toString()), 0)
 
   return {
     leads: { total: totalLeads, active: activeLeads, new: newLeads, lost: lostLeads },
     units: { total: totalUnits, available: availableUnits, sold: soldUnits },
     deals: { active: activeDeals, completed: completedDeals, canceled: canceledDeals },
+    notes: { collectedArs, pendingArs, overdueArs },
   }
 }
 
 function formatNumber(n: number) {
   return new Intl.NumberFormat('es-AR').format(n)
+}
+
+function formatArs(n: number) {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`
+  return `$${formatNumber(Math.round(n))}`
 }
 
 interface KpiCardProps {
@@ -131,6 +162,7 @@ export default async function DashboardPage() {
     leads: { total: 0, active: 0, new: 0, lost: 0 },
     units: { total: 0, available: 0, sold: 0 },
     deals: { active: 0, completed: 0, canceled: 0 },
+    notes: { collectedArs: 0, pendingArs: 0, overdueArs: 0 },
   }
 
   let companyName: string | undefined
@@ -235,6 +267,43 @@ export default async function DashboardPage() {
           />
         </div>
       </div>
+
+      {/* Resumen de Pagarés */}
+      {(stats.notes.collectedArs > 0 || stats.notes.pendingArs > 0 || stats.notes.overdueArs > 0) && (
+        <div className="space-y-4">
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
+            Resumen de Pagarés (últimos 30 días)
+          </h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <KpiCard
+              title="Cobrado en Cuotas"
+              value={formatArs(stats.notes.collectedArs)}
+              subtitle="pagos de cuotas recibidos"
+              icon={Receipt}
+              accentColor="border-l-emerald-500"
+              iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+            />
+            <KpiCard
+              title="Cuotas Pendientes"
+              value={formatArs(stats.notes.pendingArs)}
+              subtitle="saldo total por cobrar"
+              icon={Banknote}
+              accentColor="border-l-blue-500"
+              iconColor="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400"
+            />
+            <KpiCard
+              title="Cuotas Vencidas"
+              value={formatArs(stats.notes.overdueArs)}
+              subtitle="requieren atención inmediata"
+              icon={TriangleAlert}
+              accentColor={stats.notes.overdueArs > 0 ? "border-l-red-500" : "border-l-muted"}
+              iconColor={stats.notes.overdueArs > 0
+                ? "bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400"
+                : "bg-muted text-muted-foreground"}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Analytics de Ventas */}
       <div className="border-t border-adaptive pt-6">
