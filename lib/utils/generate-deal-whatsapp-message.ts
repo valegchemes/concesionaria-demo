@@ -97,75 +97,50 @@ export function generateDealWhatsAppMessage({
   tasks: TaskForMessage[]
   companyName: string
 }): string {
-  const lines: string[] = []
-
-  // Greeting
-  lines.push(`Hola *${lead.name}* 👋`)
-  lines.push('')
-  lines.push(`Aquí un resumen de tu operación en *${companyName}*:`)
-  lines.push('')
-
-  // Vehicle
-  lines.push(`🚗 *Vehículo:* ${deal.unit.title}`)
-
-  // Status
   const statusLabel = DEAL_STATUS_LABELS[deal.status] ?? deal.status
-  lines.push(`📋 *Estado:* ${statusLabel}`)
-
-  // Price (respects currency)
   const price = formatCurrency(deal.finalPrice, deal.finalPriceCurrency)
-  lines.push(`💰 *Precio acordado:* ${price}`)
+  const sellerName = deal.seller?.name ?? 'Tu asesor'
 
-  // Deposit / seña
+  // Core summary block — exact format as requested
+  let message = `Hola ${lead.name} 👋\n\nAquí un resumen de tu operación en ${companyName}:\n\n🚗 Vehículo: ${deal.unit.title}\n🤝 Estado: ${statusLabel}\n💰 Precio acordado: ${price}\n👤 Tu asesor: ${sellerName}`
+
+  // Optional: deposit / seña
   const depositVal = Number(deal.depositAmount || 0)
   if (depositVal > 0) {
     const depositStr = formatCurrency(deal.depositAmount, deal.finalPriceCurrency)
     const methodStr = deal.depositMethod ? PAYMENT_METHOD_LABELS[deal.depositMethod] ?? deal.depositMethod : ''
     const dateStr = formatDate(deal.depositDate)
     const methodPart = methodStr ? ` (${methodStr}${dateStr ? ` — ${dateStr}` : ''})` : dateStr ? ` (${dateStr})` : ''
-    lines.push(`💵 *Seña / Anticipo:* ${depositStr}${methodPart}`)
+    message += `\n💵 Seña / Anticipo: ${depositStr}${methodPart}`
   }
 
-  // Additional payments
+  // Optional: additional payments
   const payments = deal.payments || []
-  if (payments.length > 0) {
-    const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
-    if (totalPaid > 0) {
-      lines.push(`💳 *Pagos registrados:* ${formatCurrency(totalPaid, deal.finalPriceCurrency)}`)
-    }
-  }
-
-  // Remaining balance
-  const depositAmt = Number(deal.depositAmount || 0)
   const paymentTotal = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
-  const totalAbonado = depositAmt + paymentTotal
-  const finalPriceVal = Number(deal.finalPrice || 0)
-  const saldo = finalPriceVal - totalAbonado
-  
-  if (saldo > 0 && totalAbonado > 0) {
-    lines.push(`📊 *Saldo pendiente:* ${formatCurrency(saldo, deal.finalPriceCurrency)}`)
+  if (paymentTotal > 0) {
+    message += `\n💳 Pagos registrados: ${formatCurrency(paymentTotal, deal.finalPriceCurrency)}`
   }
 
-  // Next appointment from tasks
+  // Optional: remaining balance
+  const totalAbonado = Number(deal.depositAmount || 0) + paymentTotal
+  const saldo = Number(deal.finalPrice || 0) - totalAbonado
+  if (saldo > 0 && totalAbonado > 0) {
+    message += `\n📊 Saldo pendiente: ${formatCurrency(saldo, deal.finalPriceCurrency)}`
+  }
+
+  // Optional: next appointment
   const nextTask = tasks.find(t => new Date(t.dueDate) >= new Date())
   if (nextTask) {
-    lines.push(`📅 *Próxima cita:* ${formatDateTime(nextTask.dueDate)}`)
-    lines.push(`   📝 ${nextTask.title}`)
+    message += `\n📅 Próxima cita: ${formatDateTime(nextTask.dueDate)}\n   📝 ${nextTask.title}`
   }
 
-  // Seller
-  if (deal.seller) {
-    lines.push(`👤 *Tu asesor:* ${deal.seller.name}`)
-  }
-
-  // Deal notes
+  // Optional: notes
   if (deal.notes) {
-    lines.push('')
-    lines.push(`📌 *Notas:* ${deal.notes}`)
+    message += `\n\n📌 Notas: ${deal.notes}`
   }
 
-  lines.push('')
-  lines.push('Cualquier consulta, estamos a tu disposición. ¡Gracias por elegirnos! 🙏')
+  message += `\n\nCualquier consulta, estamos a tu disposición. ¡Gracias por elegirnos! ✨`
 
-  return lines.join('\n')
+  return message.normalize('NFC')
 }
+

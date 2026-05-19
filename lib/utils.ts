@@ -52,7 +52,10 @@ export function formatPhoneForWhatsApp(phone: string): string {
 
 export function generateWhatsAppLink(phone: string, message: string): string {
   const formattedPhone = formatPhoneForWhatsApp(phone)
-  const encodedMessage = encodeURIComponent(message)
+  // Normalize to NFC to ensure emojis are stored as proper UTF-8 codepoints,
+  // then encode for use in the URL query string.
+  const normalizedMessage = message.normalize('NFC')
+  const encodedMessage = encodeURIComponent(normalizedMessage)
   return `https://wa.me/${formattedPhone}?text=${encodedMessage}`
 }
 
