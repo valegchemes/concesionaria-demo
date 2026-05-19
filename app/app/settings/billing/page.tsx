@@ -11,7 +11,46 @@ import {
   CardFooter,
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, ShoppingCart, CheckCircle2, Clock, AlertCircle, Building2 } from 'lucide-react'
+import { Loader2, ShoppingCart, CheckCircle2, Clock, AlertCircle, Building2, X, Sparkles } from 'lucide-react'
+
+const planDescriptions: Record<string, { subtitle: string; badge: string; detailedFeatures: string[] }> = {
+  'Plan Básico': {
+    subtitle: 'La opción ideal para gestores independientes y agencias pequeñas que inician su digitalización.',
+    badge: 'Inicio Rápido',
+    detailedFeatures: [
+      'Acceso exclusivo para 1 usuario administrador.',
+      'Gestión ágil de inventario de hasta 15 vehículos activos.',
+      'Ficha técnica descargable de tus vehículos para enviar a prospectos.',
+      'Embudo de ventas simplificado para leads e interesados.',
+      'Actualizaciones automáticas del sistema.',
+    ]
+  },
+  'Plan Medio': {
+    subtitle: 'Diseñado para concesionarias en crecimiento que necesitan control financiero y trabajo en equipo.',
+    badge: 'Crecimiento Comercial',
+    detailedFeatures: [
+      'Soporte de hasta 3 usuarios concurrentes para tu equipo.',
+      'Gestión ampliada de inventario para hasta 40 vehículos.',
+      'Analíticas y reportes dinámicos de rendimiento de ventas.',
+      'Cálculo exacto de márgenes de ganancias, comisiones y costos por unidad.',
+      'Ficha técnica y cotizaciones descargables en formato PDF.',
+      'Módulo de costos mensuales y gastos administrativos integrados.',
+    ]
+  },
+  'Plan Pro': {
+    subtitle: 'La herramienta definitiva y profesional para concesionarias líderes que buscan automatización total.',
+    badge: 'Todo Incluido / Premium',
+    detailedFeatures: [
+      'Acceso completo de hasta 8 usuarios para todo tu personal.',
+      'Hasta 100 vehículos activos simultáneos en catálogo.',
+      'Envío inteligente y automatizado por WhatsApp (normalización UTF-8 libre de caracteres rotos).',
+      'Generación inteligente de Pagarés, cálculo automatizado de cuotas e historial de cobranza.',
+      'Boletos de compraventa, contratos de consignación y recibos de pago con firma digital.',
+      'Analíticas avanzadas y tableros financieros completos (márgenes brutos y netos).',
+      'Soporte prioritario exclusivo y configuraciones avanzadas del tenant.',
+    ]
+  }
+}
 
 interface Plan {
   id: string
@@ -53,6 +92,7 @@ export default function BillingPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isFetching, setIsFetching] = useState(true)
+  const [selectedPlanForDetail, setSelectedPlanForDetail] = useState<Plan | null>(null)
 
   useEffect(() => {
     if (searchParams.get('success')) setSuccessMsg(true)
@@ -190,9 +230,13 @@ export default function BillingPage() {
             {plans.map((plan, idx) => {
               const isPro = plan.name.toLowerCase().includes('pro')
               return (
-                <Card key={plan.id} className={`flex flex-col relative surface-secondary transition-all ${
-                  isPro ? 'border-2 border-violet-500 shadow-xl shadow-violet-900/20 md:-translate-y-2' : ''
-                }`}>
+                <Card 
+                  key={plan.id} 
+                  onClick={() => setSelectedPlanForDetail(plan)}
+                  className={`flex flex-col relative surface-secondary transition-all cursor-pointer select-none duration-300 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/5 hover:-translate-y-1 ${
+                    isPro ? 'border-2 border-violet-500 shadow-xl shadow-violet-900/20 md:-translate-y-2 hover:border-violet-500 hover:shadow-violet-500/20' : ''
+                  }`}
+                >
                   {isPro && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <span className="bg-violet-600 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-md">
@@ -249,7 +293,10 @@ export default function BillingPage() {
                   </CardContent>
                   <CardFooter>
                     <Button
-                      onClick={() => handleCheckout(plan.stripePriceId)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleCheckout(plan.stripePriceId)
+                      }}
                       disabled={loading}
                       className={`w-full font-semibold ${
                         isPro ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''
@@ -311,6 +358,90 @@ export default function BillingPage() {
           </>
         )}
       </div>
+
+      {/* Modal de detalles de plan */}
+      {selectedPlanForDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 transition-all duration-300">
+          <div className="relative w-full max-w-lg rounded-2xl border border-border bg-adaptive-dialog-bg p-6 shadow-2xl overflow-hidden surface-secondary animate-in fade-in zoom-in duration-200">
+            {/* Background elements */}
+            <div className="absolute -top-24 -right-24 h-48 w-48 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 h-48 w-48 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
+
+            <div className="relative">
+              {/* Header */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 mb-2">
+                    <Sparkles className="h-3 w-3" />
+                    {planDescriptions[selectedPlanForDetail.name]?.badge ?? 'Plan CRM'}
+                  </span>
+                  <h3 className="text-2xl font-bold text-adaptive-primary">{selectedPlanForDetail.name}</h3>
+                </div>
+                <button
+                  onClick={() => setSelectedPlanForDetail(null)}
+                  className="rounded-full p-1.5 hover:bg-adaptive-hover text-adaptive-secondary transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Subtitle / Description */}
+              <p className="text-sm text-adaptive-secondary mt-3 leading-relaxed">
+                {planDescriptions[selectedPlanForDetail.name]?.subtitle ?? selectedPlanForDetail.description ?? 'Explorá todos los beneficios integrados de este plan.'}
+              </p>
+
+              {/* Price section */}
+              <div className="my-5 p-4 rounded-xl bg-muted/50 border border-border flex items-baseline justify-between">
+                <div>
+                  <span className="text-[11px] text-adaptive-secondary uppercase tracking-wider font-bold block mb-0.5">Inversión Mensual</span>
+                  <span className="text-3xl font-black text-adaptive-primary">
+                    ${Number(selectedPlanForDetail.price).toLocaleString('es-AR')}
+                  </span>
+                  <span className="text-sm font-semibold text-adaptive-secondary ml-1">ARS</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-adaptive-secondary block font-bold uppercase tracking-wider mb-0.5">Facturación</span>
+                  <span className="text-sm font-bold text-indigo-500 capitalize">{selectedPlanForDetail.interval === 'month' ? 'Mensual' : selectedPlanForDetail.interval}</span>
+                </div>
+              </div>
+
+              {/* Detailed Features List */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-adaptive-primary uppercase tracking-wider">¿Qué incluye este plan?</h4>
+                <ul className="space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                  {(planDescriptions[selectedPlanForDetail.name]?.detailedFeatures ?? []).map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-adaptive-primary font-medium">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Action Buttons inside modal */}
+              <div className="mt-6 flex gap-3">
+                <Button
+                  onClick={() => setSelectedPlanForDetail(null)}
+                  variant="outline"
+                  className="flex-1 font-semibold"
+                >
+                  Cerrar
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSelectedPlanForDetail(null)
+                    handleCheckout(selectedPlanForDetail.stripePriceId)
+                  }}
+                  disabled={loading}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md shadow-indigo-500/20"
+                >
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Adquirir este Plan'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

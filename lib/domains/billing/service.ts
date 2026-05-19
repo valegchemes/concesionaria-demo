@@ -60,6 +60,7 @@ export const billingService = {
         maxUnits: true,
         analyticsEnabled: true,
         whatsappEnabled: true,
+        documentsEnabled: true,
       },
       orderBy: { price: 'asc' },
     })
@@ -80,6 +81,7 @@ export const billingService = {
         maxUnits: true,
         analyticsEnabled: true,
         whatsappEnabled: true,
+        documentsEnabled: true,
         isActive: true,
       },
     })
