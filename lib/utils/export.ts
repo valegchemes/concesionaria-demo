@@ -35,7 +35,9 @@ export function exportToCSV(
   URL.revokeObjectURL(url)
 }
 
-export function exportToExcel(
+import ExcelJS from 'exceljs'
+
+export async function exportToExcel(
   data: Record<string, any>[],
   filename: string,
   sheetName = 'Datos'
@@ -65,32 +67,86 @@ export function exportToExcel(
     TRADE_IN: 'Toma Usado / Permuta'
   }
 
-  // Colores para estados si son celdas individuales
+  // Colores para estados (formato ARGB sin el #, ej: AARRGGBB)
   const statusColors: Record<string, { bg: string; text: string }> = {
-    'Disponible': { bg: '#dcfce7', text: '#15803d' },
-    'Disponible ✅': { bg: '#dcfce7', text: '#15803d' },
-    'En Preparación': { bg: '#fef3c7', text: '#b45309' },
-    'Reservado': { bg: '#ffedd5', text: '#c2410c' },
-    'Reservado ✅': { bg: '#ffedd5', text: '#c2410c' },
-    'Vendido': { bg: '#f1f5f9', text: '#475569' },
-    'Negociación': { bg: '#dbeafe', text: '#1e40af' },
-    'Aprobado': { bg: '#f3e8ff', text: '#6b21a8' },
-    'Aprobado ✅': { bg: '#f3e8ff', text: '#6b21a8' },
-    'En Proceso de Pago': { bg: '#fef9c3', text: '#854d0e' },
-    'En proceso de pago 💳': { bg: '#fef9c3', text: '#854d0e' },
-    'Entregado': { bg: '#dcfce7', text: '#15803d' },
-    'Entregado 🎉': { bg: '#dcfce7', text: '#15803d' },
-    'Cancelado': { bg: '#fee2e2', text: '#991b1b' },
-    'Cancelado ❌': { bg: '#fee2e2', text: '#991b1b' },
+    'Disponible': { bg: 'FFDCFCE7', text: 'FF15803D' },
+    'Disponible ✅': { bg: 'FFDCFCE7', text: 'FF15803D' },
+    'En Preparación': { bg: 'FFFFF3C7', text: 'FFB45309' },
+    'Reservado': { bg: 'FFFFEDD5', text: 'FFC2410C' },
+    'Reservado ✅': { bg: 'FFFFEDD5', text: 'FFC2410C' },
+    'Vendido': { bg: 'FFF1F5F9', text: 'FF475569' },
+    'Negociación': { bg: 'FFDBEAFE', text: 'FF1E40AF' },
+    'Aprobado': { bg: 'FFF3E8FF', text: 'FF6B21A8' },
+    'Aprobado ✅': { bg: 'FFF3E8FF', text: 'FF6B21A8' },
+    'En Proceso de Pago': { bg: 'FFFFF9C3', text: 'FF854D0E' },
+    'En proceso de pago 💳': { bg: 'FFFFF9C3', text: 'FF854D0E' },
+    'Entregado': { bg: 'FFDCFCE7', text: 'FF15803D' },
+    'Entregado 🎉': { bg: 'FFDCFCE7', text: 'FF15803D' },
+    'Cancelado': { bg: 'FFFEE2E2', text: 'FF991B1B' },
+    'Cancelado ❌': { bg: 'FFFEE2E2', text: 'FF991B1B' },
   }
 
+  // Crear libro de trabajo y hoja
+  const workbook = new ExcelJS.Workbook()
+  const worksheet = workbook.addWorksheet(sheetName, {
+    views: [{ showGridLines: true }]
+  })
+
+  // Obtener nombres de columnas
   const headers = Object.keys(data[0])
 
-  // Generamos las filas en formato HTML
-  const rowsHtml = data.map((row) => {
-    const cellsHtml = headers.map((header) => {
+  // Fila 1: Título del informe
+  worksheet.mergeCells(1, 1, 1, headers.length)
+  const titleRow = worksheet.getRow(1)
+  titleRow.height = 35
+  const titleCell = titleRow.getCell(1)
+  titleCell.value = `INFORME DE ${sheetName.toUpperCase()} - AUTOMANAGER CRM`
+  titleCell.font = { name: 'Segoe UI', size: 16, bold: true, color: { argb: 'FF0F172A' } }
+  titleCell.alignment = { vertical: 'middle', horizontal: 'left' }
+
+  // Fila 2: Metadatos
+  worksheet.mergeCells(2, 1, 2, headers.length)
+  const metaRow = worksheet.getRow(2)
+  metaRow.height = 20
+  const metaCell = metaRow.getCell(1)
+  metaCell.value = `Generado el: ${new Date().toLocaleDateString('es-AR')} a las ${new Date().toLocaleTimeString('es-AR')} | Total: ${data.length} registros`
+  metaCell.font = { name: 'Segoe UI', size: 10, italic: true, color: { argb: 'FF64748B' } }
+  metaCell.alignment = { vertical: 'middle', horizontal: 'left' }
+
+  // Fila 3: Espacio vacío de separación
+  worksheet.getRow(3).height = 10
+
+  // Fila 4: Encabezados de tabla
+  const headerRow = worksheet.getRow(4)
+  headerRow.height = 25
+  headers.forEach((header, idx) => {
+    const cell = headerRow.getCell(idx + 1)
+    cell.value = header
+    cell.font = { name: 'Segoe UI', size: 11, bold: true, color: { argb: 'FFFFFFFF' } }
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1E293B' } // Slate 800
+    }
+    cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+      bottom: { style: 'medium', color: { argb: 'FF475569' } },
+      left: { style: 'thin', color: { argb: 'FF94A3B8' } },
+      right: { style: 'thin', color: { argb: 'FF94A3B8' } }
+    }
+  })
+
+  // Rellenar filas de datos
+  data.forEach((row, rowIndex) => {
+    const excelRowIndex = rowIndex + 5
+    const excelRow = worksheet.getRow(excelRowIndex)
+    excelRow.height = 20
+
+    headers.forEach((header, colIndex) => {
+      const cell = excelRow.getCell(colIndex + 1)
       let rawVal = row[header]
-      
+
       // Traducir valores conocidos
       if (rawVal && typeof rawVal === 'string' && translationMap[rawVal]) {
         rawVal = translationMap[rawVal]
@@ -98,7 +154,7 @@ export function exportToExcel(
 
       const valStr = rawVal === null || rawVal === undefined ? '' : String(rawVal)
 
-      // Identificar tipos de columnas para aplicar clases y estilos
+      // Identificar tipos de columnas
       const isPrice = header.toLowerCase().includes('precio') || 
                       header.toLowerCase().includes('costo') || 
                       header.toLowerCase().includes('monto') || 
@@ -117,98 +173,92 @@ export function exportToExcel(
 
       const isNumber = typeof rawVal === 'number' && !isPrice
 
-      // Generar celda formateada
-      let style = 'border: 1px solid #cbd5e1; padding: 8px; font-size: 11px; color: #334155;'
-      
+      // Formatear celda
+      cell.font = { name: 'Segoe UI', size: 10, color: { argb: 'FF334155' } }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+        right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+      }
+
       if (isPrice) {
-        style += " text-align: right; mso-number-format: '\\$\\#\\,\\#\\#0';"
         const num = Number(rawVal)
-        return `<td style="${style}">${isNaN(num) ? valStr : num}</td>`
-      } else if (isNumber) {
-        style += " text-align: center; mso-number-format: '0';"
-        return `<td style="${style}">${rawVal}</td>`
-      } else if (isDate) {
-        style += ' text-align: center;'
-        let formattedDate = valStr
-        if (valStr && !isNaN(Date.parse(valStr))) {
-          formattedDate = new Date(valStr).toLocaleDateString('es-AR')
+        if (!isNaN(num) && rawVal !== '') {
+          cell.value = num
+          cell.numFmt = '$#,##0'
+        } else {
+          cell.value = ''
         }
-        return `<td style="${style}">${formattedDate}</td>`
+        cell.alignment = { vertical: 'middle', horizontal: 'right' }
+      } else if (isNumber) {
+        cell.value = rawVal
+        cell.numFmt = '0'
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+      } else if (isDate) {
+        if (valStr && !isNaN(Date.parse(valStr))) {
+          cell.value = new Date(valStr)
+          cell.numFmt = 'dd/mm/yyyy'
+        } else {
+          cell.value = '-'
+        }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
       } else if (isStatus) {
+        cell.value = valStr
+        cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF0F172A' } }
+        cell.alignment = { vertical: 'middle', horizontal: 'center' }
+        
         const color = statusColors[valStr]
         if (color) {
-          style += ` text-align: center; background-color: ${color.bg}; color: ${color.text}; font-weight: bold;`
-        } else {
-          style += ' text-align: center; font-weight: bold;'
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: color.bg }
+          }
+          cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: color.text } }
         }
-        return `<td style="${style}">${valStr}</td>`
       } else {
-        style += " text-align: left; mso-number-format: '\\@';"
-        // Hacer el título o nombres más legibles
+        cell.value = valStr
+        cell.alignment = { vertical: 'middle', horizontal: 'left' }
+        
+        // Destacar columnas principales
         if (header.toLowerCase() === 'título' || header.toLowerCase() === 'cliente' || header.toLowerCase() === 'vehículo') {
-          style += ' font-weight: bold;'
+          cell.font = { name: 'Segoe UI', size: 10, bold: true, color: { argb: 'FF0F172A' } }
         }
-        return `<td style="${style}">${valStr}</td>`
       }
-    }).join('')
+    })
+  })
 
-    return `<tr>${cellsHtml}</tr>`
-  }).join('')
+  // Auto-ajustar ancho de columnas de manera inteligente
+  worksheet.columns.forEach((column) => {
+    let maxLength = 12
+    if (column.values) {
+      column.values.forEach((value, idx) => {
+        if (idx > 3 && value) { // Omitir el título de la hoja y el meta en la medición
+          let length = 0
+          if (value instanceof Date) {
+            length = 10
+          } else if (typeof value === 'number') {
+            length = value.toLocaleString('es-AR').length + 2
+          } else {
+            length = String(value).length
+          }
+          if (length > maxLength) {
+            maxLength = length
+          }
+        }
+      })
+    }
+    column.width = Math.min(maxLength + 4, 35) // Margen holgado, límite máximo 35
+  })
 
-  // Cabecera y estructura de Excel
-  const excelHtml = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-    <head>
-      <meta charset="utf-8" />
-      <!--[if gte mso 9]>
-      <xml>
-        <x:ExcelWorkbook>
-          <x:ExcelWorksheets>
-            <x:ExcelWorksheet>
-              <x:Name>${sheetName}</x:Name>
-              <x:WorksheetOptions>
-                <x:DisplayGridlines/>
-              </x:WorksheetOptions>
-            </x:ExcelWorksheet>
-          </x:ExcelWorksheets>
-        </x:ExcelWorkbook>
-      </xml>
-      <![endif]-->
-      <style>
-        table { border-collapse: collapse; font-family: 'Segoe UI', Arial, sans-serif; }
-        th { background-color: #1e293b; color: #ffffff; font-weight: bold; border: 1px solid #94a3b8; padding: 10px; text-align: center; font-size: 12px; }
-        .header-title { font-size: 18px; font-weight: bold; color: #0f172a; padding: 15px 0; text-align: left; }
-        .header-meta { font-size: 11px; color: #64748b; padding-bottom: 15px; text-align: left; }
-      </style>
-    </head>
-    <body>
-      <table>
-        <thead>
-          <tr>
-            <th colspan="${headers.length}" style="background-color: transparent; border: none;" class="header-title">INFORME DE ${sheetName.toUpperCase()} - AUTOMANAGER CRM</th>
-          </tr>
-          <tr>
-            <th colspan="${headers.length}" style="background-color: transparent; border: none; font-weight: normal;" class="header-meta">
-              Generado el: ${new Date().toLocaleDateString('es-AR')} a las ${new Date().toLocaleTimeString('es-AR')} | Total: ${data.length} registros
-            </th>
-          </tr>
-          <tr>
-            ${headers.map(h => `<th style="min-width: 120px;">${h}</th>`).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `
-
-  const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+  // Generar archivo y disparar descarga
+  const buffer = await workbook.xlsx.writeBuffer()
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${filename}.xls`
+  a.download = `${filename}.xlsx`
   a.click()
   URL.revokeObjectURL(url)
 }
