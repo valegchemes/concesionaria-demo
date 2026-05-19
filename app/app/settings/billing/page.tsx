@@ -22,15 +22,17 @@ const planDescriptions: Record<string, { subtitle: string; badge: string; detail
       'Gestión ágil de inventario de hasta 15 vehículos activos.',
       'Ficha técnica descargable de tus vehículos para enviar a prospectos.',
       'Embudo de ventas simplificado para leads e interesados.',
+      'Analíticas y matemáticas de ventas integradas.',
       'Actualizaciones automáticas del sistema.',
     ]
   },
-  'Plan Medio': {
+  'Plan Standar': {
     subtitle: 'Diseñado para concesionarias en crecimiento que necesitan control financiero y trabajo en equipo.',
     badge: 'Crecimiento Comercial',
     detailedFeatures: [
       'Soporte de hasta 3 usuarios concurrentes para tu equipo.',
       'Gestión ampliada de inventario para hasta 40 vehículos.',
+      'Envío automático por WhatsApp para cotizaciones y fichas.',
       'Analíticas y reportes dinámicos de rendimiento de ventas.',
       'Cálculo exacto de márgenes de ganancias, comisiones y costos por unidad.',
       'Ficha técnica y cotizaciones descargables en formato PDF.',
@@ -236,7 +238,7 @@ export default function BillingPage() {
           plans.map((plan, idx) => {
             const nameLower = plan.name.toLowerCase()
             const isPro = nameLower.includes('pro')
-            const isMedio = nameLower.includes('medio')
+            const isStandar = nameLower.includes('standar') || nameLower.includes('medio')
             const isBasico = nameLower.includes('básico') || nameLower.includes('basico')
 
             return (
@@ -266,7 +268,7 @@ export default function BillingPage() {
                           Digitalización Inicial
                         </span>
                       )}
-                      {isMedio && (
+                      {isStandar && (
                         <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border border-indigo-100 dark:border-indigo-900/50">
                           Control de Gastos y Equipo
                         </span>
