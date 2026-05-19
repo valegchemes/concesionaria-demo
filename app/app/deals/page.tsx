@@ -38,7 +38,14 @@ export default function DealsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
 
-  useEffect(() => { fetchDeals() }, [])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const urlStatus = params.get('status')
+      if (urlStatus) setStatusFilter(urlStatus)
+    }
+    fetchDeals()
+  }, [])
 
   async function fetchDeals() {
     try {
@@ -74,7 +81,9 @@ export default function DealsPage() {
         const matchSearch =
           d.lead.name.toLowerCase().includes(search.toLowerCase()) ||
           d.unit.title.toLowerCase().includes(search.toLowerCase())
-        const matchStatus = statusFilter === 'ALL' || d.status === statusFilter
+        const matchStatus = statusFilter === 'ALL'
+          || (statusFilter === 'ACTIVE' && ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'].includes(d.status))
+          || d.status === statusFilter
         return matchSearch && matchStatus
       })
     : []

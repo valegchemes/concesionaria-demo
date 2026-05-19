@@ -83,11 +83,12 @@ interface KpiCardProps {
   accentColor: string
   iconColor: string
   trend?: { value: number; label: string }
+  href?: string
 }
 
-function KpiCard({ title, value, subtitle, icon: Icon, accentColor, iconColor, trend }: KpiCardProps) {
-  return (
-    <Card className={`relative overflow-hidden border-l-4 ${accentColor} surface-secondary hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group`}>
+function KpiCard({ title, value, subtitle, icon: Icon, accentColor, iconColor, trend, href }: KpiCardProps) {
+  const card = (
+    <Card className={`relative overflow-hidden border-l-4 ${accentColor} surface-secondary hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group ${href ? 'cursor-pointer' : ''}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
         <CardTitle className="text-xs font-semibold uppercase tracking-widest text-adaptive-secondary">
           {title}
@@ -108,6 +109,11 @@ function KpiCard({ title, value, subtitle, icon: Icon, accentColor, iconColor, t
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return <Link href={href} className="block">{card}</Link>
+  }
+  return card
 }
 
 interface StatPillProps {
@@ -116,9 +122,10 @@ interface StatPillProps {
   sublabel: string
   icon: React.ComponentType<{ className?: string }>
   color: 'blue' | 'green' | 'red'
+  href?: string
 }
 
-function StatPill({ label, value, sublabel, icon: Icon, color }: StatPillProps) {
+function StatPill({ label, value, sublabel, icon: Icon, color, href }: StatPillProps) {
   const colorMap = {
     blue: {
       label: 'text-blue-500 dark:text-blue-400',
@@ -135,8 +142,8 @@ function StatPill({ label, value, sublabel, icon: Icon, color }: StatPillProps) 
   }
   const c = colorMap[color]
 
-  return (
-    <Card className={`surface-secondary hover:-translate-y-1 transition-transform duration-300 group`}>
+  const card = (
+    <Card className={`surface-secondary hover:-translate-y-1 transition-transform duration-300 group ${href ? 'cursor-pointer' : ''}`}>
       <CardContent className="py-4 px-4">
         <div className="flex items-center justify-between">
           <div>
@@ -149,6 +156,11 @@ function StatPill({ label, value, sublabel, icon: Icon, color }: StatPillProps) 
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return <Link href={href} className="block">{card}</Link>
+  }
+  return card
 }
 
 export default async function DashboardPage() {
@@ -215,6 +227,7 @@ export default async function DashboardPage() {
             icon={Users}
             accentColor="border-l-blue-500"
             iconColor="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400"
+            href="/app/leads?filter=ACTIVE"
           />
           <KpiCard
             title="Leads Nuevos"
@@ -223,6 +236,7 @@ export default async function DashboardPage() {
             icon={AlertCircle}
             accentColor="border-l-orange-500"
             iconColor="bg-orange-100 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400"
+            href="/app/leads?filter=NEW"
           />
           <KpiCard
             title="Unidades Disponibles"
@@ -231,6 +245,7 @@ export default async function DashboardPage() {
             icon={Car}
             accentColor="border-l-emerald-500"
             iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+            href="/app/units?status=AVAILABLE"
           />
           <KpiCard
             title="Tasa de Conversión"
@@ -239,6 +254,7 @@ export default async function DashboardPage() {
             icon={TrendingUp}
             accentColor="border-l-violet-500"
             iconColor="bg-violet-100 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400"
+            href="/app/deals?status=DELIVERED"
           />
         </div>
 
@@ -250,6 +266,7 @@ export default async function DashboardPage() {
             sublabel="negociaciones activas"
             icon={Clock}
             color="blue"
+            href="/app/deals?status=ACTIVE"
           />
           <StatPill
             label="Completadas"
@@ -257,6 +274,7 @@ export default async function DashboardPage() {
             sublabel="operaciones entregadas"
             icon={CheckCircle}
             color="green"
+            href="/app/deals?status=DELIVERED"
           />
           <StatPill
             label="Canceladas"
@@ -264,6 +282,7 @@ export default async function DashboardPage() {
             sublabel="operaciones canceladas"
             icon={XCircle}
             color="red"
+            href="/app/deals?status=CANCELED"
           />
         </div>
       </div>
@@ -282,6 +301,7 @@ export default async function DashboardPage() {
               icon={Receipt}
               accentColor="border-l-emerald-500"
               iconColor="bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400"
+              href="/app/notes?status=PAID"
             />
             <KpiCard
               title="Cuotas Pendientes"
@@ -290,6 +310,7 @@ export default async function DashboardPage() {
               icon={Banknote}
               accentColor="border-l-blue-500"
               iconColor="bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400"
+              href="/app/notes?status=PENDING"
             />
             <KpiCard
               title="Cuotas Vencidas"
@@ -300,6 +321,7 @@ export default async function DashboardPage() {
               iconColor={stats.notes.overdueArs > 0
                 ? "bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400"
                 : "bg-muted text-muted-foreground"}
+              href="/app/notes?status=OVERDUE"
             />
           </div>
         </div>

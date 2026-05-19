@@ -224,6 +224,13 @@ export default function LeadsPage() {
   const dragId = useRef<string | null>(null)
 
   useEffect(() => { 
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const urlFilter = params.get('filter')
+      const urlView = params.get('view')
+      if (urlFilter) setFilter(urlFilter)
+      if (urlView === 'list' || urlView === 'kanban') setView(urlView)
+    }
     fetchLeads()
     fetchMeAndTeam()
   }, [])

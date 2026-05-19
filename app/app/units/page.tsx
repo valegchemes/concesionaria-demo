@@ -61,7 +61,14 @@ export default function UnitsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
 
-  useEffect(() => { fetchUnits() }, [])
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const urlStatus = params.get('status')
+      if (urlStatus) setStatusFilter(urlStatus)
+    }
+    fetchUnits()
+  }, [])
 
   async function fetchUnits() {
     try {
