@@ -222,8 +222,8 @@ export default function BillingPage() {
         </Card>
       )}
 
-      {/* Plan cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Plan cards grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
         {isFetching ? (
           <div className="p-4 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md col-span-3">
             Cargando planes...
@@ -233,31 +233,31 @@ export default function BillingPage() {
             No hay planes disponibles en este momento. Por favor contacta a soporte.
           </div>
         ) : (
-          <>
-            {plans.map((plan, idx) => {
-              const nameLower = plan.name.toLowerCase()
-              const isPro = nameLower.includes('pro')
-              const isMedio = nameLower.includes('medio')
-              const isBasico = nameLower.includes('básico') || nameLower.includes('basico')
+          plans.map((plan, idx) => {
+            const nameLower = plan.name.toLowerCase()
+            const isPro = nameLower.includes('pro')
+            const isMedio = nameLower.includes('medio')
+            const isBasico = nameLower.includes('básico') || nameLower.includes('basico')
 
-              return (
-                <Card 
-                  key={plan.id} 
-                  onClick={() => setSelectedPlanForDetail(plan)}
-                  className={`flex flex-col relative bg-white dark:bg-slate-900 border transition-all cursor-pointer select-none duration-300 hover:shadow-2xl hover:-translate-y-1.5 ${
-                    isPro 
-                      ? 'border-violet-500 ring-2 ring-violet-500/10 shadow-xl shadow-violet-900/5 dark:shadow-violet-950/20 md:-translate-y-2' 
-                      : 'border-slate-200 dark:border-slate-800 shadow-md'
-                  }`}
-                >
-                  {isPro && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
-                      <span className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md whitespace-nowrap">
-                        Recomendado / Completo 🚀
-                      </span>
-                    </div>
-                  )}
+            return (
+              <Card 
+                key={plan.id} 
+                onClick={() => setSelectedPlanForDetail(plan)}
+                className={`flex flex-col h-full justify-between relative bg-white dark:bg-slate-900 border transition-all cursor-pointer select-none duration-300 hover:shadow-2xl hover:-translate-y-1.5 ${
+                  isPro 
+                    ? 'border-violet-500 ring-2 ring-violet-500/10 shadow-xl shadow-violet-900/5 dark:shadow-violet-950/20 md:-translate-y-2 hover:border-violet-500 hover:shadow-violet-500/20' 
+                    : 'border-slate-200 dark:border-slate-800 shadow-md'
+                }`}
+              >
+                {isPro && (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                    <span className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md whitespace-nowrap">
+                      Recomendado / Completo 🚀
+                    </span>
+                  </div>
+                )}
 
+                <div>
                   <CardHeader className="pb-4 pt-6 px-6 border-b border-slate-50 dark:border-slate-800/60">
                     {/* Unique Tier Benefit Highlight Badge */}
                     <div className="mb-2.5">
@@ -291,7 +291,7 @@ export default function BillingPage() {
                     </div>
                   </CardHeader>
 
-                  <CardContent className="flex-1 space-y-4 pt-5 px-6">
+                  <CardContent className="space-y-4 pt-5 px-6">
                     <ul className="space-y-3.5 text-sm text-slate-700 dark:text-slate-300">
                       <li className="flex items-start gap-2.5 font-medium">
                         <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
@@ -341,81 +341,63 @@ export default function BillingPage() {
                       )}
                     </ul>
                   </CardContent>
+                </div>
 
-                  <CardFooter className="pb-6 pt-2 px-6">
-                    <Button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleCheckout(plan.stripePriceId)
-                      }}
-                      disabled={loading}
-                      className={`w-full font-bold py-3 rounded-xl transition-all shadow-sm ${
-                        isPro 
-                          ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/10' 
-                          : 'bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white'
-                      }`}
-                    >
-                      {loading ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        'Pagar con Mercado Pago'
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )
-            })}
-            
-            {/* Enterprise Plan Card */}
-            <Card className="flex flex-col relative bg-slate-50 dark:bg-slate-900/40 border-dashed border-2 border-slate-300 dark:border-slate-700 shadow-md">
-              <CardHeader className="pb-4 pt-6 px-6">
-                <div className="mb-2.5">
-                  <span className="bg-slate-200 dark:bg-slate-850 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">
-                    Operaciones a Escala
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-slate-500" />
-                  <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Plan Enterprise</CardTitle>
-                </div>
-                <div className="flex items-baseline mt-3">
-                  <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                    A convenir
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-4 pt-2 px-6">
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Para concesionarias con operaciones a gran escala que requieren soluciones a medida.
-                </p>
-                <ul className="space-y-3.5 text-sm text-slate-700 dark:text-slate-300">
-                  <li className="flex items-start gap-2.5 font-medium">
-                    <CheckCircle2 className="h-4.5 w-4.5 text-slate-400 shrink-0 mt-0.5" />
-                    <span>Usuarios e Inventario <strong>Ilimitados</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2.5 font-medium">
-                    <CheckCircle2 className="h-4.5 w-4.5 text-slate-400 shrink-0 mt-0.5" />
-                    <span>Soporte Prioritario <strong>24/7</strong></span>
-                  </li>
-                  <li className="flex items-start gap-2.5 font-medium">
-                    <CheckCircle2 className="h-4.5 w-4.5 text-slate-400 shrink-0 mt-0.5" />
-                    <span>Migración de datos incluida</span>
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter className="pb-6 pt-4 px-6">
-                <Button
-                  variant="outline"
-                  className="w-full font-bold py-3 rounded-xl border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  onClick={() => window.open('mailto:soporte@automanager.com', '_blank')}
-                >
-                  Contactar con Soporte
-                </Button>
-              </CardFooter>
-            </Card>
-          </>
+                <CardFooter className="pb-6 pt-6 px-6">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleCheckout(plan.stripePriceId)
+                    }}
+                    disabled={loading}
+                    className={`w-full font-bold py-3 rounded-xl transition-all shadow-sm ${
+                      isPro 
+                        ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/10' 
+                        : 'bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white'
+                    }`}
+                  >
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      'Pagar con Mercado Pago'
+                    )}
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
+          })
         )}
       </div>
+
+      {/* Enterprise Plan Card Footer Banner */}
+      {!isFetching && plans.length > 0 && (
+        <Card className="bg-slate-50 dark:bg-slate-900/40 border-dashed border-2 border-slate-300 dark:border-slate-700 shadow-md p-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">
+                  Operaciones a Escala
+                </span>
+                <span className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <Building2 className="h-4.5 w-4.5 text-slate-500" /> Plan Enterprise
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+                ¿Necesitás una solución a medida? Para concesionarias con operaciones a gran escala ofrecemos usuarios e inventario ilimitados, migración de datos guiada y soporte prioritario 24/7.
+              </p>
+            </div>
+            <div className="w-full md:w-auto flex-shrink-0">
+              <Button
+                variant="outline"
+                className="w-full md:w-56 font-bold py-3 rounded-xl border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm"
+                onClick={() => window.open('mailto:soporte@automanager.com', '_blank')}
+              >
+                Contactar con Soporte
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Modal de detalles de plan */}
       {selectedPlanForDetail && (
