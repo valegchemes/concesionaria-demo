@@ -219,8 +219,8 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Cargando...</div>
-  if (!unit) return <div className="flex items-center justify-center h-64 text-gray-500">Unidad no encontrada</div>
+  if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Cargando...</div>
+  if (!unit) return <div className="flex items-center justify-center h-64 text-muted-foreground">Unidad no encontrada</div>
 
   // Cost calculations
   const costItems = unit.costItems || []
@@ -239,26 +239,26 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
         <h1 className="text-2xl font-bold flex-1">{unit.title}</h1>
-        <Button onClick={generatePdf} disabled={isGeneratingPdf} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white shadow-sm">
+        <Button onClick={generatePdf} disabled={isGeneratingPdf} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
           {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
           {isGeneratingPdf ? 'Generando...' : 'Descargar Ficha'}
         </Button>
-        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{unitTypes[unit.type]}</span>
-        <span className={`px-3 py-1 rounded-full text-sm ${unit.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' :
-            unit.status === 'SOLD' ? 'bg-gray-100 text-gray-800' : 'bg-yellow-100 text-yellow-800'
+        <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full text-sm font-medium">{unitTypes[unit.type]}</span>
+        <span className={`px-3 py-1 rounded-full text-sm font-medium ${unit.status === 'AVAILABLE' ? 'bg-green-500/10 text-green-500' :
+            unit.status === 'SOLD' ? 'bg-muted text-muted-foreground' : 'bg-yellow-500/10 text-yellow-500'
           }`}>{statuses[unit.status]}</span>
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-border">
         {([['details', 'Detalles'], ['notes', 'Pagarés y Cuotas'], ['costs', 'Costos'], ['docs', 'Documentación']] as const).map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
               activeTab === tab
-                ? 'border-slate-900 text-slate-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             {label}
@@ -271,7 +271,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
         <div className="space-y-6">
           {/* Photos Gallery */}
           <Card className="overflow-hidden">
-            <div className="aspect-video bg-gray-100 relative">
+            <div className="aspect-video bg-muted relative">
               {unit.photos && unit.photos.length > 0 ? (
                 <img
                   src={unit.photos[activePhotoIdx]?.url ?? unit.photos[0].url}
@@ -279,7 +279,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-400 text-sm">Sin foto</div>
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Sin foto</div>
               )}
               {unit.photos && unit.photos.length > 1 && (
                 <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
@@ -295,7 +295,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                     onClick={() => setActivePhotoIdx(idx)}
                     className={`flex-shrink-0 w-14 h-10 rounded overflow-hidden border-2 transition-all ${
                       activePhotoIdx === idx
-                        ? 'border-blue-500 opacity-100'
+                        ? 'border-primary opacity-100'
                         : 'border-transparent opacity-55 hover:opacity-90'
                     }`}
                   >
@@ -308,24 +308,24 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
           {/* Prices */}
           <Card>
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-4 w-4 text-blue-500" />Precios de Venta</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><DollarSign className="h-4 w-4 text-primary" />Precios de Venta</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               {unit.priceArs ? (
                 <div>
-                  <p className="text-xs text-gray-500">Precio ARS</p>
-                  <p className="text-2xl font-bold text-blue-600">{formatPrice(unit.priceArs, 'ARS')}</p>
+                  <p className="text-xs text-muted-foreground">Precio ARS</p>
+                  <p className="text-2xl font-bold text-primary">{formatPrice(unit.priceArs, 'ARS')}</p>
                 </div>
-              ) : <p className="text-sm text-gray-400">Sin precio ARS</p>}
+              ) : <p className="text-sm text-muted-foreground">Sin precio ARS</p>}
               {unit.priceUsd && (
                 <div>
-                  <p className="text-xs text-gray-500">Precio USD</p>
+                  <p className="text-xs text-muted-foreground">Precio USD</p>
                   <p className="text-xl font-semibold">${unit.priceUsd.toLocaleString()}</p>
                 </div>
               )}
               {userRole === 'ADMIN' && marginArs !== null && (
-                <div className={`mt-3 p-3 rounded-lg ${marginArs >= 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                  <p className="text-xs font-medium text-gray-600">Margen estimado (ARS)</p>
-                  <p className={`text-lg font-bold ${marginArs >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                <div className={`mt-3 p-3 rounded-lg border ${marginArs >= 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-destructive/10 border-destructive/20'}`}>
+                  <p className="text-xs font-medium text-foreground">Margen estimado (ARS)</p>
+                  <p className={`text-lg font-bold ${marginArs >= 0 ? 'text-green-500' : 'text-destructive'}`}>
                     {marginArs >= 0 ? '+' : ''}{formatPrice(marginArs, 'ARS')}
                   </p>
                 </div>
@@ -389,15 +389,15 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   )}
                   <div className="space-y-2">
                     <Label>Descripción</Label>
-                    <textarea value={formData.description || ''} onChange={e => updateField('description', e.target.value)} className="w-full min-h-[80px] px-3 py-2 rounded-md border text-sm" />
+                    <textarea value={formData.description || ''} onChange={e => updateField('description', e.target.value)} className="w-full min-h-[80px] px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm" />
                   </div>
                   <div className="space-y-2">
                     <Label>Ubicación</Label>
                     <Input value={formData.location || ''} onChange={e => updateField('location', e.target.value)} />
                   </div>
                   
-                  <div className="space-y-3 pt-4 border-t">
-                    <Label className="text-base font-semibold text-gray-800">Detalles Técnicos y Legales (Documentación)</Label>
+                  <div className="space-y-3 pt-4 border-t border-border">
+                    <Label className="text-base font-semibold text-foreground">Detalles Técnicos y Legales (Documentación)</Label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
                         <Label>Año</Label>
@@ -421,11 +421,11 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                       </div>
                     </div>
                   </div>
-                  <div className="space-y-3 pt-4 border-t">
+                  <div className="space-y-3 pt-4 border-t border-border">
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label className="text-base font-semibold text-gray-800">Características Adicionales</Label>
-                        <p className="text-xs text-gray-500">Estos datos aparecerán en la Ficha Técnica PDF.</p>
+                        <Label className="text-base font-semibold text-foreground">Características Adicionales</Label>
+                        <p className="text-xs text-muted-foreground">Estos datos aparecerán en la Ficha Técnica PDF.</p>
                       </div>
                       <Button type="button" size="sm" variant="outline" onClick={() => setAttributesForm([...attributesForm, { key: '', value: '' }])}>
                         <Plus className="h-4 w-4 mr-1" /> Agregar
@@ -443,7 +443,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                           newAttr[idx].value = e.target.value;
                           setAttributesForm(newAttr);
                         }} className="flex-1" />
-                        <Button type="button" size="icon" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
+                        <Button type="button" size="icon" variant="ghost" className="text-destructive hover:text-destructive/80 hover:bg-destructive/10" onClick={() => {
                           setAttributesForm(attributesForm.filter((_, i) => i !== idx));
                         }}>
                           <Trash2 className="h-4 w-4" />
@@ -462,28 +462,28 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="text-gray-500">Tipo:</span><p className="font-medium">{unitTypes[unit.type]}</p></div>
-                  <div><span className="text-gray-500">Estado:</span><p className="font-medium">{statuses[unit.status]}</p></div>
-                  {unit.vin && <div><span className="text-gray-500">VIN:</span><p className="font-medium font-mono">{unit.vin}</p></div>}
-                  {unit.domain && <div><span className="text-gray-500">Patente:</span><p className="font-medium">{unit.domain}</p></div>}
-                  {unit.engineNumber && <div><span className="text-gray-500">N° Motor:</span><p className="font-medium">{unit.engineNumber}</p></div>}
-                  {unit.frameNumber && <div><span className="text-gray-500">N° Cuadro:</span><p className="font-medium">{unit.frameNumber}</p></div>}
-                  {unit.createdBy && <div><span className="text-gray-500 flex items-center gap-1"><Users className="h-3 w-3"/>Cargado por:</span><p className="font-medium">{unit.createdBy.name}</p></div>}
+                  <div><span className="text-muted-foreground">Tipo:</span><p className="font-medium text-foreground">{unitTypes[unit.type]}</p></div>
+                  <div><span className="text-muted-foreground">Estado:</span><p className="font-medium text-foreground">{statuses[unit.status]}</p></div>
+                  {unit.vin && <div><span className="text-muted-foreground">VIN:</span><p className="font-medium text-foreground font-mono">{unit.vin}</p></div>}
+                  {unit.domain && <div><span className="text-muted-foreground">Patente:</span><p className="font-medium text-foreground">{unit.domain}</p></div>}
+                  {unit.engineNumber && <div><span className="text-muted-foreground">N° Motor:</span><p className="font-medium text-foreground">{unit.engineNumber}</p></div>}
+                  {unit.frameNumber && <div><span className="text-muted-foreground">N° Cuadro:</span><p className="font-medium text-foreground">{unit.frameNumber}</p></div>}
+                  {unit.createdBy && <div><span className="text-muted-foreground flex items-center gap-1"><Users className="h-3 w-3"/>Cargado por:</span><p className="font-medium text-foreground">{unit.createdBy.name}</p></div>}
                 </div>
-                {unit.description && <div><span className="text-gray-500 text-sm">Descripción:</span><p className="mt-1 text-sm">{unit.description}</p></div>}
+                {unit.description && <div><span className="text-muted-foreground text-sm">Descripción:</span><p className="mt-1 text-sm text-foreground">{unit.description}</p></div>}
                 {unit.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
-                    {unit.tags.map(tag => <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">{tag}</span>)}
+                    {unit.tags.map(tag => <span key={tag} className="px-2 py-1 bg-muted text-muted-foreground text-xs rounded">{tag}</span>)}
                   </div>
                 )}
                 {unit.attributes && unit.attributes.length > 0 && (
-                  <div className="mt-4 pt-4 border-t">
-                    <span className="text-gray-500 text-sm font-semibold block mb-2">Características Adicionales (Ficha Técnica):</span>
-                    <div className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <span className="text-muted-foreground text-sm font-semibold block mb-2">Características Adicionales (Ficha Técnica):</span>
+                    <div className="grid grid-cols-2 gap-4 text-sm bg-muted p-4 rounded-lg border border-border">
                       {unit.attributes.map(attr => (
                         <div key={attr.id || attr.key}>
-                          <span className="text-gray-500 block text-xs uppercase tracking-wider">{attr.key}</span>
-                          <p className="font-medium text-gray-900">{attr.value}</p>
+                          <span className="text-muted-foreground block text-xs uppercase tracking-wider">{attr.key}</span>
+                          <p className="font-medium text-foreground">{attr.value}</p>
                         </div>
                       ))}
                     </div>
@@ -494,37 +494,37 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           )}
 
           {(activeTab === 'details' || activeTab === 'costs') && (
-          <Card className="border-2 border-orange-100">
-            <CardHeader className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-t-lg">
+          <Card className="border border-border">
+            <CardHeader className="bg-muted/50 rounded-t-lg border-b border-border pb-4">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2 text-orange-800">
+                <CardTitle className="flex items-center gap-2 text-foreground">
                   <TrendingUp className="h-5 w-5" />
                   Costo Total de la Unidad
                 </CardTitle>
-                <Button size="sm" variant="outline" className="border-orange-300 text-orange-700 hover:bg-orange-100" onClick={() => { setShowCostForm(!showCostForm); setCostError('') }}>
+                <Button size="sm" variant="outline" onClick={() => { setShowCostForm(!showCostForm); setCostError('') }}>
                   <Plus className="h-4 w-4 mr-1" />Agregar Gasto
                 </Button>
               </div>
 
               {/* Summary totals */}
               <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="bg-white rounded-lg p-3 border border-orange-200">
-                  <p className="text-xs text-gray-500 flex items-center gap-1"><ShoppingCart className="h-3 w-3" />Costo de adquisición ARS</p>
-                  <p className="text-lg font-bold text-gray-800">{formatPrice(acqCostArs, 'ARS')}</p>
+                <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><ShoppingCart className="h-3 w-3" />Costo de adquisición ARS</p>
+                  <p className="text-lg font-bold text-foreground">{formatPrice(acqCostArs, 'ARS')}</p>
                 </div>
-                <div className="bg-white rounded-lg p-3 border border-orange-200">
-                  <p className="text-xs text-gray-500 flex items-center gap-1"><Wrench className="h-3 w-3" />Gastos adicionales ARS</p>
-                  <p className="text-lg font-bold text-gray-800">{formatPrice(costItems.reduce((s, c) => s + (Number(c.amountArs) || 0), 0), 'ARS')}</p>
+                <div className="bg-background rounded-lg p-3 border border-border shadow-sm">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1"><Wrench className="h-3 w-3" />Gastos adicionales ARS</p>
+                  <p className="text-lg font-bold text-foreground">{formatPrice(costItems.reduce((s, c) => s + (Number(c.amountArs) || 0), 0), 'ARS')}</p>
                 </div>
               </div>
-              <div className="mt-3 p-3 bg-orange-100 rounded-lg flex items-center justify-between">
-                <span className="font-semibold text-orange-900">Costo Total ARS</span>
-                <span className="text-2xl font-black text-orange-800">{formatPrice(totalCostArs, 'ARS')}</span>
+              <div className="mt-3 p-3 bg-primary/10 rounded-lg flex items-center justify-between border border-primary/20">
+                <span className="font-semibold text-primary">Costo Total ARS</span>
+                <span className="text-2xl font-black text-primary">{formatPrice(totalCostArs, 'ARS')}</span>
               </div>
               {totalCostUsd > 0 && (
-                <div className="mt-2 p-2 bg-amber-100 rounded-lg flex items-center justify-between">
-                  <span className="text-sm font-medium text-amber-900">Costo Total USD</span>
-                  <span className="text-lg font-bold text-amber-800">${totalCostUsd.toLocaleString()}</span>
+                <div className="mt-2 p-2 bg-muted rounded-lg flex items-center justify-between border border-border">
+                  <span className="text-sm font-medium text-foreground">Costo Total USD</span>
+                  <span className="text-lg font-bold text-foreground">${totalCostUsd.toLocaleString()}</span>
                 </div>
               )}
             </CardHeader>
@@ -532,15 +532,15 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
             <CardContent className="p-4 space-y-4">
               {/* Add cost form */}
               {showCostForm && (
-                <div className="p-4 border-2 border-dashed border-orange-300 rounded-lg bg-orange-50 space-y-3">
-                  <p className="text-sm font-semibold text-orange-800">Nuevo Gasto / Inversión</p>
+                <div className="p-4 border-2 border-dashed border-border rounded-lg bg-muted/50 space-y-3">
+                  <p className="text-sm font-semibold text-foreground">Nuevo Gasto / Inversión</p>
                   <div className="space-y-2">
                     <Label className="text-xs">Concepto *</Label>
                     <Input
                       placeholder="Ej: Cambio de cubiertas, pintura, revisión mecánica..."
                       value={costForm.concept}
                       onChange={e => setCostForm(p => ({ ...p, concept: e.target.value }))}
-                      className="bg-white"
+                      className="bg-background"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -551,7 +551,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                         placeholder="0"
                         value={costForm.amountArs}
                         onChange={e => setCostForm(p => ({ ...p, amountArs: e.target.value }))}
-                        className="bg-white"
+                        className="bg-background"
                       />
                     </div>
                     <div className="space-y-2">
@@ -561,15 +561,15 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                         placeholder="0"
                         value={costForm.amountUsd}
                         onChange={e => setCostForm(p => ({ ...p, amountUsd: e.target.value }))}
-                        className="bg-white"
+                        className="bg-background"
                       />
                     </div>
                   </div>
                   {costError && (
-                    <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{costError}</p>
+                    <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{costError}</p>
                   )}
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={addCostItem} disabled={costSaving} className="bg-orange-600 hover:bg-orange-700 text-white">
+                    <Button size="sm" onClick={addCostItem} disabled={costSaving}>
                       {costSaving ? 'Guardando...' : 'Agregar Gasto'}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => { setShowCostForm(false); setCostError('') }}>Cancelar</Button>
@@ -579,24 +579,24 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
               {/* Acquisition cost row */}
               {(unit.acquisitionCostArs || unit.acquisitionCostUsd) && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-muted border border-border rounded-lg">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-blue-100 rounded"><ShoppingCart className="h-4 w-4 text-blue-600" /></div>
+                    <div className="p-1.5 bg-background rounded border border-border"><ShoppingCart className="h-4 w-4 text-foreground" /></div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-800">Costo de Adquisición</p>
-                      <p className="text-xs text-gray-500">Precio de compra de la unidad</p>
+                      <p className="text-sm font-semibold text-foreground">Costo de Adquisición</p>
+                      <p className="text-xs text-muted-foreground">Precio de compra de la unidad</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    {unit.acquisitionCostArs && <p className="font-bold text-blue-700">{formatPrice(unit.acquisitionCostArs, 'ARS')}</p>}
-                    {unit.acquisitionCostUsd && <p className="text-sm text-blue-600">${unit.acquisitionCostUsd.toLocaleString()} USD</p>}
+                    {unit.acquisitionCostArs && <p className="font-bold text-foreground">{formatPrice(unit.acquisitionCostArs, 'ARS')}</p>}
+                    {unit.acquisitionCostUsd && <p className="text-sm text-muted-foreground">${unit.acquisitionCostUsd.toLocaleString()} USD</p>}
                   </div>
                 </div>
               )}
 
               {/* Cost items list */}
               {costItems.length === 0 && !unit.acquisitionCostArs ? (
-                <div className="text-center py-8 text-gray-400">
+                <div className="text-center py-8 text-muted-foreground">
                   <Wrench className="h-10 w-10 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No hay gastos registrados aún</p>
                   <p className="text-xs mt-1">Agregá el costo de compra (editando la unidad) y los gastos adicionales</p>
@@ -604,23 +604,23 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
               ) : (
                 <div className="space-y-2">
                   {costItems.map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg group">
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-card border border-border rounded-lg group shadow-sm">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 bg-orange-100 rounded"><Wrench className="h-4 w-4 text-orange-600" /></div>
+                        <div className="p-1.5 bg-muted rounded"><Wrench className="h-4 w-4 text-foreground" /></div>
                         <div>
-                          <p className="text-sm font-medium text-gray-800">{item.concept}</p>
-                          <p className="text-xs text-gray-400">{new Date(item.date).toLocaleDateString('es-AR')}</p>
+                          <p className="text-sm font-medium text-foreground">{item.concept}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(item.date).toLocaleDateString('es-AR')}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
-                          {item.amountArs && <p className="font-bold text-gray-800">{formatPrice(item.amountArs, 'ARS')}</p>}
-                          {item.amountUsd && <p className="text-sm text-gray-600">${item.amountUsd.toLocaleString()} USD</p>}
+                          {item.amountArs && <p className="font-bold text-foreground">{formatPrice(item.amountArs, 'ARS')}</p>}
+                          {item.amountUsd && <p className="text-sm text-muted-foreground">${item.amountUsd.toLocaleString()} USD</p>}
                         </div>
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="h-7 w-7 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 w-7 text-destructive/70 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={() => deleteCostItem(item.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -648,15 +648,15 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
             </CardHeader>
             <CardContent>
               {(unit.interestedLeads || []).length === 0 ? (
-                <p className="text-gray-500 text-center py-4 text-sm">No hay leads interesados en esta unidad</p>
+                <p className="text-muted-foreground text-center py-4 text-sm">No hay leads interesados en esta unidad</p>
               ) : (
                 <div className="space-y-3">
                   {(unit.interestedLeads || []).map(lead => (
-                    <div key={lead.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div key={lead.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div>
-                        <p className="font-medium text-sm">{lead.name}</p>
-                        <p className="text-xs text-gray-500">{lead.phone}</p>
-                        {lead.assignedTo && <p className="text-xs text-gray-400">Asignado: {lead.assignedTo.name}</p>}
+                        <p className="font-medium text-sm text-foreground">{lead.name}</p>
+                        <p className="text-xs text-muted-foreground">{lead.phone}</p>
+                        {lead.assignedTo && <p className="text-xs text-muted-foreground">Asignado: {lead.assignedTo.name}</p>}
                       </div>
                       <Link href={`/app/leads/${lead.id}`}>
                         <Button size="sm" variant="outline">Ver</Button>

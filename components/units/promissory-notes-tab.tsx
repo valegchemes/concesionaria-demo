@@ -47,9 +47,9 @@ interface Props {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const statusConfig = {
-  PENDING: { label: 'Pendiente', icon: Clock, className: 'text-blue-600 bg-blue-50 border-blue-200' },
-  PAID: { label: 'Pagada', icon: CheckCircle2, className: 'text-green-700 bg-green-50 border-green-200' },
-  OVERDUE: { label: 'Vencida', icon: AlertCircle, className: 'text-red-700 bg-red-50 border-red-200' },
+  PENDING: { label: 'Pendiente', icon: Clock, className: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
+  PAID: { label: 'Pagada', icon: CheckCircle2, className: 'text-green-500 bg-green-500/10 border-green-500/20' },
+  OVERDUE: { label: 'Vencida', icon: AlertCircle, className: 'text-destructive bg-destructive/10 border-destructive/20' },
 }
 
 const methodLabels: Record<string, string> = {
@@ -68,9 +68,9 @@ function noteStatus(note: PromissoryNote) {
   const total = note.installments.length
   const paid = note.installments.filter(i => i.status === 'PAID').length
   const overdue = note.installments.filter(i => i.status === 'OVERDUE').length
-  if (paid === total) return { label: 'Cancelado', className: 'bg-green-100 text-green-800' }
-  if (overdue > 0) return { label: `${overdue} vencida${overdue > 1 ? 's' : ''}`, className: 'bg-red-100 text-red-800' }
-  return { label: `${paid}/${total} cuotas pagadas`, className: 'bg-blue-100 text-blue-800' }
+  if (paid === total) return { label: 'Cancelado', className: 'bg-green-500/10 text-green-500' }
+  if (overdue > 0) return { label: `${overdue} vencida${overdue > 1 ? 's' : ''}`, className: 'bg-destructive/10 text-destructive' }
+  return { label: `${paid}/${total} cuotas pagadas`, className: 'bg-blue-500/10 text-blue-500' }
 }
 
 // ─── Register Payment Modal ───────────────────────────────────────────────────
@@ -109,46 +109,46 @@ function PaymentModal({ noteId, installment, onClose, onSuccess }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
-        <div className="bg-slate-900 text-white px-5 py-4 flex justify-between items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="bg-card text-card-foreground rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden border border-border">
+        <div className="bg-muted text-foreground px-5 py-4 flex justify-between items-center border-b border-border">
           <div>
             <h3 className="font-bold text-base">Registrar Pago</h3>
-            <p className="text-slate-400 text-xs mt-0.5">Cuota #{installment.installmentNumber} · Vence {new Date(installment.dueDate).toLocaleDateString('es-AR')}</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Cuota #{installment.installmentNumber} · Vence {new Date(installment.dueDate).toLocaleDateString('es-AR')}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors"><X className="h-5 w-5" /></button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors"><X className="h-5 w-5" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Monto *</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Monto *</Label>
             <div className="relative">
-              <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="number"
                 step="0.01"
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
-                className="pl-9 text-lg font-bold"
+                className="pl-9 text-lg font-bold bg-background text-foreground"
                 placeholder="0.00"
                 autoFocus
               />
             </div>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Método de Pago</Label>
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Método de Pago</Label>
             <select
               value={method}
               onChange={e => setMethod(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm"
             >
               {Object.entries(methodLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500">Notas (opcional)</Label>
-            <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observaciones..." />
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notas (opcional)</Label>
+            <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observaciones..." className="bg-background text-foreground" />
           </div>
-          {error && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
+          {error && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
           <div className="flex gap-2 pt-2">
             <Button type="submit" disabled={loading} className="flex-1 bg-green-600 hover:bg-green-700 text-white">
               {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Registrando...</> : 'Confirmar Pago'}
@@ -196,17 +196,17 @@ function CreateNoteForm({ unitId, onSuccess, onCancel }: {
   }
 
   return (
-    <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 p-5">
-      <h4 className="font-bold text-slate-800 mb-4">Nuevo Pagaré</h4>
+    <div className="border-2 border-dashed border-border rounded-xl bg-muted p-5">
+      <h4 className="font-bold text-foreground mb-4">Nuevo Pagaré</h4>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-slate-500">Monto Total *</Label>
-            <Input type="number" step="0.01" placeholder="0.00" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} />
+            <Label className="text-xs font-semibold uppercase text-muted-foreground">Monto Total *</Label>
+            <Input type="number" step="0.01" placeholder="0.00" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} className="bg-background" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-slate-500">Moneda</Label>
-            <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <Label className="text-xs font-semibold uppercase text-muted-foreground">Moneda</Label>
+            <select value={form.currency} onChange={e => setForm(p => ({ ...p, currency: e.target.value }))} className="w-full h-10 rounded-md border border-input bg-background text-foreground px-3 text-sm">
               <option value="ARS">ARS — Pesos</option>
               <option value="USD">USD — Dólares</option>
             </select>
@@ -214,30 +214,30 @@ function CreateNoteForm({ unitId, onSuccess, onCancel }: {
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-slate-500">Fecha Emisión *</Label>
-            <Input type="date" value={form.issueDate} onChange={e => setForm(p => ({ ...p, issueDate: e.target.value }))} />
+            <Label className="text-xs font-semibold uppercase text-muted-foreground">Fecha Emisión *</Label>
+            <Input type="date" value={form.issueDate} onChange={e => setForm(p => ({ ...p, issueDate: e.target.value }))} className="bg-background" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-slate-500">Vencimiento *</Label>
-            <Input type="date" value={form.dueDate} onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} />
+            <Label className="text-xs font-semibold uppercase text-muted-foreground">Vencimiento *</Label>
+            <Input type="date" value={form.dueDate} onChange={e => setForm(p => ({ ...p, dueDate: e.target.value }))} className="bg-background" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold uppercase text-slate-500">N° Cuotas *</Label>
-            <Input type="number" min="1" max="120" value={form.installmentCount} onChange={e => setForm(p => ({ ...p, installmentCount: e.target.value }))} />
+            <Label className="text-xs font-semibold uppercase text-muted-foreground">N° Cuotas *</Label>
+            <Input type="number" min="1" max="120" value={form.installmentCount} onChange={e => setForm(p => ({ ...p, installmentCount: e.target.value }))} className="bg-background" />
           </div>
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold uppercase text-slate-500">Notas (opcional)</Label>
-          <Input placeholder="Observaciones del pagaré..." value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          <Label className="text-xs font-semibold uppercase text-muted-foreground">Notas (opcional)</Label>
+          <Input placeholder="Observaciones del pagaré..." value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} className="bg-background" />
         </div>
         {form.amount && form.installmentCount && (
-          <p className="text-xs text-slate-500 bg-slate-100 rounded p-2">
+          <p className="text-xs text-muted-foreground bg-background rounded p-2 border border-border">
             Se generarán <strong>{form.installmentCount}</strong> cuotas de <strong>{Number(form.currency === 'USD' ? '' : '') || ''}{(Number(form.amount) / Number(form.installmentCount)).toFixed(2)} {form.currency}</strong> cada una.
           </p>
         )}
-        {error && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
+        {error && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{error}</p>}
         <div className="flex gap-2">
-          <Button type="submit" disabled={loading} className="bg-slate-900 hover:bg-slate-800 text-white">
+          <Button type="submit" disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
             {loading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creando...</> : 'Crear Pagaré'}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>Cancelar</Button>
@@ -272,7 +272,7 @@ export function PromissoryNotesTab({ unitId }: Props) {
   useEffect(() => { fetchNotes() }, [fetchNotes])
 
   if (loading) return (
-    <div className="flex items-center justify-center py-16 text-slate-400">
+    <div className="flex items-center justify-center py-16 text-muted-foreground">
       <Loader2 className="h-6 w-6 animate-spin mr-2" />Cargando pagarés...
     </div>
   )
@@ -282,10 +282,10 @@ export function PromissoryNotesTab({ unitId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-bold text-slate-800">Pagarés y Cuotas</h3>
-          <p className="text-xs text-slate-500 mt-0.5">{notes.length} pagaré{notes.length !== 1 ? 's' : ''} registrado{notes.length !== 1 ? 's' : ''}</p>
+          <h3 className="font-bold text-foreground">Pagarés y Cuotas</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{notes.length} pagaré{notes.length !== 1 ? 's' : ''} registrado{notes.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => { setShowForm(true); setExpandedNote(null) }} className="gap-2 bg-slate-900 hover:bg-slate-800 text-white">
+        <Button onClick={() => { setShowForm(true); setExpandedNote(null) }} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
           <Plus className="h-4 w-4" />Nuevo Pagaré
         </Button>
       </div>
@@ -301,7 +301,7 @@ export function PromissoryNotesTab({ unitId }: Props) {
 
       {/* Notes list */}
       {notes.length === 0 && !showForm && (
-        <div className="text-center py-16 text-slate-400">
+        <div className="text-center py-16 text-muted-foreground">
           <Banknote className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No hay pagarés registrados</p>
           <p className="text-sm mt-1">Creá el primero usando el botón de arriba</p>
@@ -314,21 +314,21 @@ export function PromissoryNotesTab({ unitId }: Props) {
         const paidCount = note.installments.filter(i => i.status === 'PAID').length
 
         return (
-          <div key={note.id} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+          <div key={note.id} className="border border-border rounded-xl overflow-hidden shadow-sm">
             {/* Note header — clickable to expand */}
             <button
-              className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors text-left"
+              className="w-full flex items-center justify-between p-4 bg-card hover:bg-muted/50 transition-colors text-left"
               onClick={() => setExpandedNote(isExpanded ? null : note.id)}
             >
               <div className="flex items-center gap-4">
-                <div className="p-2.5 bg-slate-100 rounded-lg">
-                  <Banknote className="h-5 w-5 text-slate-600" />
+                <div className="p-2.5 bg-muted rounded-lg">
+                  <Banknote className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-900 text-base">
+                  <p className="font-bold text-foreground text-base">
                     {note.currency === 'USD' ? `$${Number(note.amount).toLocaleString()} USD` : formatPrice(note.amount, 'ARS')}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Emitido: {new Date(note.issueDate).toLocaleDateString('es-AR')} · Vence: {new Date(note.dueDate).toLocaleDateString('es-AR')}
                   </p>
                 </div>
@@ -336,28 +336,28 @@ export function PromissoryNotesTab({ unitId }: Props) {
               <div className="flex items-center gap-3">
                 {/* Progress bar */}
                 <div className="hidden sm:flex items-center gap-2">
-                  <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-green-500 rounded-full transition-all"
                       style={{ width: `${(paidCount / note.installments.length) * 100}%` }}
                     />
                   </div>
-                  <span className="text-xs text-slate-500">{paidCount}/{note.installments.length}</span>
+                  <span className="text-xs text-muted-foreground">{paidCount}/{note.installments.length}</span>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${status.className}`}>{status.label}</span>
-                {isExpanded ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
               </div>
             </button>
 
             {/* Installments accordion */}
             {isExpanded && (
-              <div className="border-t border-slate-200 bg-slate-50">
+              <div className="border-t border-border bg-muted/30">
                 {note.notes && (
-                  <p className="text-xs text-slate-500 px-4 py-2 border-b border-slate-200 italic">{note.notes}</p>
+                  <p className="text-xs text-muted-foreground px-4 py-2 border-b border-border italic">{note.notes}</p>
                 )}
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs uppercase text-slate-400 border-b border-slate-200">
+                    <tr className="text-xs uppercase text-muted-foreground border-b border-border">
                       <th className="text-left px-4 py-2.5 font-semibold">N°</th>
                       <th className="text-left px-4 py-2.5 font-semibold">Monto</th>
                       <th className="text-left px-4 py-2.5 font-semibold">Vencimiento</th>
@@ -371,19 +371,19 @@ export function PromissoryNotesTab({ unitId }: Props) {
                       const StatusIcon = cfg.icon
                       const nearDue = isNearDue(inst.dueDate) && inst.status === 'PENDING'
                       const rowBg =
-                        inst.status === 'OVERDUE' ? 'bg-red-50' :
-                        nearDue ? 'bg-yellow-50' :
-                        inst.status === 'PAID' ? 'bg-white' : 'bg-white'
+                        inst.status === 'OVERDUE' ? 'bg-destructive/10' :
+                        nearDue ? 'bg-yellow-500/10' :
+                        inst.status === 'PAID' ? 'bg-background' : 'bg-background'
 
                       return (
-                        <tr key={inst.id} className={`border-b border-slate-200 last:border-0 ${rowBg}`}>
-                          <td className="px-4 py-3 font-bold text-slate-700">#{inst.installmentNumber}</td>
-                          <td className="px-4 py-3 font-semibold text-slate-900">
+                        <tr key={inst.id} className={`border-b border-border last:border-0 ${rowBg}`}>
+                          <td className="px-4 py-3 font-bold text-muted-foreground">#{inst.installmentNumber}</td>
+                          <td className="px-4 py-3 font-semibold text-foreground">
                             {note.currency === 'USD' ? `$${Number(inst.amount).toLocaleString()} USD` : formatPrice(inst.amount, 'ARS')}
                           </td>
-                          <td className="px-4 py-3 text-slate-600">
+                          <td className="px-4 py-3 text-muted-foreground">
                             {new Date(inst.dueDate).toLocaleDateString('es-AR')}
-                            {nearDue && <span className="ml-1.5 text-[9px] font-bold text-yellow-700 bg-yellow-100 px-1.5 py-0.5 rounded-full uppercase">Próxima</span>}
+                            {nearDue && <span className="ml-1.5 text-[9px] font-bold text-yellow-500 bg-yellow-500/20 px-1.5 py-0.5 rounded-full uppercase">Próxima</span>}
                           </td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${cfg.className}`}>
@@ -396,13 +396,13 @@ export function PromissoryNotesTab({ unitId }: Props) {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs border-green-300 text-green-700 hover:bg-green-50"
+                                className="h-7 text-xs border-green-500/30 text-green-500 hover:bg-green-500/10"
                                 onClick={() => setPaymentModal({ noteId: note.id, installment: inst })}
                               >
                                 Registrar Pago
                               </Button>
                             ) : (
-                              <span className="text-xs text-slate-400">
+                              <span className="text-xs text-muted-foreground">
                                 {inst.payments[0] ? `Pagado ${new Date(inst.payments[0].date).toLocaleDateString('es-AR')}` : 'Pagado'}
                               </span>
                             )}

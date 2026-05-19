@@ -36,9 +36,9 @@ const DOC_TYPES = [
 ]
 const PAYMENT_METHODS = ['Efectivo', 'Transferencia bancaria', 'Cheque', 'Financiación', 'Mixto']
 const STATUS_CONFIG: Record<string, { label: string; bg: string; icon: React.ElementType }> = {
-  GENERATED: { label: 'Generado',  bg: 'bg-blue-100 text-blue-800',  icon: Clock },
-  SIGNED:    { label: 'Firmado',   bg: 'bg-green-100 text-green-800', icon: CheckCircle },
-  DRAFT:     { label: 'Borrador',  bg: 'bg-gray-100 text-gray-600',   icon: FileText },
+  GENERATED: { label: 'Generado',  bg: 'bg-blue-500/10 text-blue-500',  icon: Clock },
+  SIGNED:    { label: 'Firmado',   bg: 'bg-green-500/10 text-green-500', icon: CheckCircle },
+  DRAFT:     { label: 'Borrador',  bg: 'bg-muted text-muted-foreground',   icon: FileText },
 }
 
 // ── WhatsApp message builder ──────────────────────────────────────────────────
@@ -154,7 +154,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+        <h3 className="font-semibold text-foreground flex items-center gap-2">
           <FileSignature className="h-5 w-5 text-indigo-500" />
           Documentación Digital
         </h3>
@@ -166,29 +166,29 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
 
       {/* Documents list */}
       {loading ? (
-        <Card><CardContent className="py-10 text-center text-gray-400">Cargando...</CardContent></Card>
+        <Card><CardContent className="py-10 text-center text-muted-foreground">Cargando...</CardContent></Card>
       ) : docs.length === 0 ? (
         <Card>
           <CardContent className="py-14 text-center">
-            <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-            <p className="text-gray-500 text-sm">No hay documentos generados aún</p>
-            <p className="text-gray-400 text-xs mt-1">
+            <FileText className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+            <p className="text-muted-foreground text-sm">No hay documentos generados aún</p>
+            <p className="text-muted-foreground text-xs mt-1">
               Generá un boleto, recibo o contrato para este vehículo
             </p>
           </CardContent>
         </Card>
       ) : (
         <Card>
-          <CardContent className="p-0">
+          <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wide">N° Ref.</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wide">Tipo</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wide">Cliente</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wide">Monto</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wide">Estado</th>
-                  <th className="text-left py-3 px-4 text-gray-500 font-medium text-xs uppercase tracking-wide">Fecha</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">N° Ref.</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Tipo</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Cliente</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Monto</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Estado</th>
+                  <th className="text-left py-3 px-4 text-muted-foreground font-medium text-xs uppercase tracking-wide">Fecha</th>
                   <th className="py-3 px-4" />
                 </tr>
               </thead>
@@ -197,13 +197,13 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                   const cfg = STATUS_CONFIG[doc.status] ?? STATUS_CONFIG.DRAFT
                   const Icon = cfg.icon
                   return (
-                    <tr key={doc.id} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-4 font-mono font-semibold text-indigo-700">{doc.referenceNumber ?? '—'}</td>
-                      <td className="py-3 px-4">
+                    <tr key={doc.id} className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
+                      <td className="py-3 px-4 font-mono font-semibold text-indigo-500">{doc.referenceNumber ?? '—'}</td>
+                      <td className="py-3 px-4 text-foreground">
                         {DOC_TYPES.find(t => t.value === doc.type)?.label ?? doc.type}
                       </td>
-                      <td className="py-3 px-4 text-gray-700">{doc.lead.name}</td>
-                      <td className="py-3 px-4 font-medium">
+                      <td className="py-3 px-4 text-foreground">{doc.lead.name}</td>
+                      <td className="py-3 px-4 font-medium text-foreground">
                         {doc.amount != null ? `ARS ${formatPrice(doc.amount)}` : '—'}
                       </td>
                       <td className="py-3 px-4">
@@ -212,13 +212,13 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                           {cfg.label}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-gray-500">
+                      <td className="py-3 px-4 text-muted-foreground">
                         {new Date(doc.createdAt).toLocaleDateString('es-AR')}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
                           <Button size="sm" variant="outline"
-                            className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 h-7 text-xs"
+                            className="border-indigo-500/20 text-indigo-500 hover:bg-indigo-500/10 h-7 text-xs"
                             disabled={downloading === doc.id}
                             onClick={() => downloadPdf(doc.id, doc.referenceNumber)}>
                             <Download className="h-3 w-3 mr-1" />
@@ -231,7 +231,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Enviar aviso por WhatsApp"
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-green-200 text-green-600 hover:bg-green-50 transition-colors"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-green-500/20 text-green-500 hover:bg-green-500/10 transition-colors"
                             >
                               <MessageCircle className="h-3 w-3" />
                             </a>
@@ -249,11 +249,11 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
 
       {/* ── Modal ── */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <Card className="w-full max-w-lg shadow-2xl my-4">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-base">Generar Documento</CardTitle>
-              <button onClick={() => { setShowModal(false); setSigDataUrl(null) }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowModal(false); setSigDataUrl(null) }} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </CardHeader>
@@ -264,14 +264,14 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                   <div className="space-y-1">
                     <Label className="text-xs">Tipo de Documento *</Label>
                     <select value={form.type} onChange={e => upd('type', e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border text-sm bg-white" required>
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground text-sm" required>
                       {DOC_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Cliente (Comprador) *</Label>
                     <select value={form.leadId} onChange={e => upd('leadId', e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border text-sm bg-white" required>
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground text-sm" required>
                       <option value="">Seleccioná un cliente...</option>
                       {leads.map(l => (
                         <option key={l.id} value={l.id}>{l.name} — {l.phone}</option>
@@ -290,7 +290,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                   <div className="space-y-1">
                     <Label className="text-xs">Moneda</Label>
                     <select value={form.currency} onChange={e => upd('currency', e.target.value)}
-                      className="w-full h-10 px-3 rounded-md border text-sm bg-white">
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground text-sm">
                       <option value="ARS">ARS $</option>
                       <option value="USD">USD $</option>
                     </select>
@@ -315,7 +315,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                 <div className="space-y-1">
                   <Label className="text-xs">Forma de Pago</Label>
                   <select value={form.paymentMethod} onChange={e => upd('paymentMethod', e.target.value)}
-                    className="w-full h-10 px-3 rounded-md border text-sm bg-white">
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground text-sm">
                     <option value="">Seleccioná...</option>
                     {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
@@ -330,7 +330,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                 <div className="space-y-1">
                   <Label className="text-xs">Notas / Observaciones</Label>
                   <textarea value={form.notes} onChange={e => upd('notes', e.target.value)}
-                    className="w-full min-h-[60px] px-3 py-2 rounded-md border text-sm"
+                    className="w-full min-h-[60px] px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm"
                     placeholder="Cualquier condición adicional..." />
                 </div>
 
@@ -342,10 +342,10 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                   </Label>
 
                   {sigDataUrl ? (
-                    <div className="relative rounded-lg border border-green-300 bg-green-50 p-2 flex items-center gap-3">
-                      <img src={sigDataUrl} alt="Firma" className="h-14 object-contain" />
+                    <div className="relative rounded-lg border border-green-500/30 bg-green-500/10 p-2 flex items-center gap-3">
+                      <img src={sigDataUrl} alt="Firma" className="h-14 object-contain invert dark:invert-0" />
                       <div className="flex-1">
-                        <p className="text-xs text-green-700 font-medium flex items-center gap-1">
+                        <p className="text-xs text-green-500 font-medium flex items-center gap-1">
                           <CheckCircle className="h-3.5 w-3.5" /> Firma capturada
                         </p>
                       </div>
@@ -380,21 +380,25 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
 
       {/* ── Signature Pad Modal ── */}
       {showSig && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="bg-card text-card-foreground rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <h3 className="font-bold text-foreground flex items-center gap-2">
                 <PenLine className="h-5 w-5 text-indigo-500" />
                 Firma del Comprador
               </h3>
-              <button onClick={() => setShowSig(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setShowSig(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm text-slate-500">Firmá dentro del recuadro con el dedo o el mouse.</p>
+            <p className="text-sm text-muted-foreground">Firmá dentro del recuadro con el dedo o el mouse.</p>
 
-            <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 overflow-hidden">
+            <div className="rounded-xl border-2 border-dashed border-border bg-background overflow-hidden relative">
               <SignaturePad ref={sigRef} />
+              {/* Force signature pad ink to invert in dark mode using CSS approach or simple filter */}
+              <style dangerouslySetInnerHTML={{__html: `
+                .dark canvas { filter: invert(1); }
+              `}} />
             </div>
 
             <div className="flex items-center gap-2 justify-between">
