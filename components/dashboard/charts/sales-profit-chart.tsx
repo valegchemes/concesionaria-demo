@@ -91,55 +91,37 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
     }).format(value)
 
   return (
-    <div
-      style={{
-        backgroundColor: 'white',
-        border: '1px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '12px 16px',
-        boxShadow: '0 8px 24px -4px rgba(0,0,0,0.12)',
-        minWidth: '220px',
-      }}
-    >
-      <p
-        style={{
-          fontSize: '12px',
-          fontWeight: 600,
-          color: '#64748b',
-          marginBottom: '8px',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-        }}
-      >
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-lg min-w-[220px]">
+      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
         {label}
       </p>
 
-      <div style={{ marginBottom: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '12px', color: '#475569' }}>Ingresos ARS</span>
-          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.salesArs, 'ARS')}</span>
+      <div className="mb-2.5">
+        <div className="flex justify-between gap-3 mb-1">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Ingresos ARS</span>
+          <span className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{formattedAmount(payloadData.salesArs, 'ARS')}</span>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '12px', color: '#475569' }}>Ingresos USD</span>
-          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.salesUsd, 'USD')}</span>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '12px', color: '#475569' }}>Ganancia ARS</span>
-          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.profitArs, 'ARS')}</span>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-          <span style={{ fontSize: '12px', color: '#475569' }}>Ganancia USD</span>
-          <span style={{ fontSize: '13px', fontWeight: 700 }}>{formattedAmount(payloadData.profitUsd, 'USD')}</span>
+        <div className="flex justify-between gap-3 mb-1">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Ingresos USD</span>
+          <span className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{formattedAmount(payloadData.salesUsd, 'USD')}</span>
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
-          <span style={{ fontSize: '12px', color: '#475569' }}>Operaciones</span>
-          <span style={{ fontSize: '13px', fontWeight: 700 }}>{payloadData.dealCount}</span>
+      <div className="mb-2.5">
+        <div className="flex justify-between gap-3 mb-1">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Ganancia ARS</span>
+          <span className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">{formattedAmount(payloadData.profitArs, 'ARS')}</span>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Ganancia USD</span>
+          <span className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">{formattedAmount(payloadData.profitUsd, 'USD')}</span>
+        </div>
+      </div>
+
+      <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex justify-between gap-3">
+          <span className="text-xs text-slate-600 dark:text-slate-400">Operaciones</span>
+          <span className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{payloadData.dealCount}</span>
         </div>
       </div>
     </div>

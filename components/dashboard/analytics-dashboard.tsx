@@ -184,6 +184,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             onRevenueClick={() => setRevenueModalOpen(true)}
             onProfitClick={() => setProfitModalOpen(true)}
             onDealsClick={() => setDealsModalOpen(true)}
+            onInventoryClick={() => window.location.href = '/app/units'}
           />
 
           {/* Tabs con gráficos */}

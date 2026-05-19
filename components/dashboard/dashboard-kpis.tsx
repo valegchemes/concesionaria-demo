@@ -24,6 +24,7 @@ interface DashboardKPIsProps {
   onRevenueClick?: () => void
   onProfitClick?: () => void
   onDealsClick?: () => void
+  onInventoryClick?: () => void
 }
 
 interface KPICardProps {
@@ -135,6 +136,7 @@ export function DashboardKPIs({
   onRevenueClick,
   onProfitClick,
   onDealsClick,
+  onInventoryClick,
 }: DashboardKPIsProps) {
   if (isLoading || !data) {
     return (
@@ -221,6 +223,7 @@ export function DashboardKPIs({
         icon={Package}
         iconBg="bg-slate-50 dark:bg-slate-800/60"
         isLoading={false}
+        onClick={onInventoryClick}
       />
     </div>
   )
