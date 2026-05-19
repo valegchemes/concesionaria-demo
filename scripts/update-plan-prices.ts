@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 const PRICE_MAP: Record<string, number> = {
-  'Plan Básico': 1000,
+  'Plan Básico': 110000,
   'Plan Medio':  200000,
   'Plan Pro':    260000,
 }

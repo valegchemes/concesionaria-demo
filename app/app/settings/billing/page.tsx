@@ -235,89 +235,124 @@ export default function BillingPage() {
         ) : (
           <>
             {plans.map((plan, idx) => {
-              const isPro = plan.name.toLowerCase().includes('pro')
+              const nameLower = plan.name.toLowerCase()
+              const isPro = nameLower.includes('pro')
+              const isMedio = nameLower.includes('medio')
+              const isBasico = nameLower.includes('básico') || nameLower.includes('basico')
+
               return (
                 <Card 
                   key={plan.id} 
                   onClick={() => setSelectedPlanForDetail(plan)}
-                  className={`flex flex-col relative surface-secondary transition-all cursor-pointer select-none duration-300 hover:border-indigo-500/50 hover:shadow-2xl hover:shadow-indigo-500/5 hover:-translate-y-1 ${
-                    isPro ? 'border-2 border-violet-500 shadow-xl shadow-violet-900/20 md:-translate-y-2 hover:border-violet-500 hover:shadow-violet-500/20' : ''
+                  className={`flex flex-col relative bg-white dark:bg-slate-900 border transition-all cursor-pointer select-none duration-300 hover:shadow-2xl hover:-translate-y-1.5 ${
+                    isPro 
+                      ? 'border-violet-500 ring-2 ring-violet-500/10 shadow-xl shadow-violet-900/5 dark:shadow-violet-950/20 md:-translate-y-2' 
+                      : 'border-slate-200 dark:border-slate-800 shadow-md'
                   }`}
                 >
                   {isPro && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-violet-600 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-1.5 rounded-full shadow-md">
-                        Recomendado
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
+                      <span className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-md whitespace-nowrap">
+                        Recomendado / Completo 🚀
                       </span>
                     </div>
                   )}
-                  <CardHeader className="pb-3">
+
+                  <CardHeader className="pb-4 pt-6 px-6 border-b border-slate-50 dark:border-slate-800/60">
+                    {/* Unique Tier Benefit Highlight Badge */}
+                    <div className="mb-2.5">
+                      {isBasico && (
+                        <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700">
+                          Digitalización Inicial
+                        </span>
+                      )}
+                      {isMedio && (
+                        <span className="bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border border-indigo-100 dark:border-indigo-900/50">
+                          Control de Gastos y Equipo
+                        </span>
+                      )}
+                      {isPro && (
+                        <span className="bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md border border-violet-200 dark:border-violet-800">
+                          IA + Cotizador + Gestoría
+                        </span>
+                      )}
+                    </div>
+
                     <div className="flex items-center gap-2">
                       <ShoppingCart className={`h-5 w-5 ${isPro ? 'text-violet-500' : 'text-blue-500'}`} />
-                      <CardTitle className="text-xl">{plan.name}</CardTitle>
+                      <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">{plan.name}</CardTitle>
                     </div>
-                    <div className="flex items-baseline mt-2">
-                      <span className="text-3xl font-black text-adaptive-primary">
+
+                    <div className="flex items-baseline mt-3">
+                      <span className="text-3xl font-black text-slate-900 dark:text-slate-100">
                         ${Number(plan.price).toLocaleString('es-AR')}
                       </span>
-                      <span className="text-sm font-medium text-adaptive-secondary ml-1.5">ARS / mes</span>
+                      <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 ml-1.5">ARS / mes</span>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex-1 space-y-4 mt-2">
-                    <ul className="space-y-3 text-sm">
-                      <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                        {plan.maxUsers === 1 ? '1 usuario incluido' : `Hasta ${plan.maxUsers} usuarios`}
+
+                  <CardContent className="flex-1 space-y-4 pt-5 px-6">
+                    <ul className="space-y-3.5 text-sm text-slate-700 dark:text-slate-300">
+                      <li className="flex items-start gap-2.5 font-medium">
+                        <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
+                        <span>
+                          {plan.maxUsers === 1 ? (
+                            <span><strong>1 usuario</strong> incluido</span>
+                          ) : (
+                            <span>Hasta <strong>{plan.maxUsers} usuarios</strong> concurrentes</span>
+                          )}
+                        </span>
                       </li>
-                      <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                        <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                        Hasta {plan.maxUnits} unidades en inventario
+                      <li className="flex items-start gap-2.5 font-medium">
+                        <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
+                        <span>Hasta <strong>{plan.maxUnits} unidades</strong> en stock</span>
                       </li>
                       {plan.analyticsEnabled && (
-                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                          Analíticas de ventas avanzadas
+                        <li className="flex items-start gap-2.5 font-medium">
+                          <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
+                          <span><strong>Márgenes de ganancia</strong> y costos</span>
                         </li>
                       )}
                       {plan.whatsappEnabled && (
-                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                          Envío automático por WhatsApp
+                        <li className="flex items-start gap-2.5 font-medium">
+                          <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
+                          <span><strong>Envío por WhatsApp</strong> automatizado</span>
                         </li>
                       )}
-                      {plan.documentsEnabled ? (
-                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                          Pagarés, cuotas y boletos de compraventa
-                        </li>
-                      ) : (
-                        <li className="flex items-start gap-2 text-muted-foreground line-through">
-                          <CheckCircle2 className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
-                          Pagarés, cuotas y boletos de compraventa
-                        </li>
-                      )}
-                      {plan.auditEnabled ? (
-                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
-                          Auditoría avanzada del sistema
-                        </li>
-                      ) : (
-                        <li className="flex items-start gap-2 text-muted-foreground line-through">
-                          <CheckCircle2 className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
-                          Auditoría avanzada del sistema
-                        </li>
+                      {plan.documentsEnabled && (
+                        <>
+                          <li className="flex items-start gap-2.5 font-medium">
+                            <Sparkles className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
+                            <span className="text-violet-700 dark:text-violet-300 font-semibold">Carga de stock por IA (Escáner)</span>
+                          </li>
+                          <li className="flex items-start gap-2.5 font-medium">
+                            <Sparkles className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
+                            <span className="text-violet-700 dark:text-violet-300 font-semibold">Cotizador interactivo y PDF</span>
+                          </li>
+                          <li className="flex items-start gap-2.5 font-medium">
+                            <Sparkles className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
+                            <span className="text-violet-700 dark:text-violet-300 font-semibold">Checklist legal de Gestoría</span>
+                          </li>
+                          <li className="flex items-start gap-2.5 font-medium">
+                            <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
+                            <span>Pagarés, cuotas y boletos</span>
+                          </li>
+                        </>
                       )}
                     </ul>
                   </CardContent>
-                  <CardFooter>
+
+                  <CardFooter className="pb-6 pt-2 px-6">
                     <Button
                       onClick={(e) => {
                         e.stopPropagation()
                         handleCheckout(plan.stripePriceId)
                       }}
                       disabled={loading}
-                      className={`w-full font-semibold ${
-                        isPro ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''
+                      className={`w-full font-bold py-3 rounded-xl transition-all shadow-sm ${
+                        isPro 
+                          ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/10' 
+                          : 'bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white'
                       }`}
                     >
                       {loading ? (
@@ -332,41 +367,46 @@ export default function BillingPage() {
             })}
             
             {/* Enterprise Plan Card */}
-            <Card className="flex flex-col relative surface-muted border-dashed border-2">
-              <CardHeader className="pb-3">
+            <Card className="flex flex-col relative bg-slate-50 dark:bg-slate-900/40 border-dashed border-2 border-slate-300 dark:border-slate-700 shadow-md">
+              <CardHeader className="pb-4 pt-6 px-6">
+                <div className="mb-2.5">
+                  <span className="bg-slate-200 dark:bg-slate-850 text-slate-600 dark:text-slate-400 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md">
+                    Operaciones a Escala
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Building2 className="h-5 w-5 text-slate-500" />
-                  <CardTitle className="text-xl">Plan Enterprise</CardTitle>
+                  <CardTitle className="text-xl font-bold text-slate-900 dark:text-slate-100">Plan Enterprise</CardTitle>
                 </div>
-                <div className="flex items-baseline mt-2">
-                  <span className="text-2xl font-bold text-adaptive-primary">
+                <div className="flex items-baseline mt-3">
+                  <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                     A convenir
                   </span>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 space-y-4 mt-2">
-                <p className="text-sm text-adaptive-secondary">
+              <CardContent className="flex-1 space-y-4 pt-2 px-6">
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                   Para concesionarias con operaciones a gran escala que requieren soluciones a medida.
                 </p>
-                <ul className="space-y-3 text-sm">
-                  <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                    <CheckCircle2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                    Usuarios e Inventario Ilimitados
+                <ul className="space-y-3.5 text-sm text-slate-700 dark:text-slate-300">
+                  <li className="flex items-start gap-2.5 font-medium">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-slate-400 shrink-0 mt-0.5" />
+                    <span>Usuarios e Inventario <strong>Ilimitados</strong></span>
                   </li>
-                  <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                    <CheckCircle2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                    Soporte Prioritario 24/7
+                  <li className="flex items-start gap-2.5 font-medium">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-slate-400 shrink-0 mt-0.5" />
+                    <span>Soporte Prioritario <strong>24/7</strong></span>
                   </li>
-                  <li className="flex items-start gap-2 text-adaptive-primary font-medium">
-                    <CheckCircle2 className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                    Migración de datos incluida
+                  <li className="flex items-start gap-2.5 font-medium">
+                    <CheckCircle2 className="h-4.5 w-4.5 text-slate-400 shrink-0 mt-0.5" />
+                    <span>Migración de datos incluida</span>
                   </li>
                 </ul>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="pb-6 pt-4 px-6">
                 <Button
                   variant="outline"
-                  className="w-full font-semibold"
+                  className="w-full font-bold py-3 rounded-xl border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                   onClick={() => window.open('mailto:soporte@automanager.com', '_blank')}
                 >
                   Contactar con Soporte
