@@ -108,19 +108,52 @@ export default function UnitsPage() {
     return matchSearch && matchStatus && matchType
   })
 
-  function handleExport() {
-    const rows = filteredUnits.map(u => ({
-      'Título': u.title,
-      'Tipo': u.type,
-      'Estado': u.status,
-      'Precio ARS': u.priceArs ?? '',
-      'Precio USD': u.priceUsd ?? '',
-      'Ubicación': u.location ?? '',
-      'Cargado por': u.createdBy ?? 'Desconocido',
-      'Leads': u._count?.interestedLeads ?? 0,
-      'Operaciones': u._count?.deals ?? 0,
-    }))
-    exportToExcel(rows, `Inventario_${new Date().toISOString().split('T')[0]}`, 'Inventario')
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExport() {
+    try {
+      setExporting(true)
+      const params = new URLSearchParams()
+      params.set('export', 'true')
+      if (search) params.set('query', search)
+      if (statusFilter !== 'ALL') params.set('status', statusFilter)
+      if (typeFilter !== 'ALL') params.set('type', typeFilter)
+
+      const res = await fetch(`/api/units?${params.toString()}`, { cache: 'no-store' })
+      if (!res.ok) throw new Error('Error al descargar datos para la exportación profesional')
+      
+      const responseData = await res.json()
+      const exportUnits = Array.isArray(responseData?.data) ? responseData.data : []
+
+      if (!exportUnits.length) {
+        alert('No hay unidades para exportar en este listado.')
+        return
+      }
+
+      const rows = exportUnits.map((u: any) => ({
+        'Título': u.title,
+        'Tipo': u.type,
+        'Estado': u.status,
+        'Año': u.year ?? '',
+        'Precio ARS': u.priceArs ?? '',
+        'Precio USD': u.priceUsd ?? '',
+        'Costo Adquisición ARS': u.acquisitionCostArs ?? '',
+        'Costo Adquisición USD': u.acquisitionCostUsd ?? '',
+        'Tipo Adquisición': u.acquisitionType ?? '',
+        'Patente / Dominio': u.domain ?? '',
+        'Chasis / VIN': u.vin ?? '',
+        'Nro. Motor': u.engineNumber ?? '',
+        'Ubicación': u.location ?? '',
+        'Cargado por': u.createdBy ?? 'Desconocido',
+        'Fecha Registro': u.createdAt,
+      }))
+
+      exportToExcel(rows, `Inventario_${new Date().toISOString().split('T')[0]}`, 'Inventario')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al exportar inventario')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const available = units.filter(u => u.status === 'AVAILABLE').length
@@ -141,9 +174,13 @@ export default function UnitsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport}>
-            <FileDown className="h-4 w-4" />
-            Exportar
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={handleExport} disabled={exporting}>
+            {exporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="h-4 w-4" />
+            )}
+            {exporting ? 'Exportando...' : 'Exportar'}
           </Button>
           <Link href="/app/units/import">
             <Button size="sm" variant="outline" className="gap-1.5">

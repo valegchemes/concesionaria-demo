@@ -47,6 +47,7 @@ interface AuthenticatedUser {
 interface ListUnitsQuery {
   page: number
   limit: number
+  export?: boolean
   type?: UnitType
   status?: UnitStatus
   query?: string
@@ -73,6 +74,7 @@ interface ListUnitsQuery {
 function parseListQuery(searchParams: URLSearchParams): ListUnitsQuery {
   const page = Math.max(1, parseInt(searchParams.get('page') ?? '1', 10))
   const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') ?? '20', 10)))
+  const isExport = searchParams.get('export') === 'true'
   
   const type = searchParams.get('type') as UnitType | null
   const status = searchParams.get('status') as UnitStatus | null
@@ -88,6 +90,7 @@ function parseListQuery(searchParams: URLSearchParams): ListUnitsQuery {
   return {
     page,
     limit,
+    export: isExport,
     ...(type && { type }),
     ...(status && { status }),
     ...(query && { query }),
@@ -135,7 +138,9 @@ export const GET = withTenantHandler(async (request: NextRequest): Promise<NextR
     }
 
     // 5. Ejecutar queries en paralelo
-    const skip = (filters.page - 1) * filters.limit
+    const isExport = filters.export === true
+    const skip = isExport ? undefined : (filters.page - 1) * filters.limit
+    const take = isExport ? undefined : filters.limit
     
     const [total, units] = await Promise.all([
       prisma.unit.count({ where }),
@@ -161,10 +166,23 @@ export const GET = withTenantHandler(async (request: NextRequest): Promise<NextR
             orderBy: { order: 'asc' }, 
             select: { url: true, order: true } 
           },
+          // Campos adicionales para exportación profesional
+          ...(isExport && {
+            year: true,
+            description: true,
+            engineNumber: true,
+            frameNumber: true,
+            hin: true,
+            registrationNumber: true,
+            acquisitionCostArs: true,
+            acquisitionCostUsd: true,
+            acquisitionType: true,
+            acquisitionDate: true,
+          })
         },
         orderBy: { createdAt: 'desc' },
-        skip,
-        take: filters.limit,
+        ...(skip !== undefined && { skip }),
+        ...(take !== undefined && { take }),
       }),
     ])
 
