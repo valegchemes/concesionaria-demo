@@ -35,6 +35,7 @@ const planDescriptions: Record<string, { subtitle: string; badge: string; detail
       'Cálculo exacto de márgenes de ganancias, comisiones y costos por unidad.',
       'Ficha técnica y cotizaciones descargables en formato PDF.',
       'Módulo de costos mensuales y gastos administrativos integrados.',
+      'Módulo de Auditoría avanzada del sistema para control de acciones.',
     ]
   },
   'Plan Pro': {
@@ -47,6 +48,7 @@ const planDescriptions: Record<string, { subtitle: string; badge: string; detail
       'Generación inteligente de Pagarés, cálculo automatizado de cuotas e historial de cobranza.',
       'Boletos de compraventa, contratos de consignación y recibos de pago con firma digital.',
       'Analíticas avanzadas y tableros financieros completos (márgenes brutos y netos).',
+      'Módulo de Auditoría avanzada del sistema para control de acciones.',
       'Soporte prioritario exclusivo y configuraciones avanzadas del tenant.',
     ]
   }
@@ -65,6 +67,7 @@ interface Plan {
   analyticsEnabled: boolean
   whatsappEnabled: boolean
   documentsEnabled: boolean
+  auditEnabled: boolean
 }
 
 interface Subscription {
@@ -287,6 +290,17 @@ export default function BillingPage() {
                         <li className="flex items-start gap-2 text-muted-foreground line-through">
                           <CheckCircle2 className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
                           Pagarés, cuotas y boletos de compraventa
+                        </li>
+                      )}
+                      {plan.auditEnabled ? (
+                        <li className="flex items-start gap-2 text-adaptive-primary font-medium">
+                          <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0 mt-0.5" />
+                          Auditoría avanzada del sistema
+                        </li>
+                      ) : (
+                        <li className="flex items-start gap-2 text-muted-foreground line-through">
+                          <CheckCircle2 className="h-4 w-4 text-muted-foreground/40 shrink-0 mt-0.5" />
+                          Auditoría avanzada del sistema
                         </li>
                       )}
                     </ul>

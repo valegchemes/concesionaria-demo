@@ -487,6 +487,7 @@ model SaasPlan {
   analyticsEnabled Boolean            @default(false)
   whatsappEnabled  Boolean            @default(false)
   documentsEnabled Boolean            @default(false)
+  auditEnabled     Boolean            @default(false)
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   subscriptions    SaasSubscription[]

@@ -7,6 +7,7 @@ import { createLogger } from '@/lib/shared/logger'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { cursorPaginate } from '@/lib/shared/cursor-pagination'
 import { requireRateLimit, RATE_LIMITS, getRequestIdentifier } from '@/lib/shared/rate-limit-memory'
+import { getPlanLimits } from '@/lib/shared/plan-limits'
 
 const log = createLogger('API:AuditLog')
 
@@ -17,6 +18,13 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
     await requireRateLimit(identifier, RATE_LIMITS.AUTHENTICATED_API)
     
     const user = await requirePermission('team', 'manage_all')
+
+    // Check Plan Limit for Audit
+    const limits = await getPlanLimits(user.companyId)
+    if (!limits.auditEnabled) {
+      return NextResponse.json({ error: 'Audit module is not enabled in your plan' }, { status: 403 })
+    }
+
     const { searchParams } = new URL(request.url)
     const resource = searchParams.get('resource') ?? undefined
 
@@ -43,6 +51,10 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
             resourceId: true,
             createdAt: true,
             ipAddress: true,
+            userAgent: true,
+            reason: true,
+            before: true,
+            after: true,
             user: { select: { name: true, email: true } },
           },
         })
