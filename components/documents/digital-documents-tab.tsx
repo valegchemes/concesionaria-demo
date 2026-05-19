@@ -50,7 +50,7 @@ function buildWhatsAppUrl(
 
   const msg = `${greeting}, te hacemos llegar tu *${typeLabel}${refStr}*${vehicleStr}.\n\nPodés descargar el PDF firmado ingresando aquí:\n${downloadUrl}\n\nCualquier consulta, estamos a tu disposición. ${String.fromCodePoint(0x1F64C)}`
   const number = phone.replace(/\D/g, '')
-  return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`
+  return `https://api.whatsapp.com/send?phone=${number}&text=${encodeURIComponent(msg)}`
 }
 
 export function GlobalDigitalDocumentsTab() {
