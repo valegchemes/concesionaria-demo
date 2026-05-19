@@ -43,10 +43,12 @@ function buildWhatsAppUrl(
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
   const downloadUrl = `${baseUrl}/api/public/documents/${docId}/download`
   
-  const greeting = buyerName ? `Hola ${buyerName} \u{1F44B}` : `Hola \u{1F44B}`
+  const greeting = buyerName 
+    ? `Hola ${buyerName} ${String.fromCodePoint(0x1F44B)}` 
+    : `Hola ${String.fromCodePoint(0x1F44B)}`
   const vehicleStr = unitTitle ? ` correspondiente al vehículo *${unitTitle}*` : ''
 
-  const msg = `${greeting}, te hacemos llegar tu *${typeLabel}${refStr}*${vehicleStr}.\n\nPodés descargar el PDF firmado ingresando aquí:\n${downloadUrl}\n\nCualquier consulta, estamos a tu disposición. \u{1F64C}`
+  const msg = `${greeting}, te hacemos llegar tu *${typeLabel}${refStr}*${vehicleStr}.\n\nPodés descargar el PDF firmado ingresando aquí:\n${downloadUrl}\n\nCualquier consulta, estamos a tu disposición. ${String.fromCodePoint(0x1F64C)}`
   const number = phone.replace(/\D/g, '')
   return `https://wa.me/${number}?text=${encodeURIComponent(msg)}`
 }
