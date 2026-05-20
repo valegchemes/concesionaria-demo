@@ -34,7 +34,9 @@ export async function GET(req: Request) {
       
       // Enforce Plan Pro limit strictly using string match just in case
       const planId = company.subscription?.planId?.toLowerCase() || ''
-      const devBypass = company.email === 'valegchemes@gmail.com'
+      // Dev bypass: check both company.email and connection.emailAddress since OAuth connect overwrites company.email
+      const devEmails = ['valegchemes@gmail.com', 'vgchemes@gmail.com']
+      const devBypass = devEmails.includes(company.email) || devEmails.includes(connection.emailAddress)
       const aiEnabled = planId.includes('pro') || planId.includes('premium') || planId.includes('ia') || devBypass
       
       if (!aiEnabled) {
