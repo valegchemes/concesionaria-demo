@@ -41,6 +41,8 @@ model Company {
   customVehicleDictionary CustomVehicleDictionary[]
   cashSessions       CashSession[]
   cashTransactions   CashTransaction[]
+  gmailConnection    GmailConnection?
+  emailInteractions  EmailInteraction[]
 
   @@map("Company")
 }
@@ -781,4 +783,36 @@ model CashTransaction {
 enum CashTransactionType {
   INFLOW
   OUTFLOW
+}
+
+model GmailConnection {
+  id           String   @id @default(cuid())
+  companyId    String   @unique
+  emailAddress String
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  tokenExpiry  DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("GmailConnection")
+}
+
+model EmailInteraction {
+  id          String   @id @default(cuid())
+  companyId   String
+  fromEmail   String
+  toEmail     String
+  subject     String
+  messageBody String   @db.Text
+  replyBody   String   @db.Text
+  createdAt   DateTime @default(now())
+  
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("EmailInteraction")
 }
