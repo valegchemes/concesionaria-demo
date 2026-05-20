@@ -114,7 +114,8 @@ Devolvé únicamente el texto redactado de la propuesta de correo de respuesta (
           )
 
           if (!geminiRes.ok) {
-            log.error({}, `Gemini API Error for company ${company.id}`)
+            const errorBody = await geminiRes.text();
+            log.error({ errorBody }, `Gemini API Error for company ${company.id}`)
             continue
           }
 
@@ -129,7 +130,7 @@ Devolvé únicamente el texto redactado de la propuesta de correo de respuesta (
 
           // 3. Send the reply using Gmail API (via Nodemailer OAuth)
           const replySubject = email.subject.startsWith('Re:') ? email.subject : `Re: ${email.subject}`
-          await sendReply(company.id, email.from, replySubject, htmlBody, email.id, email.threadId ?? undefined)
+          await sendReply(company.id, email.from, replySubject, htmlBody, email.messageIdHeader ?? undefined, email.threadId ?? undefined)
           
           // 4. Mark the email as read in Gmail
           await markAsRead(company.id, email.id)

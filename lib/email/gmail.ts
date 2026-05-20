@@ -125,12 +125,15 @@ export async function listUnreadEmails(companyId: string) {
       }
     }
 
+    const messageIdHeader = headers.find(h => h.name?.toLowerCase() === 'message-id')?.value || ''
+
     parsedEmails.push({
       id: msg.id,
       from,
       subject,
       body,
-      threadId: details.data.threadId
+      threadId: details.data.threadId,
+      messageIdHeader
     })
   }
 
@@ -138,7 +141,7 @@ export async function listUnreadEmails(companyId: string) {
 }
 
 /**
- * Sends an email using Nodemailer wrapped with the OAuth2 client
+ * Sends an email using Gmail API instead of SMTP to avoid credential and port restrictions.
  */
 export async function sendReply(
   companyId: string, 
@@ -151,41 +154,40 @@ export async function sendReply(
   const client = await getCompanyGmailClient(companyId)
   if (!client) throw new Error('Gmail no está conectado.')
 
-  const { oAuth2Client, emailAddress } = client
-  const tokens = await oAuth2Client.getAccessToken()
+  const { gmail, emailAddress } = client
 
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-      type: 'OAuth2',
-      user: emailAddress,
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      refreshToken: oAuth2Client.credentials.refresh_token as string,
-      accessToken: tokens.token as string
-    }
-  })
-
-  // Format HTML body to plain text roughly, for the fallback
-  const textBody = htmlBody.replace(/<[^>]*>?/gm, '')
-
-  const mailOptions: any = {
-    from: emailAddress,
-    to,
-    subject,
-    text: textBody,
-    html: htmlBody
-  }
+  const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+  
+  const headers = [
+    `From: ${emailAddress}`,
+    `To: ${to}`,
+    `Subject: ${utf8Subject}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset=utf-8',
+  ];
 
   if (inReplyTo) {
-    mailOptions.inReplyTo = inReplyTo
+    headers.push(`In-Reply-To: ${inReplyTo}`);
+    headers.push(`References: ${inReplyTo}`);
   }
 
-  // Not strictly using Gmail API for sending here, using Nodemailer which is much easier to format
-  const result = await transporter.sendMail(mailOptions)
-  return result
+  const message = [...headers, '', htmlBody].join('\r\n');
+  
+  // Base64Url encode the message safely
+  const encodedMessage = Buffer.from(message)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const result = await gmail.users.messages.send({
+    userId: 'me',
+    requestBody: {
+      raw: encodedMessage,
+      threadId: threadId || undefined
+    }
+  });
+  return result;
 }
 
 /**
