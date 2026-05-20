@@ -204,62 +204,48 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false, isSell
 
   const renderContent = () => {
     if (showDetailed) {
-      // Mixed ComposedChart showing Bar values + Line with dealCount on secondary YAxis
+      // AreaChart showing ONLY the transaction count (purple line) with gradient fill
       return (
         <ResponsiveContainer width="100%" height="90%">
-          <ComposedChart
+          <AreaChart
             data={data}
             margin={{ top: 15, right: 10, left: 10, bottom: 0 }}
-            barCategoryGap="20%"
-            barGap={4}
             onClick={handlePointClick}
           >
+            <defs>
+              <linearGradient id="gradDeals" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
             <XAxis
               dataKey="name"
-              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
+              tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
               axisLine={false}
               tickLine={false}
             />
-            {/* Left axis: monetary values */}
             <YAxis
-              yAxisId="left"
-              tick={{ fill: '#94a3b8', fontSize: 10 }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={(val) => formatAxisTick(val, currencyMode)}
-              width={75}
-            />
-            {/* Right axis: transaction count */}
-            <YAxis
-              yAxisId="right"
-              orientation="right"
               tick={{ fill: '#8b5cf6', fontSize: 10, fontWeight: 600 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(val) => `${val} ops`}
               width={45}
             />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(226, 232, 240, 0.2)' }} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#8b5cf6', strokeWidth: 1.5, strokeDasharray: '3 3' }} />
             <Legend wrapperStyle={{ paddingTop: '16px' }} formatter={legendFormatter} />
             
-            <Bar yAxisId="left" dataKey={salesKey} fill="#6366f1" radius={[4, 4, 0, 0]} name="sales" />
-            {!isSeller && <Bar yAxisId="left" dataKey={profitKey} fill="#10b981" radius={[4, 4, 0, 0]} name="profit" />}
-            {!isSeller && <Bar yAxisId="left" dataKey={unitCostsKey} fill="#f97316" radius={[4, 4, 0, 0]} name="unitCosts" />}
-            {!isSeller && <Bar yAxisId="left" dataKey={operationalCostsKey} fill="#ef4444" radius={[4, 4, 0, 0]} name="operationalCosts" />}
-            
-            {/* Secondary line chart overlay for deal counts */}
-            <Line
-              yAxisId="right"
+            <Area
               type="monotone"
               dataKey="dealCount"
               stroke="#8b5cf6"
-              strokeWidth={3}
+              strokeWidth={3.5}
+              fill="url(#gradDeals)"
               dot={{ r: 4, stroke: '#8b5cf6', strokeWidth: 2, fill: 'white' }}
               activeDot={{ r: 6, fill: '#8b5cf6', stroke: 'white', strokeWidth: 2 }}
               name="dealCount"
             />
-          </ComposedChart>
+          </AreaChart>
         </ResponsiveContainer>
       )
     }

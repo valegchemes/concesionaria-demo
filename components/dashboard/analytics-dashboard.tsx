@@ -303,34 +303,34 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-[13px] text-adaptive-primary">
                         {salesProfit.chartData.map((row) => (
                           <tr key={row.date} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
-                            <td className="px-4 py-3 font-semibold">{row.name}</td>
+                            <td className="px-4 py-3 font-semibold text-adaptive-primary">{row.name}</td>
                             <td className="px-4 py-3 text-center">
-                              <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/50 rounded-md">
+                              <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold bg-indigo-500/10 text-indigo-500 rounded-md border border-indigo-500/20">
                                 {row.dealCount}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(row.salesArs, 'ARS')}</div>
-                              <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.salesUsd, 'USD')}</div>
+                              <div className="font-bold text-adaptive-primary">{formatCurrency(row.salesArs, 'ARS')}</div>
+                              <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.salesUsd, 'USD')}</div>
                             </td>
                             {!isSeller && (
                               <td className="px-4 py-3 text-right">
-                                <div className={cn("font-bold", row.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                <div className={cn("font-black", row.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
                                   {formatCurrency(row.profitArs, 'ARS')}
                                 </div>
-                                <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.profitUsd, 'USD')}</div>
+                                <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.profitUsd, 'USD')}</div>
                               </td>
                             )}
                             {!isSeller && (
                               <td className="px-4 py-3 text-right">
-                                <div className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(row.unitCostsArs, 'ARS')}</div>
-                                <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.unitCostsUsd, 'USD')}</div>
+                                <div className="font-semibold text-adaptive-primary">{formatCurrency(row.unitCostsArs, 'ARS')}</div>
+                                <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.unitCostsUsd, 'USD')}</div>
                               </td>
                             )}
                             {!isSeller && (
                               <td className="px-4 py-3 text-right">
-                                <div className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(row.operationalCostsArs, 'ARS')}</div>
-                                <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.operationalCostsUsd, 'USD')}</div>
+                                <div className="font-semibold text-adaptive-primary">{formatCurrency(row.operationalCostsArs, 'ARS')}</div>
+                                <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.operationalCostsUsd, 'USD')}</div>
                               </td>
                             )}
                           </tr>

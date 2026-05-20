@@ -1,12 +1,12 @@
 /**
  * Modal de detalles de costos
  * Muestra el desglose detallado de los ítems asociados a una categoría
+ * Totalmente adaptado al sistema de temas de la aplicación (superficies y texto adaptativo)
  */
 
 'use client'
 
 import { X, Receipt, Calendar, Info, Car } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/domains/analytics/hooks'
 import { CostItemDetail } from '@/lib/domains/analytics/types'
 
@@ -33,7 +33,7 @@ export function CostDetailsModal({
 
   return (
     <div className="modal-overlay flex items-start justify-center p-6">
-      <div className="relative mx-auto flex min-h-[280px] w-full max-w-4xl flex-col overflow-hidden rounded-[32px] border border-adaptive bg-white/95 shadow-2xl backdrop-blur-xl dark:bg-slate-950/95 my-10">
+      <div className="relative mx-auto flex min-h-[280px] w-full max-w-4xl flex-col overflow-hidden rounded-[32px] border border-adaptive shadow-2xl backdrop-blur-xl my-10 surface-primary">
         {/* Header */}
         <div className="bg-slate-900 text-white px-5 py-4 flex justify-between items-center border-b border-adaptive">
           <div>
@@ -42,7 +42,7 @@ export function CostDetailsModal({
               Desglose de Costos: {categoryName}
             </h3>
             {timeRangeLabel && (
-              <p className="text-slate-400 text-sm mt-1">
+              <p className="text-slate-400 text-sm mt-1 font-medium">
                 Período: {timeRangeLabel}
               </p>
             )}
@@ -57,17 +57,17 @@ export function CostDetailsModal({
 
         {/* Content */}
         <div className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto max-h-[60vh]">
+          <div className="h-full overflow-y-auto max-h-[60vh] scrollbar-thin">
             <div className="p-5">
               {/* Totales Resumen */}
               <div className="grid gap-4 sm:grid-cols-2 mb-6">
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/40 dark:border-slate-800/40 p-4">
+                <div className="surface-secondary rounded-2xl border border-adaptive p-4">
                   <p className="text-xs uppercase tracking-wider text-adaptive-secondary font-semibold">Total en Pesos (ARS)</p>
-                  <p className="mt-2 text-2xl font-bold text-slate-800 dark:text-slate-200">{formatCurrency(totalArs, 'ARS')}</p>
+                  <p className="mt-2 text-2xl font-black text-adaptive-primary">{formatCurrency(totalArs, 'ARS')}</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/40 dark:border-slate-800/40 p-4">
+                <div className="surface-secondary rounded-2xl border border-adaptive p-4">
                   <p className="text-xs uppercase tracking-wider text-adaptive-secondary font-semibold">Total en Dólares (USD)</p>
-                  <p className="mt-2 text-2xl font-bold text-slate-800 dark:text-slate-200">{formatCurrency(totalUsd, 'USD')}</p>
+                  <p className="mt-2 text-2xl font-black text-adaptive-primary">{formatCurrency(totalUsd, 'USD')}</p>
                 </div>
               </div>
 
@@ -80,7 +80,7 @@ export function CostDetailsModal({
                     return (
                       <div
                         key={`${item.concept}-${item.date}-${idx}`}
-                        className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 rounded-2xl p-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-sm"
+                        className="surface-secondary border border-adaptive rounded-2xl p-4 hover:bg-slate-500/5 transition-colors shadow-sm"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           {/* Izquierda: Info Gasto */}
@@ -90,22 +90,22 @@ export function CostDetailsModal({
                                 {item.concept}
                               </span>
                               {item.reference && (
-                                <Badge variant="secondary" className="text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-adaptive-secondary">
-                                  {hasVehicle && <Car className="h-3 w-3 inline mr-1 text-slate-400" />}
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold surface-muted border border-adaptive text-adaptive-primary">
+                                  {hasVehicle && <Car className="h-3 w-3 inline mr-0.5 text-adaptive-secondary" />}
                                   {item.reference}
-                                </Badge>
+                                </span>
                               )}
                             </div>
                             
                             {item.description && (
-                              <p className="text-xs text-adaptive-secondary bg-slate-50 dark:bg-slate-800/20 p-2 rounded-lg border border-slate-100 dark:border-slate-800/50 flex items-start gap-1">
-                                <Info className="h-3.5 w-3.5 mt-0.5 text-slate-400 shrink-0" />
+                              <p className="text-xs text-adaptive-secondary surface-muted p-2 rounded-lg border border-adaptive flex items-start gap-1">
+                                <Info className="h-3.5 w-3.5 mt-0.5 text-adaptive-secondary shrink-0" />
                                 <span>{item.description}</span>
                               </p>
                             )}
 
-                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                              <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                            <div className="flex items-center gap-1.5 text-xs text-adaptive-secondary">
+                              <Calendar className="h-3.5 w-3.5 text-adaptive-secondary" />
                               <span>
                                 {new Date(item.date).toLocaleDateString('es-AR', {
                                   day: '2-digit',
@@ -117,19 +117,19 @@ export function CostDetailsModal({
                           </div>
 
                           {/* Derecha: Importe */}
-                          <div className="text-right shrink-0 bg-slate-50/50 dark:bg-slate-900/30 px-4 py-2.5 rounded-xl border border-slate-100 dark:border-slate-800/40 min-w-[150px]">
+                          <div className="text-right shrink-0 surface-muted px-4 py-2.5 rounded-xl border border-adaptive min-w-[160px]">
                             {item.amountArs > 0 && (
-                              <div className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                              <div className="font-extrabold text-sm text-adaptive-primary">
                                 {formatCurrency(item.amountArs, 'ARS')}
                               </div>
                             )}
                             {item.amountUsd > 0 && (
-                              <div className="font-semibold text-xs text-amber-600 dark:text-amber-400">
+                              <div className="font-bold text-xs text-amber-600 dark:text-amber-400 mt-0.5">
                                 {formatCurrency(item.amountUsd, 'USD')}
                               </div>
                             )}
                             {item.amountArs === 0 && item.amountUsd === 0 && (
-                              <span className="text-xs text-muted-foreground italic">Sin importe</span>
+                              <span className="text-xs text-adaptive-secondary italic">Sin importe</span>
                             )}
                           </div>
                         </div>
@@ -138,8 +138,8 @@ export function CostDetailsModal({
                   })}
                 </div>
               ) : (
-                <div className="text-center py-12 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
-                  <p className="text-muted-foreground text-sm">No hay ítems registrados en este período.</p>
+                <div className="text-center py-12 border border-dashed border-adaptive rounded-3xl">
+                  <p className="text-adaptive-secondary text-sm">No hay ítems registrados en este período.</p>
                 </div>
               )}
             </div>
@@ -147,11 +147,11 @@ export function CostDetailsModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-adaptive px-5 py-3.5 flex items-center justify-between text-xs text-adaptive-secondary bg-slate-50 dark:bg-slate-900">
+        <div className="border-t border-adaptive px-5 py-3.5 flex items-center justify-between text-xs text-adaptive-secondary bg-slate-900/5 dark:bg-slate-950/20">
           <span>Registros encontrados: {items.length}</span>
           <button
             onClick={() => onOpenChange(false)}
-            className="text-[11px] font-bold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white uppercase tracking-wider transition-colors"
+            className="text-[11px] font-bold text-adaptive-secondary hover:text-adaptive-primary uppercase tracking-wider transition-colors"
           >
             Cerrar
           </button>
