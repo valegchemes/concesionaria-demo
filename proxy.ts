@@ -35,6 +35,8 @@ const PUBLIC_ROUTES = [
   '/favicon.ico',
   '/public',
   '/catalog',
+  '/api/email/gmail/callback',
+  '/api/cron',
   // /api/diag ya NO es pública — protegida por Bearer token (DIAG_SECRET_TOKEN)
 ]
 
