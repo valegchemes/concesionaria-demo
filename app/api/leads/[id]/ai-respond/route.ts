@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { createLogger } from '@/lib/shared/logger'
 import { requireAuth } from '@/lib/shared/auth-helpers'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { getPlanLimits } from '@/lib/shared/plan-limits'
 
 const log = createLogger('API:LeadAiRespond')
 
@@ -44,6 +45,12 @@ export const POST = withTenantHandler(async (
 
     if (!canAccessLead) {
       return NextResponse.json({ error: 'Acceso no autorizado' }, { status: 403 })
+    }
+
+    // Check plan limits for AI features
+    const limits = await getPlanLimits(session.user.companyId)
+    if (!limits.aiEnabled) {
+      return NextResponse.json({ error: 'Tu plan no incluye las funciones de Inteligencia Artificial.' }, { status: 403 })
     }
 
     // 2. Parse request parameters

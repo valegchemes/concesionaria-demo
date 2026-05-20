@@ -8,6 +8,7 @@ export interface PlanLimits {
   whatsappEnabled: boolean
   documentsEnabled: boolean
   auditEnabled: boolean
+  aiEnabled: boolean
   isActive: boolean
 }
 
@@ -20,6 +21,7 @@ const FREE_LIMITS: PlanLimits = {
   whatsappEnabled: false,
   documentsEnabled: false,
   auditEnabled: false,
+  aiEnabled: false,
   isActive: false,
 }
 
@@ -51,6 +53,7 @@ export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
         whatsappEnabled: proPlan.whatsappEnabled,
         documentsEnabled: proPlan.documentsEnabled,
         auditEnabled: proPlan.auditEnabled,
+        aiEnabled: true,
         isActive: true,
       }
     }
@@ -68,6 +71,7 @@ export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
   }
 
   const { plan } = subscription
+  const isPro = plan.name.toLowerCase().includes('pro')
   return {
     planName: plan.name,
     maxUsers: plan.maxUsers,
@@ -76,6 +80,7 @@ export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
     whatsappEnabled: plan.whatsappEnabled,
     documentsEnabled: plan.documentsEnabled,
     auditEnabled: plan.auditEnabled,
+    aiEnabled: isPro,
     isActive: true,
   }
 }

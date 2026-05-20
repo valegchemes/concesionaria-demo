@@ -292,7 +292,7 @@ export function UnitForm() {
 
             {/* Modal Body */}
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
-              {!limitsLoading && !limits.documentsEnabled ? (
+              {!limitsLoading && !limits.aiEnabled ? (
                 <div className="text-center py-8 space-y-5 flex flex-col items-center">
                   <div className="h-16 w-16 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-200 text-amber-500 ring-4 ring-amber-50">
                     <Lock className="h-7 w-7" />

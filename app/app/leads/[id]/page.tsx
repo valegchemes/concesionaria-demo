@@ -571,14 +571,26 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </Button>
               )}
               
-              <Button
-                type="button"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2 text-white font-bold transition-transform hover:scale-[1.02]"
-                onClick={openAiAssistant}
-              >
-                <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
-                Asistente de Respuesta con IA
-              </Button>
+              {limits.aiEnabled ? (
+                <Button
+                  type="button"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2 text-white font-bold transition-transform hover:scale-[1.02]"
+                  onClick={openAiAssistant}
+                >
+                  <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+                  Asistente de Respuesta con IA
+                </Button>
+              ) : (
+                <Link href="/app/settings/billing" className="w-full block">
+                  <Button
+                    type="button"
+                    className="w-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 gap-2 font-bold border border-slate-200 dark:border-slate-700/60"
+                  >
+                    <Lock className="h-4 w-4 text-slate-400" />
+                    Asistente con IA (Plan Pro)
+                  </Button>
+                </Link>
+              )}
 
               {!limits.whatsappEnabled && (
                 <div className="text-center py-2 space-y-1.5 border-t border-dashed border-slate-200 dark:border-slate-800 pt-3 mt-1">

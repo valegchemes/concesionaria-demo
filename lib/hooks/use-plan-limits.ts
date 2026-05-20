@@ -10,6 +10,7 @@ export interface PlanLimits {
   whatsappEnabled: boolean
   documentsEnabled: boolean
   auditEnabled: boolean
+  aiEnabled: boolean
   isActive: boolean
   currentUsers: number
   currentUnits: number
@@ -23,6 +24,7 @@ const DEFAULT_LIMITS: PlanLimits = {
   whatsappEnabled: false,
   documentsEnabled: false,
   auditEnabled: false,
+  aiEnabled: false,
   isActive: false,
   currentUsers: 0,
   currentUnits: 0,

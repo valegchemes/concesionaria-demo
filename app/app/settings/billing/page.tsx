@@ -41,12 +41,13 @@ const planDescriptions: Record<string, { subtitle: string; badge: string; detail
     ]
   },
   'Plan Pro': {
-    subtitle: 'La herramienta definitiva y profesional para concesionarias líderes que buscan automatización total.',
+    subtitle: 'La herramienta definitiva y profesional para concesionarias líderes que buscan automatización total con Inteligencia Artificial.',
     badge: 'Todo Incluido / Premium',
     detailedFeatures: [
       'Acceso completo de hasta 8 usuarios para todo tu personal.',
       'Hasta 100 vehículos activos simultáneos en catálogo.',
-      'Carga exprés de stock con IA (escaneo inteligente de cédulas y autofill).',
+      'Asistente de Respuestas de Leads con IA (redacción de propuestas por WhatsApp con cuotas y PDFs de financiación).',
+      'Carga exprés de stock con IA (escaneo inteligente de cédulas y autocompletado de datos).',
       'Cotizador interactivo de financiación (sistema francés) y propuestas PDF.',
       'Checklist y semáforo dinámico de Gestoría legal para transferencias.',
       'Diagnósticos financieros avanzados de ROI y Margen Neto Real.',
@@ -324,20 +325,28 @@ export default function BillingPage() {
                       {plan.documentsEnabled && (
                         <>
                           <li className="flex items-start gap-2.5 font-medium">
-                            <Sparkles className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
-                            <span className="text-violet-700 dark:text-violet-300 font-semibold">Carga de stock por IA (Escáner)</span>
-                          </li>
-                          <li className="flex items-start gap-2.5 font-medium">
-                            <Sparkles className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
-                            <span className="text-violet-700 dark:text-violet-300 font-semibold">Cotizador interactivo y PDF</span>
-                          </li>
-                          <li className="flex items-start gap-2.5 font-medium">
-                            <Sparkles className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
-                            <span className="text-violet-700 dark:text-violet-300 font-semibold">Checklist legal de Gestoría</span>
+                            <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
+                            <span><strong>Cotizador interactivo</strong> de cuotas y PDF</span>
                           </li>
                           <li className="flex items-start gap-2.5 font-medium">
                             <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
-                            <span>Pagarés, cuotas y boletos</span>
+                            <span><strong>Checklist legal</strong> de Gestoría</span>
+                          </li>
+                          <li className="flex items-start gap-2.5 font-medium">
+                            <CheckCircle2 className="h-4.5 w-4.5 text-green-500 shrink-0 mt-0.5" />
+                            <span>Pagarés, contratos y boletos</span>
+                          </li>
+                        </>
+                      )}
+                      {isPro && (
+                        <>
+                          <li className="flex items-start gap-2.5 font-medium">
+                            <Sparkles className="h-4.5 w-4.5 text-violet-500 shrink-0 mt-0.5 animate-pulse" />
+                            <span className="text-violet-700 dark:text-violet-300 font-bold">Asistente de Leads con IA 🤖</span>
+                          </li>
+                          <li className="flex items-start gap-2.5 font-medium">
+                            <Sparkles className="h-4.5 w-4.5 text-violet-500 shrink-0 mt-0.5 animate-pulse" />
+                            <span className="text-violet-700 dark:text-violet-300 font-bold">Carga de Stock por IA (Escáner) ⚡</span>
                           </li>
                         </>
                       )}

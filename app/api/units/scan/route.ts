@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/shared/auth-helpers'
+import { getPlanLimits } from '@/lib/shared/plan-limits'
 
 // Mock database of premium visual scan test cards
 const MOCK_VEHICLES: Record<string, any> = {
@@ -50,6 +52,12 @@ const MOCK_VEHICLES: Record<string, any> = {
 
 export async function POST(req: Request) {
   try {
+    const session = await requireAuth()
+    const limits = await getPlanLimits(session.user.companyId)
+    if (!limits.aiEnabled) {
+      return NextResponse.json({ error: 'Tu plan no incluye las funciones de Inteligencia Artificial.' }, { status: 403 })
+    }
+
     const body = await req.json()
     const { image, mockId } = body
 
