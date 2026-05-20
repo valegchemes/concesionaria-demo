@@ -293,43 +293,46 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Resumen de Costos</CardTitle>
-                      <CardDescription>
-                        Totales por tipo de gasto
+                  <Card className="surface-primary border border-border shadow-sm flex flex-col justify-between">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base font-bold text-adaptive-primary flex items-center gap-2">
+                        <TrendingUp className="h-4.5 w-4.5 text-indigo-500" />
+                        Resumen de Costos
+                      </CardTitle>
+                      <CardDescription className="text-xs text-adaptive-secondary">
+                        Totales agrupados por tipo de gasto
                       </CardDescription>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 flex flex-col justify-center">
                       {costs.isLoading ? (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           <div className="h-4 bg-muted rounded animate-pulse" />
                           <div className="h-4 bg-muted rounded animate-pulse" />
                           <div className="h-4 bg-muted rounded animate-pulse" />
                         </div>
                       ) : costs.analytics ? (
-                        <div className="space-y-4">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Operativos</span>
-                            <span className="font-medium">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/25 px-2 rounded-lg transition-colors">
+                            <span className="text-xs font-semibold text-adaptive-secondary">Gastos Operativos</span>
+                            <span className="text-xs font-bold text-adaptive-primary">
                               {formatCurrency(costs.analytics.byType.operational.totalConverted)}
                             </span>
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Mantenimiento</span>
-                            <span className="font-medium">
+                          <div className="flex justify-between items-center py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/25 px-2 rounded-lg transition-colors">
+                            <span className="text-xs font-semibold text-adaptive-secondary">Mantenimiento de Unidades</span>
+                            <span className="text-xs font-bold text-adaptive-primary">
                               {formatCurrency(costs.analytics.byType.maintenance.totalConverted)}
                             </span>
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-muted-foreground">Comisiones</span>
-                            <span className="font-medium">
+                          <div className="flex justify-between items-center py-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/25 px-2 rounded-lg transition-colors">
+                            <span className="text-xs font-semibold text-adaptive-secondary">Comisiones de Vendedores</span>
+                            <span className="text-xs font-bold text-adaptive-primary">
                               {formatCurrency(costs.analytics.byType.commissions.totalConverted)}
                             </span>
                           </div>
-                          <div className="border-t pt-4 flex justify-between items-center">
-                            <span className="font-semibold">Total</span>
-                            <span className="font-bold text-lg">
+                          <div className="border-t border-border mt-3 pt-3.5 flex justify-between items-center px-2">
+                            <span className="text-xs font-bold text-adaptive-primary">Total Acumulado</span>
+                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
                               {formatCurrency(costs.analytics.totalCosts.totalConverted)}
                             </span>
                           </div>

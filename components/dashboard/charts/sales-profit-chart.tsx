@@ -8,11 +8,14 @@
 
 'use client'
 
+import { useState } from 'react'
 import {
   AreaChart,
   Area,
   BarChart,
   Bar,
+  ComposedChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -22,6 +25,7 @@ import {
   TooltipProps,
 } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 interface ChartDataPoint {
   name: string
@@ -54,10 +58,11 @@ interface SalesProfitChartProps {
 
 // ── Formateo de ejes ──────────────────────────────────────────────────────────
 
-const formatAxisTick = (value: number): string => {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`
-  return `$${value.toFixed(0)}`
+const formatAxisTick = (value: number, mode: 'consolidated' | 'ars' | 'usd'): string => {
+  const prefix = mode === 'usd' ? 'US$' : '$'
+  if (value >= 1_000_000) return `${prefix}${(value / 1_000_000).toFixed(1)}M`
+  if (value >= 1_000) return `${prefix}${(value / 1_000).toFixed(0)}K`
+  return `${prefix}${value.toFixed(0)}`
 }
 
 const formatCurrencyFull = (value: number): string =>
@@ -135,7 +140,8 @@ const legendFormatter = (value: string) => {
     sales: 'Ingresos', 
     profit: 'Ganancia Neta', 
     unitCosts: 'Costo Unidades',
-    operationalCosts: 'Gastos Operativos'
+    operationalCosts: 'Gastos Operativos',
+    dealCount: 'Cantidad de Operaciones'
   }
   return <span style={{ fontSize: '12px', color: '#64748b' }}>{map[value] ?? value}</span>
 }
@@ -152,6 +158,8 @@ const COLORS = {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function SalesProfitChart({ data, isLoading, showDetailed = false, isSeller = false, onPointClick }: SalesProfitChartProps) {
+  const [currencyMode, setCurrencyMode] = useState<'consolidated' | 'ars' | 'usd'>('consolidated')
+
   if (isLoading) {
     return <Skeleton className="h-full w-full rounded-xl" />
   }
@@ -168,146 +176,209 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false, isSell
     )
   }
 
-  // Análisis detallado → BarChart (más legible con pocos datos)
+  // Dynamic keys based on selected currency
+  const salesKey = currencyMode === 'consolidated' ? 'sales' : currencyMode === 'ars' ? 'salesArs' : 'salesUsd'
+  const profitKey = currencyMode === 'consolidated' ? 'profit' : currencyMode === 'ars' ? 'profitArs' : 'profitUsd'
+  const unitCostsKey = currencyMode === 'consolidated' ? 'unitCosts' : currencyMode === 'ars' ? 'unitCostsArs' : 'unitCostsUsd'
+  const operationalCostsKey = currencyMode === 'consolidated' ? 'operationalCosts' : currencyMode === 'ars' ? 'operationalCostsArs' : 'operationalCostsUsd'
+
   const handlePointClick = (event: any) => {
     if (!onPointClick || !event?.activePayload || event.activePayload.length === 0) {
       return
     }
-
     const payload = event.activePayload[0].payload as ChartDataPoint | undefined
     if (!payload) return
-
     onPointClick(payload)
   }
 
-  if (showDetailed) {
+  const renderContent = () => {
+    if (showDetailed) {
+      // Mixed ComposedChart showing Bar values + Line with dealCount on secondary YAxis
+      return (
+        <ResponsiveContainer width="100%" height="90%">
+          <ComposedChart
+            data={data}
+            margin={{ top: 15, right: 10, left: 10, bottom: 0 }}
+            barCategoryGap="20%"
+            barGap={4}
+            onClick={handlePointClick}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 500 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            {/* Left axis: monetary values */}
+            <YAxis
+              yAxisId="left"
+              tick={{ fill: '#94a3b8', fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(val) => formatAxisTick(val, currencyMode)}
+              width={75}
+            />
+            {/* Right axis: transaction count */}
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fill: '#8b5cf6', fontSize: 10, fontWeight: 600 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(val) => `${val} ops`}
+              width={45}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(226, 232, 240, 0.2)' }} />
+            <Legend wrapperStyle={{ paddingTop: '16px' }} formatter={legendFormatter} />
+            
+            <Bar yAxisId="left" dataKey={salesKey} fill="#6366f1" radius={[4, 4, 0, 0]} name="sales" />
+            {!isSeller && <Bar yAxisId="left" dataKey={profitKey} fill="#10b981" radius={[4, 4, 0, 0]} name="profit" />}
+            {!isSeller && <Bar yAxisId="left" dataKey={unitCostsKey} fill="#f97316" radius={[4, 4, 0, 0]} name="unitCosts" />}
+            {!isSeller && <Bar yAxisId="left" dataKey={operationalCostsKey} fill="#ef4444" radius={[4, 4, 0, 0]} name="operationalCosts" />}
+            
+            {/* Secondary line chart overlay for deal counts */}
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="dealCount"
+              stroke="#8b5cf6"
+              strokeWidth={3}
+              dot={{ r: 4, stroke: '#8b5cf6', strokeWidth: 2, fill: 'white' }}
+              activeDot={{ r: 6, fill: '#8b5cf6', stroke: 'white', strokeWidth: 2 }}
+              name="dealCount"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      )
+    }
+
+    // Default overview mode (AreaChart)
     return (
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          margin={{ top: 10, right: 20, left: 10, bottom: 0 }}
-          barCategoryGap="25%"
-          barGap={3}
-          onClick={handlePointClick}
-        >
+      <ResponsiveContainer width="100%" height="90%">
+        <AreaChart data={data} margin={{ top: 15, right: 10, left: 10, bottom: 0 }} onClick={handlePointClick}>
+          <defs>
+            <linearGradient id="gradSales" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
+              <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gradCosts" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f97316" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gradOp" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
+              <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+
           <XAxis
             dataKey="name"
             tick={{ fill: '#94a3b8', fontSize: 11 }}
             axisLine={false}
             tickLine={false}
+            interval="preserveStartEnd"
           />
           <YAxis
             tick={{ fill: '#94a3b8', fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={formatAxisTick}
-            width={60}
+            tickFormatter={(val) => formatAxisTick(val, currencyMode)}
+            width={75}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
+
+          <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
+
           <Legend wrapperStyle={{ paddingTop: '16px' }} formatter={legendFormatter} />
-          <Bar dataKey="sales" fill="#6366f1" radius={[4, 4, 0, 0]} name="sales" />
-          {!isSeller && <Bar dataKey="profit" fill="#10b981" radius={[4, 4, 0, 0]} name="profit" />}
-          {!isSeller && <Bar dataKey="unitCosts" fill="#f97316" radius={[4, 4, 0, 0]} name="unitCosts" />}
-          {!isSeller && <Bar dataKey="operationalCosts" fill="#ef4444" radius={[4, 4, 0, 0]} name="operationalCosts" />}
-        </BarChart>
+
+          <Area
+            type="monotone"
+            dataKey={salesKey}
+            stroke={COLORS.sales.stroke}
+            strokeWidth={2.5}
+            fill={COLORS.sales.fill}
+            dot={false}
+            activeDot={{ r: 5, fill: COLORS.sales.stroke, stroke: 'white', strokeWidth: 2 }}
+            name="sales"
+          />
+          {!isSeller && (
+            <Area
+              type="monotone"
+              dataKey={profitKey}
+              stroke={COLORS.profit.stroke}
+              strokeWidth={2.5}
+              fill={COLORS.profit.fill}
+              dot={false}
+              activeDot={{ r: 5, fill: COLORS.profit.stroke, stroke: 'white', strokeWidth: 2 }}
+              name="profit"
+            />
+          )}
+          {!isSeller && (
+            <Area
+              type="monotone"
+              dataKey={unitCostsKey}
+              stroke={COLORS.unitCosts.stroke}
+              strokeWidth={2}
+              fill={COLORS.unitCosts.fill}
+              dot={false}
+              activeDot={{ r: 4, fill: COLORS.unitCosts.stroke, stroke: 'white', strokeWidth: 2 }}
+              name="unitCosts"
+              strokeDasharray="5 3"
+            />
+          )}
+          {!isSeller && (
+            <Area
+              type="monotone"
+              dataKey={operationalCostsKey}
+              stroke={COLORS.operationalCosts.stroke}
+              strokeWidth={2}
+              fill={COLORS.operationalCosts.fill}
+              dot={false}
+              activeDot={{ r: 4, fill: COLORS.operationalCosts.stroke, stroke: 'white', strokeWidth: 2 }}
+              name="operationalCosts"
+              strokeDasharray="3 3"
+            />
+          )}
+        </AreaChart>
       </ResponsiveContainer>
     )
   }
 
-  // Vista resumen → AreaChart con gradientes (muestra todos los meses del rango)
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <AreaChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 0 }} onClick={handlePointClick}>
-        <defs>
-          <linearGradient id="gradSales" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
-            <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="gradCosts" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f97316" stopOpacity={0.2} />
-            <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
-          </linearGradient>
-          <linearGradient id="gradOp" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
-            <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-
-        <XAxis
-          dataKey="name"
-          tick={{ fill: '#94a3b8', fontSize: 11 }}
-          axisLine={false}
-          tickLine={false}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          tick={{ fill: '#94a3b8', fontSize: 11 }}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={formatAxisTick}
-          width={60}
-        />
-
-        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
-
-        <Legend wrapperStyle={{ paddingTop: '16px' }} formatter={legendFormatter} />
-
-        <Area
-          type="monotone"
-          dataKey="sales"
-          stroke={COLORS.sales.stroke}
-          strokeWidth={2.5}
-          fill={COLORS.sales.fill}
-          dot={false}
-          activeDot={{ r: 5, fill: COLORS.sales.stroke, stroke: 'white', strokeWidth: 2 }}
-          name="sales"
-        />
-        {!isSeller && (
-          <Area
-            type="monotone"
-            dataKey="profit"
-            stroke={COLORS.profit.stroke}
-            strokeWidth={2.5}
-            fill={COLORS.profit.fill}
-            dot={false}
-            activeDot={{ r: 5, fill: COLORS.profit.stroke, stroke: 'white', strokeWidth: 2 }}
-            name="profit"
-          />
-        )}
-        {!isSeller && (
-          <Area
-            type="monotone"
-            dataKey="unitCosts"
-            stroke={COLORS.unitCosts.stroke}
-            strokeWidth={2}
-            fill={COLORS.unitCosts.fill}
-            dot={false}
-            activeDot={{ r: 4, fill: COLORS.unitCosts.stroke, stroke: 'white', strokeWidth: 2 }}
-            name="unitCosts"
-            strokeDasharray="5 3"
-          />
-        )}
-        {!isSeller && (
-          <Area
-            type="monotone"
-            dataKey="operationalCosts"
-            stroke={COLORS.operationalCosts.stroke}
-            strokeWidth={2}
-            fill={COLORS.operationalCosts.fill}
-            dot={false}
-            activeDot={{ r: 4, fill: COLORS.operationalCosts.stroke, stroke: 'white', strokeWidth: 2 }}
-            name="operationalCosts"
-            strokeDasharray="3 3"
-          />
-        )}
-      </AreaChart>
-    </ResponsiveContainer>
+    <div className="w-full h-full flex flex-col space-y-3">
+      {/* Dynamic currency filter selector */}
+      <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800/40">
+        <span className="text-[10px] font-extrabold text-adaptive-secondary tracking-widest uppercase">Filtro de Moneda</span>
+        <div className="flex bg-slate-100/80 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/40 dark:border-slate-700/40">
+          {[
+            { id: 'consolidated', label: 'Consolidado ARS' },
+            { id: 'ars', label: 'Sólo ARS' },
+            { id: 'usd', label: 'Sólo USD' }
+          ].map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => setCurrencyMode(mode.id as any)}
+              className={cn(
+                "px-3 py-1 text-[10px] font-bold rounded-md transition-all duration-200",
+                currencyMode === mode.id
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              )}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 min-h-0">
+        {renderContent()}
+      </div>
+    </div>
   )
 }

@@ -109,21 +109,26 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
     )
   }
 
-  // Agrupar categorías menores al 1% en "Otros" si hay demasiadas
-  const significant = data.filter((d) => d.percentage >= 0.1)
-  let processedData = significant
-  if (significant.length > 20) {
-    const top = significant.slice(0, 19)
-    const rest = significant.slice(19)
-    processedData = [
-      ...top,
-      {
-        name: 'Otros',
-        value: rest.reduce((s, d) => s + d.value, 0),
-        percentage: rest.reduce((s, d) => s + d.percentage, 0),
-      },
-    ]
+  // Group categories less than 1.5% into "Otros gastos" for cleaner chart & legend
+  const threshold = 1.5
+  const mainCategories = data.filter((d) => d.percentage >= threshold)
+  const minorCategories = data.filter((d) => d.percentage < threshold)
+  
+  let processedData = [...mainCategories]
+  if (minorCategories.length > 0) {
+    const minorValue = minorCategories.reduce((sum, item) => sum + item.value, 0)
+    const minorPercent = minorCategories.reduce((sum, item) => sum + item.percentage, 0)
+    if (minorValue > 0) {
+      processedData.push({
+        name: 'Otros menores',
+        value: minorValue,
+        percentage: minorPercent,
+      })
+    }
   }
+
+  // Sort by value descending so the pie slices flow beautifully
+  processedData.sort((a, b) => b.value - a.value)
 
   return (
     <div className="flex h-full gap-4">
@@ -154,17 +159,17 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
         </ResponsiveContainer>
       </div>
 
-      {/* Leyenda lateral elegante con scroll */}
-      <div className="flex flex-col gap-2 w-44 shrink-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
+      {/* Leyenda lateral elegante con hover */}
+      <div className="flex flex-col gap-1 w-52 shrink-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
         {processedData.map((item, index) => (
-          <div key={item.name} className="flex items-center gap-2 min-w-0">
+          <div key={item.name} className="flex items-center gap-2.5 min-w-0 p-1 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors cursor-default">
             <span
               className="h-2.5 w-2.5 rounded-full shrink-0"
               style={{ backgroundColor: COLORS[index % COLORS.length] }}
             />
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
-              <p className="text-[10px] text-muted-foreground tabular-nums">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-adaptive-primary truncate">{item.name}</p>
+              <p className="text-[10px] text-adaptive-secondary tabular-nums font-medium">
                 {item.percentage.toFixed(1)}% · {formatCurrency(item.value)}
               </p>
             </div>
