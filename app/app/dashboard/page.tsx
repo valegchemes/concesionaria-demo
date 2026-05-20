@@ -57,11 +57,69 @@ async function getDashboardData(companyId: string, userId: string, role: string)
   const pendingArs = pendingInstallments.reduce((sum: number, i: { amount: { toString: () => string } }) => sum + Number(i.amount.toString()), 0)
   const overdueArs = overdueInstallments.reduce((sum: number, i: { amount: { toString: () => string } }) => sum + Number(i.amount.toString()), 0)
 
+  let commissionArs = 0
+  let commissionUsd = 0
+  let pendingCommissionArs = 0
+  let pendingCommissionUsd = 0
+  let commissionRate = 0
+
+  if (isSeller) {
+    const sellerInfo = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { commissionRate: true }
+    })
+    if (sellerInfo) {
+      commissionRate = Number(sellerInfo.commissionRate || 0)
+    }
+
+    const sellerDeals = await prisma.deal.findMany({
+      where: {
+        ...dealWhere,
+        status: { in: ['DELIVERED', 'NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] }
+      },
+      select: {
+        status: true,
+        finalPrice: true,
+        finalPriceCurrency: true,
+        commissionValue: true
+      }
+    })
+
+    for (const d of sellerDeals) {
+      const finalPrice = Number(d.finalPrice)
+      let comm = Number(d.commissionValue || 0)
+      if (comm === 0 && commissionRate > 0) {
+        comm = finalPrice * (commissionRate / 100)
+      }
+      
+      if (d.status === 'DELIVERED') {
+        if (d.finalPriceCurrency === 'USD') {
+          commissionUsd += comm
+        } else {
+          commissionArs += comm
+        }
+      } else {
+        if (d.finalPriceCurrency === 'USD') {
+          pendingCommissionUsd += comm
+        } else {
+          pendingCommissionArs += comm
+        }
+      }
+    }
+  }
+
   return {
     leads: { total: totalLeads, active: activeLeads, new: newLeads, lost: lostLeads },
     units: { total: totalUnits, available: availableUnits, sold: soldUnits },
     deals: { active: activeDeals, completed: completedDeals, canceled: canceledDeals },
     notes: { collectedArs, pendingArs, overdueArs },
+    sellerCommission: isSeller ? {
+      commissionRate,
+      commissionArs,
+      commissionUsd,
+      pendingCommissionArs,
+      pendingCommissionUsd
+    } : null
   }
 }
 
@@ -73,6 +131,14 @@ function formatArs(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}k`
   return `$${formatNumber(Math.round(n))}`
+}
+
+function formatCurrency(n: number, currency: string) {
+  const formatted = new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(n)
+  return currency === 'USD' ? `$${formatted} USD` : `$${formatted} ARS`
 }
 
 interface KpiCardProps {
@@ -170,11 +236,24 @@ export default async function DashboardPage() {
     redirect('/login')
   }
 
-  let stats = {
+  let stats: {
+    leads: { total: number; active: number; new: number; lost: number }
+    units: { total: number; available: number; sold: number }
+    deals: { active: number; completed: number; canceled: number }
+    notes: { collectedArs: number; pendingArs: number; overdueArs: number }
+    sellerCommission: {
+      commissionRate: number
+      commissionArs: number
+      commissionUsd: number
+      pendingCommissionArs: number
+      pendingCommissionUsd: number
+    } | null
+  } = {
     leads: { total: 0, active: 0, new: 0, lost: 0 },
     units: { total: 0, available: 0, sold: 0 },
     deals: { active: 0, completed: 0, canceled: 0 },
     notes: { collectedArs: 0, pendingArs: 0, overdueArs: 0 },
+    sellerCommission: null
   }
 
   let companyName: string | undefined
@@ -211,6 +290,76 @@ export default async function DashboardPage() {
           <p className="mt-0.5 text-sm text-adaptive-secondary">{companyName}</p>
         )}
       </div>
+
+      {/* Mis Comisiones (Solo para Vendedores) */}
+      {stats.sellerCommission && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-white/5 pb-2">
+            <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
+              Mis Ganancias y Comisiones
+            </h2>
+            <span className="w-fit inline-flex items-center rounded-full bg-violet-500/10 dark:bg-violet-950/40 border border-violet-200/20 dark:border-violet-800/40 px-2.5 py-0.5 text-xs font-semibold text-violet-700 dark:text-violet-300">
+              Comisión Asignada: {stats.sellerCommission.commissionRate}%
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* Comisiones Ganadas */}
+            <Card className="relative overflow-hidden border-l-4 border-l-emerald-500 surface-secondary hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-widest text-adaptive-secondary">
+                  Ganancias Acumuladas
+                </CardTitle>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 transition-transform group-hover:scale-110">
+                  <Receipt className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="flex flex-col gap-1">
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                    {formatCurrency(stats.sellerCommission.commissionArs, 'ARS')}
+                  </p>
+                  {stats.sellerCommission.commissionUsd > 0 && (
+                    <p className="text-lg font-bold text-emerald-500/90 dark:text-emerald-350">
+                      {formatCurrency(stats.sellerCommission.commissionUsd, 'USD')}
+                    </p>
+                  )}
+                  <p className="text-xs text-adaptive-secondary mt-1">
+                    Comisiones por las {stats.deals.completed} ventas entregadas.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Comisiones Proyectadas */}
+            <Card className="relative overflow-hidden border-l-4 border-l-blue-500 surface-secondary hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
+                <CardTitle className="text-xs font-semibold uppercase tracking-widest text-adaptive-secondary">
+                  Comisiones en Proceso
+                </CardTitle>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 transition-transform group-hover:scale-110">
+                  <Clock className="h-4 w-4" />
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="flex flex-col gap-1">
+                  <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                    {formatCurrency(stats.sellerCommission.pendingCommissionArs, 'ARS')}
+                  </p>
+                  {stats.sellerCommission.pendingCommissionUsd > 0 && (
+                    <p className="text-lg font-bold text-blue-500/90 dark:text-blue-350">
+                      {formatCurrency(stats.sellerCommission.pendingCommissionUsd, 'USD')}
+                    </p>
+                  )}
+                  <p className="text-xs text-adaptive-secondary mt-1">
+                    Estimado de {stats.deals.active} operaciones activas en curso.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Resumen Operacional */}
       <div className="space-y-4">
