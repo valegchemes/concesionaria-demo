@@ -1095,7 +1095,7 @@ async function getCostAnalysis(
 ): Promise<CostAnalysisAnalytics> {
   const { start, end } = dateRange
 
-  // Costos de deals — sin filtro de fechas estricto para mostrar historial completo
+  // Costos de deals — con detalle de unidad y fecha
   const dealCosts = await prisma.dealCostItem.findMany({
     where: {
       deal: {
@@ -1103,7 +1103,19 @@ async function getCostAnalysis(
         updatedAt: { gte: start, lte: end },
       },
     },
-    select: { concept: true, amountArs: true, amountUsd: true },
+    select: {
+      concept: true,
+      amountArs: true,
+      amountUsd: true,
+      deal: {
+        select: {
+          updatedAt: true,
+          unit: {
+            select: { title: true, year: true, domain: true },
+          },
+        },
+      },
+    },
   })
 
   // Costos de unidades en período
@@ -1112,7 +1124,15 @@ async function getCostAnalysis(
       date: { gte: start, lte: end },
       unit: { companyId },
     },
-    select: { concept: true, amountArs: true, amountUsd: true },
+    select: {
+      concept: true,
+      amountArs: true,
+      amountUsd: true,
+      date: true,
+      unit: {
+        select: { title: true, year: true, domain: true },
+      },
+    },
   })
 
   // Gastos de la empresa (Costos mensuales)
@@ -1122,27 +1142,102 @@ async function getCostAnalysis(
       isActive: true,
       date: { gte: start, lte: end },
     },
-    select: { category: true, amountArs: true, amountUsd: true },
+    select: {
+      category: true,
+      description: true,
+      amountArs: true,
+      amountUsd: true,
+      date: true,
+    },
   })
 
   const costsByConcept = new Map<string, MoneyAmount>()
+  const itemsByConcept = new Map<string, any[]>()
 
-  for (const cost of [...dealCosts, ...unitCosts]) {
-    const existing = costsByConcept.get(cost.concept) || createMoneyAmount(0, 0)
-    costsByConcept.set(cost.concept, createMoneyAmount(
-      existing.ars + decimalToNumber(cost.amountArs),
-      existing.usd + decimalToNumber(cost.amountUsd),
-      userExchangeRate
-    ))
+  // Helper to add item details
+  const addItemToConcept = (conceptKey: string, item: any) => {
+    const list = itemsByConcept.get(conceptKey) || []
+    list.push(item)
+    itemsByConcept.set(conceptKey, list)
   }
 
-  for (const exp of companyExpenses) {
-    const existing = costsByConcept.get(exp.category) || createMoneyAmount(0, 0)
-    costsByConcept.set(exp.category, createMoneyAmount(
-      existing.ars + decimalToNumber(exp.amountArs),
-      existing.usd + decimalToNumber(exp.amountUsd),
+  // 1. Process deal costs
+  for (const cost of dealCosts) {
+    const concept = cost.concept || 'Otros'
+    const ars = decimalToNumber(cost.amountArs)
+    const usd = decimalToNumber(cost.amountUsd)
+    const amt = createMoneyAmount(ars, usd, userExchangeRate)
+
+    const existing = costsByConcept.get(concept) || createMoneyAmount(0, 0)
+    costsByConcept.set(concept, createMoneyAmount(
+      existing.ars + amt.ars,
+      existing.usd + amt.usd,
       userExchangeRate
     ))
+
+    const unit = cost.deal?.unit
+    const reference = unit ? `${unit.title} ${unit.year || ''} (${unit.domain || 'Sin patente'})` : 'Operación de venta'
+    
+    addItemToConcept(concept, {
+      concept: concept,
+      amountArs: ars,
+      amountUsd: usd,
+      totalConverted: amt.totalConverted,
+      date: cost.deal?.updatedAt?.toISOString() || new Date().toISOString(),
+      reference,
+    })
+  }
+
+  // 2. Process unit costs
+  for (const cost of unitCosts) {
+    const concept = cost.concept || 'Otros'
+    const ars = decimalToNumber(cost.amountArs)
+    const usd = decimalToNumber(cost.amountUsd)
+    const amt = createMoneyAmount(ars, usd, userExchangeRate)
+
+    const existing = costsByConcept.get(concept) || createMoneyAmount(0, 0)
+    costsByConcept.set(concept, createMoneyAmount(
+      existing.ars + amt.ars,
+      existing.usd + amt.usd,
+      userExchangeRate
+    ))
+
+    const unit = cost.unit
+    const reference = unit ? `${unit.title} ${unit.year || ''} (${unit.domain || 'Sin patente'})` : 'Gasto en Unidad'
+
+    addItemToConcept(concept, {
+      concept: concept,
+      amountArs: ars,
+      amountUsd: usd,
+      totalConverted: amt.totalConverted,
+      date: cost.date?.toISOString() || new Date().toISOString(),
+      reference,
+    })
+  }
+
+  // 3. Process company expenses
+  for (const exp of companyExpenses) {
+    const category = exp.category || 'Gastos Generales'
+    const ars = decimalToNumber(exp.amountArs)
+    const usd = decimalToNumber(exp.amountUsd)
+    const amt = createMoneyAmount(ars, usd, userExchangeRate)
+
+    const existing = costsByConcept.get(category) || createMoneyAmount(0, 0)
+    costsByConcept.set(category, createMoneyAmount(
+      existing.ars + amt.ars,
+      existing.usd + amt.usd,
+      userExchangeRate
+    ))
+
+    addItemToConcept(category, {
+      concept: category,
+      description: exp.description || undefined,
+      amountArs: ars,
+      amountUsd: usd,
+      totalConverted: amt.totalConverted,
+      date: exp.date?.toISOString() || new Date().toISOString(),
+      reference: 'Gasto General',
+    })
   }
 
   const totalCostsArs = Array.from(costsByConcept.values()).reduce((sum, c) => sum + c.ars, 0)
@@ -1155,6 +1250,7 @@ async function getCostAnalysis(
     percentage: totalCosts.totalConverted > 0
       ? (amount.totalConverted / totalCosts.totalConverted) * 100
       : 0,
+    items: itemsByConcept.get(category) || [],
   }))
 
   breakdown.sort((a, b) => b.amount.totalConverted - a.amount.totalConverted)

@@ -20,10 +20,12 @@ import { TopSellersChart } from './charts/top-sellers-chart'
 import { CostBreakdownChart } from './charts/cost-breakdown-chart'
 import { DashboardKPIs } from './dashboard-kpis'
 import { DealDetailsModal } from './deal-details-modal'
+import { CostDetailsModal } from './cost-details-modal'
 import { DashboardSkeleton } from './loading-skeleton'
 import { EmptyState } from './empty-state'
 import { AlertCircle, TrendingUp, Users, DollarSign, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CostItemDetail } from '@/lib/domains/analytics/types'
 
 
 // ============================================================================
@@ -51,6 +53,9 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
   const [dealsModalOpen, setDealsModalOpen] = useState(false)
   const [daySummaryOpen, setDaySummaryOpen] = useState(false)
   const [selectedDay, setSelectedDay] = useState<{ date: string; label: string } | null>(null)
+  const [costModalOpen, setCostModalOpen] = useState(false)
+  const [selectedCostCategory, setSelectedCostCategory] = useState('')
+  const [selectedCostItems, setSelectedCostItems] = useState<CostItemDetail[]>([])
   const [selectedDayData, setSelectedDayData] = useState<{
     salesArs: number
     salesUsd: number
@@ -270,6 +275,71 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                   />
                 </CardContent>
               </Card>
+
+              {/* Tabla Detallada Multidivisa */}
+              {salesProfit.chartData && salesProfit.chartData.length > 0 && (
+                <div className="overflow-hidden rounded-xl border border-slate-200/60 dark:border-slate-800/60 surface-primary">
+                  <div className="px-4 py-3.5 border-b border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-adaptive-primary">Métricas Detalladas por Período</h4>
+                      <p className="text-xs text-adaptive-secondary">Desglose exacto en Pesos Argentinos (ARS) y Dólares (USD)</p>
+                    </div>
+                    <span className="text-[10px] font-extrabold px-2.5 py-1 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 rounded-full uppercase tracking-wider">
+                      {salesProfit.chartData.length} períodos
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200/60 dark:border-slate-800/60 text-[11px] font-bold text-adaptive-secondary uppercase bg-slate-50/20 dark:bg-slate-900/5">
+                          <th className="px-4 py-3">Período</th>
+                          <th className="px-4 py-3 text-center">Operaciones</th>
+                          <th className="px-4 py-3 text-right">Ingresos (Ventas)</th>
+                          {!isSeller && <th className="px-4 py-3 text-right">Ganancia Neta</th>}
+                          {!isSeller && <th className="px-4 py-3 text-right">Costo Unidades</th>}
+                          {!isSeller && <th className="px-4 py-3 text-right">Gastos Operativos</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-[13px] text-adaptive-primary">
+                        {salesProfit.chartData.map((row) => (
+                          <tr key={row.date} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
+                            <td className="px-4 py-3 font-semibold">{row.name}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/50 rounded-md">
+                                {row.dealCount}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(row.salesArs, 'ARS')}</div>
+                              <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.salesUsd, 'USD')}</div>
+                            </td>
+                            {!isSeller && (
+                              <td className="px-4 py-3 text-right">
+                                <div className={cn("font-bold", row.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                  {formatCurrency(row.profitArs, 'ARS')}
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.profitUsd, 'USD')}</div>
+                              </td>
+                            )}
+                            {!isSeller && (
+                              <td className="px-4 py-3 text-right">
+                                <div className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(row.unitCostsArs, 'ARS')}</div>
+                                <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.unitCostsUsd, 'USD')}</div>
+                              </td>
+                            )}
+                            {!isSeller && (
+                              <td className="px-4 py-3 text-right">
+                                <div className="font-medium text-slate-700 dark:text-slate-300">{formatCurrency(row.operationalCostsArs, 'ARS')}</div>
+                                <div className="text-[10px] text-slate-400 font-medium">{formatCurrency(row.operationalCostsUsd, 'USD')}</div>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             {!isSeller && (
@@ -289,6 +359,11 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
                       <CostBreakdownChart 
                         data={costs.pieData}
                         isLoading={costs.isLoading}
+                        onCategoryClick={(categoryName, items) => {
+                          setSelectedCostCategory(categoryName)
+                          setSelectedCostItems(items)
+                          setCostModalOpen(true)
+                        }}
                       />
                     </CardContent>
                   </Card>
@@ -365,6 +440,14 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             isLoading={dayLoading}
             period={dayPeriod}
             summary={selectedDayData ?? undefined}
+          />
+
+          <CostDetailsModal
+            isOpen={costModalOpen}
+            onOpenChange={setCostModalOpen}
+            categoryName={selectedCostCategory}
+            items={selectedCostItems}
+            timeRangeLabel={options.find(o => o.value === timeRange)?.label}
           />
         </>
     </div>

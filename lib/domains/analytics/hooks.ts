@@ -19,7 +19,8 @@ import type {
   AnalyticsError,
   TimeSeriesDataPoint,
   SellerPerformance,
-  CostBreakdown
+  CostBreakdown,
+  CostItemDetail
 } from './types'
 import { analyticsCacheKeys } from './types'
 
@@ -256,6 +257,7 @@ interface UseCostAnalysisReturn {
     name: string
     value: number
     percentage: number
+    items?: CostItemDetail[]
   }>
 }
 
@@ -281,6 +283,7 @@ export function useCostAnalysis(
       name: item.category,
       value: item.amount.totalConverted,
       percentage: item.percentage,
+      items: item.items,
     }))
   }, [data])
 

@@ -95,38 +95,49 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
       maximumFractionDigits: 0,
     }).format(value)
 
+  // Calcular margen consolidado o promedio
+  const salesVal = payloadData.salesArs || 0
+  const profitVal = payloadData.profitArs || 0
+  const marginPercent = salesVal > 0 ? (profitVal / salesVal) * 100 : 0
+
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 shadow-lg min-w-[220px]">
-      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+    <div className="bg-white/95 dark:bg-slate-900/95 border border-slate-200/60 dark:border-slate-800/60 rounded-xl p-3 shadow-xl min-w-[220px] backdrop-blur-sm">
+      <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-widest">
         {label}
       </p>
 
-      <div className="mb-2.5">
-        <div className="flex justify-between gap-3 mb-1">
-          <span className="text-xs text-slate-600 dark:text-slate-400">Ingresos ARS</span>
-          <span className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{formattedAmount(payloadData.salesArs, 'ARS')}</span>
+      <div className="space-y-1 mb-2.5">
+        <div className="flex justify-between gap-3">
+          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Ingresos ARS</span>
+          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{formattedAmount(payloadData.salesArs, 'ARS')}</span>
         </div>
-        <div className="flex justify-between gap-3 mb-1">
-          <span className="text-xs text-slate-600 dark:text-slate-400">Ingresos USD</span>
-          <span className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{formattedAmount(payloadData.salesUsd, 'USD')}</span>
+        <div className="flex justify-between gap-3">
+          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Ingresos USD</span>
+          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{formattedAmount(payloadData.salesUsd, 'USD')}</span>
         </div>
       </div>
 
-      <div className="mb-2.5">
-        <div className="flex justify-between gap-3 mb-1">
-          <span className="text-xs text-slate-600 dark:text-slate-400">Ganancia ARS</span>
-          <span className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">{formattedAmount(payloadData.profitArs, 'ARS')}</span>
+      <div className="space-y-1 mb-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/40">
+        <div className="flex justify-between gap-3">
+          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Ganancia ARS</span>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formattedAmount(payloadData.profitArs, 'ARS')}</span>
         </div>
         <div className="flex justify-between gap-3">
-          <span className="text-xs text-slate-600 dark:text-slate-400">Ganancia USD</span>
-          <span className="text-[13px] font-bold text-emerald-600 dark:text-emerald-400">{formattedAmount(payloadData.profitUsd, 'USD')}</span>
+          <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">Ganancia USD</span>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{formattedAmount(payloadData.profitUsd, 'USD')}</span>
         </div>
       </div>
 
-      <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800">
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40 space-y-1">
         <div className="flex justify-between gap-3">
-          <span className="text-xs text-slate-600 dark:text-slate-400">Operaciones</span>
-          <span className="text-[13px] font-bold text-slate-900 dark:text-slate-100">{payloadData.dealCount}</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Operaciones</span>
+          <span className="text-xs font-bold text-slate-900 dark:text-slate-100">{payloadData.dealCount}</span>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Margen Neto</span>
+          <span className={cn("text-xs font-extrabold", marginPercent >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+            {marginPercent.toFixed(1)}%
+          </span>
         </div>
       </div>
     </div>
@@ -253,26 +264,18 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false, isSell
       )
     }
 
-    // Default overview mode (AreaChart)
+    // Default overview mode (AreaChart): Ventas vs Ganancias simplificado y prolijo
     return (
-      <ResponsiveContainer width="100%" height="90%">
-        <AreaChart data={data} margin={{ top: 15, right: 10, left: 10, bottom: 0 }} onClick={handlePointClick}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} onClick={handlePointClick}>
           <defs>
             <linearGradient id="gradSales" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.15} />
               <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="gradProfit" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} />
               <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="gradCosts" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f97316" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#f97316" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="gradOp" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
             </linearGradient>
           </defs>
 
@@ -280,74 +283,53 @@ export function SalesProfitChart({ data, isLoading, showDetailed = false, isSell
 
           <XAxis
             dataKey="name"
-            tick={{ fill: '#94a3b8', fontSize: 11 }}
+            tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 500 }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
           />
           <YAxis
-            tick={{ fill: '#94a3b8', fontSize: 11 }}
+            tick={{ fill: '#94a3b8', fontSize: 10 }}
             axisLine={false}
             tickLine={false}
-            tickFormatter={(val) => formatAxisTick(val, currencyMode)}
-            width={75}
+            tickFormatter={(val) => formatAxisTick(val, 'consolidated')}
+            width={65}
           />
 
           <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }} />
 
-          <Legend wrapperStyle={{ paddingTop: '16px' }} formatter={legendFormatter} />
+          <Legend wrapperStyle={{ paddingTop: '8px' }} formatter={legendFormatter} />
 
           <Area
             type="monotone"
-            dataKey={salesKey}
-            stroke={COLORS.sales.stroke}
+            dataKey="sales"
+            stroke="#6366f1"
             strokeWidth={2.5}
-            fill={COLORS.sales.fill}
+            fill="url(#gradSales)"
             dot={false}
-            activeDot={{ r: 5, fill: COLORS.sales.stroke, stroke: 'white', strokeWidth: 2 }}
+            activeDot={{ r: 4, fill: '#6366f1', stroke: 'white', strokeWidth: 2 }}
             name="sales"
           />
           {!isSeller && (
             <Area
               type="monotone"
-              dataKey={profitKey}
-              stroke={COLORS.profit.stroke}
+              dataKey="profit"
+              stroke="#10b981"
               strokeWidth={2.5}
-              fill={COLORS.profit.fill}
+              fill="url(#gradProfit)"
               dot={false}
-              activeDot={{ r: 5, fill: COLORS.profit.stroke, stroke: 'white', strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: '#10b981', stroke: 'white', strokeWidth: 2 }}
               name="profit"
-            />
-          )}
-          {!isSeller && (
-            <Area
-              type="monotone"
-              dataKey={unitCostsKey}
-              stroke={COLORS.unitCosts.stroke}
-              strokeWidth={2}
-              fill={COLORS.unitCosts.fill}
-              dot={false}
-              activeDot={{ r: 4, fill: COLORS.unitCosts.stroke, stroke: 'white', strokeWidth: 2 }}
-              name="unitCosts"
-              strokeDasharray="5 3"
-            />
-          )}
-          {!isSeller && (
-            <Area
-              type="monotone"
-              dataKey={operationalCostsKey}
-              stroke={COLORS.operationalCosts.stroke}
-              strokeWidth={2}
-              fill={COLORS.operationalCosts.fill}
-              dot={false}
-              activeDot={{ r: 4, fill: COLORS.operationalCosts.stroke, stroke: 'white', strokeWidth: 2 }}
-              name="operationalCosts"
-              strokeDasharray="3 3"
             />
           )}
         </AreaChart>
       </ResponsiveContainer>
     )
+  }
+
+  // Si no es detallado, renderizamos el AreaChart limpio directamente ocupando el 100% de la altura
+  if (!showDetailed) {
+    return renderContent()
   }
 
   return (

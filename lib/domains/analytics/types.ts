@@ -56,10 +56,21 @@ export interface SellerPerformance {
   conversionRate: number // Percentage
 }
 
+export interface CostItemDetail {
+  concept: string
+  description?: string
+  amountArs: number
+  amountUsd: number
+  totalConverted: number
+  date: string
+  reference?: string
+}
+
 export interface CostBreakdown {
   category: string
   amount: MoneyAmount
   percentage: number
+  items?: CostItemDetail[]
 }
 
 export interface UnitMetrics {

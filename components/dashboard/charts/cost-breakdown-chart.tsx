@@ -13,6 +13,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
+import { CostItemDetail } from '@/lib/domains/analytics/types'
 
 // ============================================================================
 // Tipos
@@ -22,11 +23,13 @@ interface ChartDataPoint {
   name: string
   value: number
   percentage: number
+  items?: CostItemDetail[]
 }
 
 interface CostBreakdownChartProps {
   data: ChartDataPoint[]
   isLoading: boolean
+  onCategoryClick?: (categoryName: string, items: CostItemDetail[]) => void
 }
 
 // ============================================================================
@@ -96,7 +99,7 @@ function CustomTooltip({
 // Componente principal
 // ============================================================================
 
-export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps) {
+export function CostBreakdownChart({ data, isLoading, onCategoryClick }: CostBreakdownChartProps) {
   if (isLoading) {
     return <Skeleton className="h-full w-full rounded-lg" />
   }
@@ -109,7 +112,7 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
     )
   }
 
-  // Group categories less than 1.5% into "Otros gastos" for cleaner chart & legend
+  // Group categories less than 1.5% into "Otros menores" for cleaner chart & legend
   const threshold = 1.5
   const mainCategories = data.filter((d) => d.percentage >= threshold)
   const minorCategories = data.filter((d) => d.percentage < threshold)
@@ -118,11 +121,16 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
   if (minorCategories.length > 0) {
     const minorValue = minorCategories.reduce((sum, item) => sum + item.value, 0)
     const minorPercent = minorCategories.reduce((sum, item) => sum + item.percentage, 0)
+    const minorItems = minorCategories.reduce((acc, cat) => {
+      return acc.concat(cat.items || [])
+    }, [] as CostItemDetail[])
+
     if (minorValue > 0) {
       processedData.push({
         name: 'Otros menores',
         value: minorValue,
         percentage: minorPercent,
+        items: minorItems,
       })
     }
   }
@@ -147,10 +155,12 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
               nameKey="name"
               strokeWidth={0}
             >
-              {processedData.map((_, index) => (
+              {processedData.map((item, index) => (
                 <Cell
                   key={`cell-${index}`}
                   fill={COLORS[index % COLORS.length]}
+                  onClick={() => onCategoryClick?.(item.name, item.items || [])}
+                  className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
                 />
               ))}
             </Pie>
@@ -162,7 +172,11 @@ export function CostBreakdownChart({ data, isLoading }: CostBreakdownChartProps)
       {/* Leyenda lateral elegante con hover */}
       <div className="flex flex-col gap-1 w-52 shrink-0 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
         {processedData.map((item, index) => (
-          <div key={item.name} className="flex items-center gap-2.5 min-w-0 p-1 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors cursor-default">
+          <div
+            key={item.name}
+            onClick={() => onCategoryClick?.(item.name, item.items || [])}
+            className="flex items-center gap-2.5 min-w-0 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-800/30"
+          >
             <span
               className="h-2.5 w-2.5 rounded-full shrink-0"
               style={{ backgroundColor: COLORS[index % COLORS.length] }}
