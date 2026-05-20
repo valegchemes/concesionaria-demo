@@ -11,10 +11,9 @@ const SCOPES = [
 export function getOAuth2Client() {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-  // Construct redirect URL dynamically based on environment or explicitly defined
-  const redirectUri = process.env.NEXT_PUBLIC_APP_URL
-    ? `${process.env.NEXT_PUBLIC_APP_URL}/api/email/gmail/callback`
-    : 'http://localhost:3000/api/email/gmail/callback'
+  // Use NEXTAUTH_URL which is already configured in production, fallback to localhost for dev
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const redirectUri = `${baseUrl}/api/email/gmail/callback`
 
   if (!clientId || !clientSecret) {
     throw new Error('Google OAuth credentials not configured in environment variables.')
