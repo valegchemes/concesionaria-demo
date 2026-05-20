@@ -68,8 +68,28 @@ export async function GET(req: Request) {
 
         let processedCount = 0
 
+        // SPAM / AUTO-SENDER FILTER: Only respond to real humans, never to automated senders
+        const AUTOMATED_SENDER_PATTERNS = [
+          'no-reply', 'noreply', 'do-not-reply', 'donotreply',
+          'mailer-daemon', 'postmaster', 'bounce',
+          'notifications@', 'notification@', 'alert@', 'alerts@',
+          'newsletter@', 'news@', 'updates@', 'update@',
+          'info@', 'support@', 'billing@', 'account@',
+          'hello@ollama', 'microsoft-noreply', 'pubgmobile',
+          'accounts.google.com', 'mail.pubgmobile', 'googleplay'
+        ]
+
         // Process each unread email
         for (const email of unreadEmails) {
+          // Skip automated senders
+          const fromLower = email.from.toLowerCase()
+          const isAutomated = AUTOMATED_SENDER_PATTERNS.some(pattern => fromLower.includes(pattern))
+          if (isAutomated) {
+            log.info({}, `Skipping automated sender: ${email.from}`)
+            await markAsRead(company.id, email.id)
+            continue
+          }
+
           log.info({}, `Processing email from ${email.from} - Subject: ${email.subject}`)
           
           const prompt = `Actuá como el sistema de Respuesta Automática por Email con IA de la concesionaria de autos "${company.name}" (Argentina).
@@ -105,7 +125,7 @@ Reglas obligatorias:
 Devolvé únicamente el texto redactado de la propuesta de correo de respuesta (puede incluir formato HTML básico como <b>, <br>, <ul>, <li> o dejarlo en Markdown simple).`
 
           const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
