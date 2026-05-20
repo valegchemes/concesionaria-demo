@@ -39,6 +39,8 @@ model Company {
   promissoryNotes    PromissoryNote[]
   digitalDocuments   DigitalDocument[]
   customVehicleDictionary CustomVehicleDictionary[]
+  cashSessions       CashSession[]
+  cashTransactions   CashTransaction[]
 
   @@map("Company")
 }
@@ -66,6 +68,7 @@ model User {
   company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customRoles    Role[]         @relation("UserRoles")
   createdUnits   Unit[]         @relation("CreatedUnits")
+  cashSessions   CashSession[]
 
   @@unique([email, companyId])
   @@index([companyId])
@@ -725,4 +728,57 @@ model CustomVehicleDictionary {
   @@unique([companyId, brand, model])
   @@index([companyId])
   @@map("CustomVehicleDictionary")
+}
+
+model CashSession {
+  id             String            @id @default(cuid())
+  companyId      String
+  userId         String
+  openedAt       DateTime          @default(now())
+  closedAt       DateTime?
+  openingBalance Decimal           @db.Decimal(12, 2)
+  closingBalance Decimal?          @db.Decimal(12, 2)
+  actualBalance  Decimal?          @db.Decimal(12, 2)
+  status         CashSessionStatus @default(OPEN)
+  notes          String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  company        Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id])
+  transactions   CashTransaction[]
+
+  @@index([companyId])
+  @@index([userId])
+  @@map("CashSession")
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+model CashTransaction {
+  id            String              @id @default(cuid())
+  companyId     String
+  sessionId     String
+  type          CashTransactionType
+  amount        Decimal             @db.Decimal(12, 2)
+  currency      Currency            @default(ARS)
+  concept       String
+  referenceId   String?
+  referenceType String?
+  createdAt     DateTime            @default(now())
+
+  company       Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  session       CashSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([sessionId])
+  @@map("CashTransaction")
+}
+
+enum CashTransactionType {
+  INFLOW
+  OUTFLOW
 }

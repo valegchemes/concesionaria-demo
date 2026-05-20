@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Search, Car, Bike, Anchor, Edit, Trash2, Loader2, MapPin, Users, Eye, FileDown, Filter, Upload } from 'lucide-react'
+import { Plus, Search, Car, Bike, Anchor, Edit, Trash2, Loader2, MapPin, Users, Eye, FileDown, Filter, Upload, Inbox, ArrowRightLeft, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { exportToExcel } from '@/lib/utils/export'
 
@@ -61,6 +62,25 @@ export default function UnitsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
 
+  // Estados para Toma de Usados
+  const [tradeIns, setTradeIns] = useState<any[]>([])
+  const [loadingTradeIns, setLoadingTradeIns] = useState(false)
+  const [isTradeInModalOpen, setIsTradeInModalOpen] = useState(false)
+  const [selectedTradeIn, setSelectedTradeIn] = useState<any>(null)
+
+  // Campos para el formulario de conversión
+  const [tiTitle, setTiTitle] = useState('')
+  const [tiType, setTiType] = useState<'CAR' | 'MOTORCYCLE' | 'BOAT'>('CAR')
+  const [tiYear, setTiYear] = useState('')
+  const [tiDomain, setTiDomain] = useState('')
+  const [tiVin, setTiVin] = useState('')
+  const [tiEngineNumber, setTiEngineNumber] = useState('')
+  const [tiCostArs, setTiCostArs] = useState('')
+  const [tiCostUsd, setTiCostUsd] = useState('')
+  const [tiPriceArs, setTiPriceArs] = useState('')
+  const [tiPriceUsd, setTiPriceUsd] = useState('')
+  const [submittingTradeIn, setSubmittingTradeIn] = useState(false)
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
@@ -68,7 +88,83 @@ export default function UnitsPage() {
       if (urlStatus) setStatusFilter(urlStatus)
     }
     fetchUnits()
+    fetchTradeIns()
   }, [])
+
+  async function fetchTradeIns() {
+    try {
+      setLoadingTradeIns(true)
+      const res = await fetch('/api/units/trade-ins')
+      if (res.ok) {
+        const json = await res.json()
+        setTradeIns(json.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching trade-ins:', err)
+    } finally {
+      setLoadingTradeIns(false)
+    }
+  }
+
+  async function handleConvertTradeIn(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedTradeIn) return
+    try {
+      setSubmittingTradeIn(true)
+      const res = await fetch('/api/units/trade-ins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tradeInId: selectedTradeIn.id,
+          title: tiTitle,
+          type: tiType,
+          year: tiYear ? parseInt(tiYear, 10) : null,
+          domain: tiDomain,
+          vin: tiVin,
+          engineNumber: tiEngineNumber,
+          acquisitionCostArs: parseFloat(tiCostArs) || null,
+          acquisitionCostUsd: parseFloat(tiCostUsd) || null,
+          priceArs: parseFloat(tiPriceArs) || null,
+          priceUsd: parseFloat(tiPriceUsd) || null,
+        })
+      })
+      const json = await res.json()
+      if (json.success) {
+        setIsTradeInModalOpen(false)
+        fetchUnits()
+        fetchTradeIns()
+        alert('Unidad creada con éxito en el inventario.')
+      } else {
+        alert(json.error || 'Error al convertir el vehículo')
+      }
+    } catch {
+      alert('Error de conexión')
+    } finally {
+      setSubmittingTradeIn(false)
+    }
+  }
+
+  function openConversionModal(tradeIn: any) {
+    setSelectedTradeIn(tradeIn)
+    setTiTitle(tradeIn.description)
+    setTiType('CAR')
+    setTiYear('')
+    setTiDomain('')
+    setTiVin('')
+    setTiEngineNumber('')
+    if (tradeIn.currency === 'USD') {
+      setTiCostUsd(String(tradeIn.finalValue))
+      setTiCostArs('')
+      setTiPriceUsd(String(Math.round(tradeIn.finalValue * 1.15)))
+      setTiPriceArs('')
+    } else {
+      setTiCostArs(String(tradeIn.finalValue))
+      setTiCostUsd('')
+      setTiPriceArs(String(Math.round(tradeIn.finalValue * 1.15)))
+      setTiPriceUsd('')
+    }
+    setIsTradeInModalOpen(true)
+  }
 
   async function fetchUnits() {
     try {
@@ -199,13 +295,13 @@ export default function UnitsPage() {
 
       {/* Filtros rápidos */}
       <div className="flex flex-col sm:flex-row gap-2">
-        <div className="flex gap-1 p-1 rounded-lg surface-secondary backdrop-blur-sm shadow-sm">
-          {['ALL','AVAILABLE','IN_PREP','RESERVED','SOLD'].map(s => (
+        <div className="flex gap-1 p-1 rounded-lg surface-secondary backdrop-blur-sm shadow-sm overflow-x-auto max-w-full">
+          {['ALL','AVAILABLE','IN_PREP','RESERVED','SOLD','TRADE_IN'].map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
-              className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all',
+              className={cn('rounded-md px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap',
                 statusFilter === s ? 'surface-primary text-adaptive-primary shadow-sm' : 'text-adaptive-secondary hover:text-adaptive-primary'
               )}>
-              {s === 'ALL' ? 'Todos' : s === 'AVAILABLE' ? 'Disponible' : s === 'IN_PREP' ? 'En prep.' : s === 'RESERVED' ? 'Reservado' : 'Vendido'}
+              {s === 'ALL' ? 'Todos' : s === 'AVAILABLE' ? 'Disponible' : s === 'IN_PREP' ? 'En prep.' : s === 'RESERVED' ? 'Reservado' : s === 'SOLD' ? 'Vendido' : 'Toma de Usados 📥'}
             </button>
           ))}
         </div>
@@ -259,7 +355,62 @@ export default function UnitsPage() {
         </Card>
       )}
 
-      {!loading && !error && filteredUnits.length === 0 && (
+      {/* Vista de Toma de Usados */}
+      {statusFilter === 'TRADE_IN' && (
+        <div className="space-y-4">
+          {loadingTradeIns && (
+            <div className="py-12 flex justify-center items-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+          {!loadingTradeIns && tradeIns.length === 0 ? (
+            <Card className="surface-secondary">
+              <CardContent className="py-16 text-center">
+                <Inbox className="h-12 w-12 mx-auto mb-3 text-adaptive-secondary opacity-50" />
+                <p className="font-semibold text-adaptive-primary">No hay autos tomados en parte de pago pendientes.</p>
+                <p className="text-xs text-adaptive-secondary mt-1">Los vehículos ingresados como trade-in en las operaciones cerradas aparecerán aquí.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {tradeIns.map((t) => (
+                <Card key={t.id} className="overflow-hidden surface-primary hover:-translate-y-1 transition-all duration-300 group flex flex-col justify-between border border-white/5 shadow-sm">
+                  <CardContent className="p-5 flex-1 flex flex-col justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400 font-bold uppercase mb-2">
+                        <ArrowRightLeft className="h-3.5 w-3.5 animate-pulse" />
+                        Toma de Usado
+                      </div>
+                      <h3 className="font-bold text-base text-foreground leading-snug">{t.description}</h3>
+                      <p className="text-xs text-adaptive-secondary mt-2">
+                        Recibido de: <span className="font-semibold text-adaptive-primary">{t.clientName}</span>
+                      </p>
+                      <p className="text-xs text-adaptive-secondary mt-1">
+                        Por venta de: <span className="font-semibold text-adaptive-primary">{t.sourceUnitTitle}</span>
+                      </p>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/5 flex justify-between items-end">
+                      <div>
+                        <p className="text-[9px] uppercase font-bold text-adaptive-secondary">Valor Tomado</p>
+                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                          {formatPriceSimple(t.finalValue, t.currency)}
+                        </p>
+                      </div>
+                      <Button size="sm" className="gap-1 bg-emerald-600 hover:bg-emerald-700 text-xs py-1 h-8" onClick={() => openConversionModal(t)}>
+                        <Plus className="h-3.5 w-3.5" />
+                        Ingresar a Stock
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {statusFilter !== 'TRADE_IN' && !loading && !error && filteredUnits.length === 0 && (
         <Card className="surface-secondary">
           <CardContent className="py-16 text-center">
             <Car className="h-12 w-12 mx-auto mb-3 text-adaptive-secondary opacity-50" />
@@ -275,7 +426,7 @@ export default function UnitsPage() {
         </Card>
       )}
 
-      {!loading && !error && filteredUnits.length > 0 && (
+      {statusFilter !== 'TRADE_IN' && !loading && !error && filteredUnits.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredUnits.map((unit) => {
             const TypeIcon = typeIcons[unit.type] ?? Car
@@ -286,7 +437,7 @@ export default function UnitsPage() {
             const gradient = typeGradients[unit.type] ?? 'from-slate-700 to-slate-900'
 
             return (
-              <Card key={unit.id} className="overflow-hidden surface-primary hover:-translate-y-1 transition-transform duration-300 group">
+              <Card key={unit.id} className="overflow-hidden surface-primary hover:-translate-y-1 transition-transform duration-300 group border border-white/5">
                 {/* Imagen / Placeholder Premium */}
                 <Link href={`/app/units/${unit.id}`}>
                   <div className="aspect-video bg-muted relative overflow-hidden cursor-pointer">
@@ -401,6 +552,93 @@ export default function UnitsPage() {
               </Card>
             )
           })}
+        </div>
+      )}
+
+      {/* MODAL: Conversión de TradeIn a Unidad de Stock */}
+      {isTradeInModalOpen && selectedTradeIn && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-lg surface-primary border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-white/5">
+              <h3 className="text-base font-bold text-adaptive-primary flex items-center gap-2">
+                <ArrowRightLeft className="h-5 w-5 text-yellow-500" />
+                Ingresar Usado al Inventario
+              </h3>
+              <button onClick={() => setIsTradeInModalOpen(false)} className="text-adaptive-secondary hover:text-adaptive-primary">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleConvertTradeIn} className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+              <p className="text-xs text-adaptive-secondary">
+                Completa los datos técnicos y de costo para ingresar el usado en la base de datos de unidades. Se creará en estado <strong>En preparación (IN_PREP)</strong>.
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label htmlFor="tiTitle">Título / Descripción del Auto</Label>
+                  <Input id="tiTitle" required value={tiTitle} onChange={(e) => setTiTitle(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiType">Tipo de Unidad</Label>
+                  <select id="tiType" value={tiType} onChange={(e: any) => setTiType(e.target.value)} className="w-full rounded-lg border border-adaptive surface-secondary text-adaptive-primary text-sm p-2">
+                    <option value="CAR">🚗 Auto</option>
+                    <option value="MOTORCYCLE">🏍 Moto</option>
+                    <option value="BOAT">⛵ Lancha / Náutica</option>
+                  </select>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiYear">Año Modelo</Label>
+                  <Input id="tiYear" type="number" placeholder="Ej: 2019" value={tiYear} onChange={(e) => setTiYear(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiDomain">Patente / Dominio</Label>
+                  <Input id="tiDomain" placeholder="Ej: AB123CD" value={tiDomain} onChange={(e) => setTiDomain(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiVin">Chasis / VIN</Label>
+                  <Input id="tiVin" placeholder="Número de chasis" value={tiVin} onChange={(e) => setTiVin(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiEngineNumber">Número de Motor</Label>
+                  <Input id="tiEngineNumber" placeholder="Número de motor" value={tiEngineNumber} onChange={(e) => setTiEngineNumber(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiCostArs">Costo Adquisición (ARS)</Label>
+                  <Input id="tiCostArs" type="number" value={tiCostArs} onChange={(e) => setTiCostArs(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiCostUsd">Costo Adquisición (USD)</Label>
+                  <Input id="tiCostUsd" type="number" value={tiCostUsd} onChange={(e) => setTiCostUsd(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiPriceArs">Precio sugerido venta (ARS)</Label>
+                  <Input id="tiPriceArs" type="number" value={tiPriceArs} onChange={(e) => setTiPriceArs(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="tiPriceUsd">Precio sugerido venta (USD)</Label>
+                  <Input id="tiPriceUsd" type="number" value={tiPriceUsd} onChange={(e) => setTiPriceUsd(e.target.value)} className="surface-secondary text-adaptive-primary" />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-white/5">
+                <Button type="button" variant="outline" onClick={() => setIsTradeInModalOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={submittingTradeIn} className="bg-emerald-600 hover:bg-emerald-700">
+                  {submittingTradeIn ? 'Ingresando...' : 'Confirmar Ingreso'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

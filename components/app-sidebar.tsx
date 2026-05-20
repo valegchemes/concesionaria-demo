@@ -16,6 +16,8 @@ import {
   ChevronRight,
   ShieldCheck,
   FileText,
+  ClipboardList,
+  Banknote,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -27,6 +29,7 @@ const navGroups = [
       { name: 'Leads',        href: '/app/leads',     icon: Users,           color: 'text-violet-400' },
       { name: 'Unidades',     href: '/app/units',     icon: Car,             color: 'text-emerald-400' },
       { name: 'Operaciones',  href: '/app/deals',     icon: Handshake,       color: 'text-amber-400' },
+      { name: 'Gestoría',     href: '/app/gestoria',  icon: ClipboardList,   color: 'text-yellow-400' },
       { name: 'Documentos',   href: '/app/documents', icon: FileText,        color: 'text-indigo-400' },
     ],
   },
@@ -34,6 +37,7 @@ const navGroups = [
     label: 'Administración',
     items: [
       { name: 'Equipo',           href: '/app/team',              icon: UsersRound,   color: 'text-sky-400' },
+      { name: 'Caja Diaria',      href: '/app/finance',           icon: Banknote,     color: 'text-emerald-400' },
       { name: 'Costos Mensuales', href: '/app/expenses',          icon: Wallet,       color: 'text-rose-400' },
       { name: 'Configuración',    href: '/app/settings',          icon: Settings,     color: 'text-slate-400' },
       { name: 'Auditoría',        href: '/app/settings/audit',    icon: ShieldCheck,  color: 'text-indigo-400' },

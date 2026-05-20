@@ -118,38 +118,38 @@ export function GestoriaTab({ unitId, attributes, onSaveAttributes }: GestoriaTa
     <div className="space-y-6">
       {/* Visual Header Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="md:col-span-2 border border-border">
+        <Card className="md:col-span-2 border border-white/5 surface-primary">
           <CardContent className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-1.5 flex-1">
-              <span className="text-xs uppercase font-bold text-slate-400 dark:text-slate-300 tracking-wider">Control de Trámites</span>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Progreso Legal de la Unidad</h3>
-              <p className="text-xs text-muted-foreground">Monitoreo de documentación obligatoria para la transferencia segura del vehículo.</p>
+              <span className="text-xs uppercase font-bold text-indigo-600 dark:text-indigo-400 tracking-wider">Control de Trámites</span>
+              <h3 className="text-lg font-bold text-adaptive-primary">Progreso Legal de la Unidad</h3>
+              <p className="text-xs text-adaptive-secondary">Monitoreo de documentación obligatoria para la transferencia segura del vehículo.</p>
             </div>
             
             {/* Real Progress Bar */}
             <div className="flex flex-col items-center gap-2">
               <div className="relative flex items-center justify-center">
                 <svg className="w-16 h-16 transform -rotate-90">
-                  <circle cx="32" cy="32" r="28" className="stroke-muted fill-transparent" strokeWidth="6" />
+                  <circle cx="32" cy="32" r="28" className="stroke-slate-200 dark:stroke-slate-800 fill-transparent" strokeWidth="6" />
                   <circle 
                     cx="32" 
                     cy="32" 
                     r="28" 
-                    className="stroke-primary fill-transparent transition-all duration-500 ease-out" 
+                    className="stroke-indigo-600 dark:stroke-indigo-400 fill-transparent transition-all duration-500 ease-out" 
                     strokeWidth="6" 
                     strokeDasharray={2 * Math.PI * 28} 
                     strokeDashoffset={2 * Math.PI * 28 * (1 - progressPercent / 100)} 
                   />
                 </svg>
-                <span className="absolute text-sm font-black text-slate-800 dark:text-slate-100">{progressPercent}%</span>
+                <span className="absolute text-sm font-black text-adaptive-primary">{progressPercent}%</span>
               </div>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Completado</span>
+              <span className="text-[10px] font-bold text-adaptive-secondary uppercase tracking-wider">Completado</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Action Controls Box */}
-        <Card className="flex flex-col justify-center border border-border">
+        <Card className="flex flex-col justify-center border border-white/5 surface-primary">
           <CardContent className="p-6 space-y-3 flex flex-col justify-center h-full">
             <Button 
               onClick={handleSave} 
@@ -169,25 +169,25 @@ export function GestoriaTab({ unitId, attributes, onSaveAttributes }: GestoriaTa
       </div>
 
       {/* Checklist items */}
-      <Card className="border border-border">
-        <CardHeader className="bg-muted/40 pb-4 border-b border-border">
-          <CardTitle className="text-base flex items-center gap-2 text-slate-800 dark:text-slate-100">
-            <ClipboardList className="h-5 w-5 text-indigo-600" />
+      <Card className="border border-white/5 surface-primary">
+        <CardHeader className="bg-slate-100/50 dark:bg-slate-900/50 pb-4 border-b border-white/5">
+          <CardTitle className="text-base flex items-center gap-2 text-adaptive-primary">
+            <ClipboardList className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             Checklist de Documentación Legal (Argentina)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-0 divide-y divide-border">
+        <CardContent className="p-0 divide-y divide-white/5">
           {GESTORIA_ITEMS.map((item) => {
             const currentStatus = statuses[item.key] || 'PENDIENTE'
             const config = STATUS_CONFIG[currentStatus]
             const StatusIcon = config.icon
 
             return (
-              <div key={item.key} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+              <div key={item.key} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-100/30 dark:hover:bg-slate-800/20 transition-colors">
                 {/* Text explanation */}
                 <div className="space-y-1 flex-1">
-                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">{item.label}</h4>
-                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                  <h4 className="text-sm font-bold text-adaptive-primary">{item.label}</h4>
+                  <p className="text-xs text-adaptive-secondary">{item.description}</p>
                 </div>
 
                 {/* Status Switcher Selector chips */}
@@ -204,7 +204,7 @@ export function GestoriaTab({ unitId, attributes, onSaveAttributes }: GestoriaTa
                         className={`px-3 py-1.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
                           isSelected 
                             ? conf.bg + ' shadow-sm scale-[1.03]'
-                            : 'bg-background hover:bg-slate-50 dark:hover:bg-slate-800 border-border text-muted-foreground dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100'
+                            : 'bg-transparent border-slate-200 dark:border-slate-800 text-adaptive-secondary hover:text-adaptive-primary hover:bg-slate-100 dark:hover:bg-slate-900'
                         }`}
                       >
                         {isSelected && <StatusIcon className="h-3.5 w-3.5 flex-shrink-0" />}
@@ -220,10 +220,10 @@ export function GestoriaTab({ unitId, attributes, onSaveAttributes }: GestoriaTa
       </Card>
 
       {/* Gestor timeline comments box */}
-      <Card className="border border-border">
-        <CardHeader className="bg-muted/40 pb-4 border-b border-border">
-          <CardTitle className="text-base flex items-center gap-2 text-slate-800 dark:text-slate-100">
-            <PenTool className="h-5 w-5 text-indigo-600" />
+      <Card className="border border-white/5 surface-primary">
+        <CardHeader className="bg-slate-100/50 dark:bg-slate-900/50 pb-4 border-b border-white/5">
+          <CardTitle className="text-base flex items-center gap-2 text-adaptive-primary">
+            <PenTool className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
             Observaciones e Historial del Gestor
           </CardTitle>
         </CardHeader>
@@ -234,7 +234,7 @@ export function GestoriaTab({ unitId, attributes, onSaveAttributes }: GestoriaTa
             placeholder="Escribí aquí novedades sobre el estado legal del auto, por ejemplo:
 - 19/05/2026: Se ingresó la transferencia en el Registro Seccional N° 3.
 - Firma certificada del comprador pendiente..."
-            className="w-full min-h-[140px] px-4 py-3 rounded-2xl border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
+            className="w-full min-h-[140px] px-4 py-3 rounded-2xl border border-adaptive surface-secondary text-adaptive-primary text-sm focus:outline-none focus:ring-2 focus:ring-primary shadow-sm"
           />
         </CardContent>
       </Card>

@@ -257,12 +257,21 @@ export default async function DashboardPage() {
   }
 
   let companyName: string | undefined
-
   let analyticsEnabled = false
+  let userRole = session.user.role
 
   try {
+    // Fetch user from DB to prevent stale session role issues
+    const dbUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true }
+    })
+    if (dbUser) {
+      userRole = dbUser.role
+    }
+
     const [data, company, planLimits] = await Promise.all([
-      getDashboardData(session.user.companyId, session.user.id, session.user.role),
+      getDashboardData(session.user.companyId, session.user.id, userRole),
       prisma.company.findUnique({
         where: { id: session.user.companyId },
         select: { name: true },
@@ -504,7 +513,7 @@ export default async function DashboardPage() {
             companyId={session.user.companyId}
             companyName={companyName}
             hideHeader
-            userRole={session.user.role}
+            userRole={userRole}
           />
         ) : (
           <Card className="surface-secondary">

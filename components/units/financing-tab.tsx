@@ -107,104 +107,10 @@ _Los montos son simulados y sujetos a aprobación crediticia. Cualquier duda, es
     window.open(`https://api.whatsapp.com/send?text=${encodedText}`, '_blank')
   }
 
-  // Generate a jaw-dropping PDF using vector shapes in jsPDF for maximum resolution and premium quality
+  // Generate a jaw-dropping PDF on the server side using pdfkit for maximum resolution and premium quality
   const downloadFinancingPdf = () => {
-    const doc = new jsPDF()
-
-    // Color Palette
-    const slate800 = [30, 41, 59]
-    const indigo700 = [67, 56, 202]
-    const slate600 = [71, 85, 105]
-    const textGray = [51, 65, 85]
-
-    // Brand header banner
-    doc.setFillColor(indigo700[0], indigo700[1], indigo700[2])
-    doc.rect(0, 0, 210, 40, 'F')
-
-    // Document Title
-    doc.setTextColor(255, 255, 255)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(22)
-    doc.text('PROPUESTA DE FINANCIACIÓN', 15, 25)
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
-    doc.text(company?.name || 'AUTOMANAGER CRM', 150, 25)
-
-    // Divider Line
-    doc.setDrawColor(226, 232, 240)
-    doc.setLineWidth(0.5)
-    doc.line(15, 48, 195, 48)
-
-    // Unit info section
-    doc.setTextColor(slate800[0], slate800[1], slate800[2])
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(14)
-    doc.text('Vehículo Seleccionado', 15, 60)
-
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(11)
-    doc.setTextColor(textGray[0], textGray[1], textGray[2])
-    doc.text(`Unidad: ${unit.title}`, 15, 68)
-    if (unit.year) doc.text(`Año: ${unit.year}`, 15, 75)
-    if (unit.domain) doc.text(`Patente / Dominio: ${unit.domain.toUpperCase()}`, 15, 82)
-
-    // Visual Box for financial summaries
-    doc.setFillColor(248, 250, 252) // Light Gray
-    doc.roundedRect(15, 92, 180, 75, 4, 4, 'F')
-    doc.setDrawColor(203, 213, 225)
-    doc.roundedRect(15, 92, 180, 75, 4, 4, 'D')
-
-    doc.setTextColor(slate800[0], slate800[1], slate800[2])
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(12)
-    doc.text('Detalles del Financiamiento', 22, 104)
-
-    // Simulation numbers
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
-    doc.setTextColor(textGray[0], textGray[1], textGray[2])
-    doc.text('Precio de la unidad:', 22, 114)
-    doc.text('Anticipo / Entrega acordada:', 22, 122)
-    doc.text('Saldo neto a financiar:', 22, 130)
-    doc.text('Plazo del préstamo:', 22, 138)
-    doc.text('Tasa Nominal Anual (TNA):', 22, 146)
-    doc.text('Tipo de Financiación:', 22, 154)
-
-    doc.setFont('helvetica', 'bold')
-    const formatValue = (val: number) => financingType === 'usd' ? `US$ ${val.toLocaleString('es-AR')}` : formatPrice(val, 'ARS')
-    doc.text(formatValue(price), 100, 114)
-    doc.text(`${formatValue(downPayment)} (${downPaymentPercent}%)`, 100, 122)
-    doc.text(formatValue(totalToFinance), 100, 130)
-    doc.text(`${months} meses`, 100, 138)
-    doc.text(`${interestRate}% TNA`, 100, 146)
-    doc.text(financingType === 'fixed' ? 'Pesos - Cuotas Fijas' : financingType === 'uva' ? 'Pesos - Cuotas UVA' : 'Dólares Billete', 100, 154)
-
-    // Grand display: Monthly installment box
-    doc.setFillColor(67, 56, 202) // Indigo
-    doc.roundedRect(15, 178, 180, 25, 4, 4, 'F')
-
-    doc.setTextColor(255, 255, 255)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11)
-    doc.text('CUOTA MENSUAL ESTIMADA:', 22, 194)
-    
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(16)
-    doc.text(formatValue(monthlyInstallment), 110, 194)
-
-    // Legal Footer notes
-    doc.setTextColor(slate600[0], slate600[1], slate600[2])
-    doc.setFont('helvetica', 'italic')
-    doc.setFontSize(8.5)
-    doc.text('* Esta cotización es un simulador preliminar y no implica aprobación crediticia definitiva.', 15, 225)
-    doc.text('* Cuotas e intereses calculados bajo amortización de Sistema Francés.', 15, 230)
-    if (company?.phone || company?.email) {
-      doc.setFont('helvetica', 'bold')
-      doc.text(`Consultas o contacto: ${company.phone || ''} | ${company.email || ''}`, 15, 245)
-    }
-
-    doc.save(`Cotizacion_${unit.title.replace(/\s+/g, '_')}.pdf`)
+    const url = `/api/units/${unit.id}/financing-pdf?price=${price}&downPayment=${downPayment}&months=${months}&interestRate=${interestRate}&financingType=${financingType}`
+    window.open(url, '_blank')
   }
 
   return (
