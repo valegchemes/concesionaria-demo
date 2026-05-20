@@ -125,7 +125,7 @@ Reglas obligatorias:
 Devolvé únicamente el texto redactado de la propuesta de correo de respuesta (puede incluir formato HTML básico como <b>, <br>, <ul>, <li> o dejarlo en Markdown simple).`
 
           const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${geminiKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
