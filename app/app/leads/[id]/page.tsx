@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDate, formatPrice, generateWhatsAppLink } from '@/lib/utils'
 import { 
   ArrowLeft, Phone, Mail, User, Car, MessageCircle, Send,
-  Calendar, CheckCircle, Clock, AlertCircle, Handshake, Lock, X, ChevronDown
+  Calendar, CheckCircle, Clock, AlertCircle, Handshake, Lock, X, ChevronDown,
+  Sparkles, Copy, Check, Loader2
 } from 'lucide-react'
 import { LeadPromissoryNotesTab } from '@/components/leads/lead-promissory-notes-tab'
 import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
@@ -155,6 +156,129 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [selectedDealId, setSelectedDealId] = useState<string>('')
   const [waPreviewMessage, setWaPreviewMessage] = useState('')
   const [waPhoneNumber, setWaPhoneNumber] = useState<string>('')
+
+  // AI assistant state
+  const [isAiOpen, setIsAiOpen] = useState(false)
+  const [aiQuestion, setAiQuestion] = useState('')
+  const [aiSelectedUnitId, setAiSelectedUnitId] = useState<string>('')
+  const [aiPrice, setAiPrice] = useState<number>(0)
+  const [aiDownPayment, setAiDownPayment] = useState<number>(0)
+  const [aiInterestRate, setAiInterestRate] = useState<number>(48)
+  const [aiFinancingType, setAiFinancingType] = useState<'fixed' | 'uva' | 'usd'>('fixed')
+  const [aiMonthsOptions, setAiMonthsOptions] = useState<number[]>([12, 24, 36, 48])
+  const [aiResponse, setAiResponse] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [units, setUnits] = useState<{ id: string; title: string; priceArs: number | null; priceUsd: number | null }[]>([])
+  const [copied, setCopied] = useState(false)
+
+  const openAiAssistant = useCallback(async () => {
+    setIsAiOpen(true)
+    setAiError(null)
+    setAiResponse('')
+    setAiQuestion('')
+    
+    // Pre-select lead's interested unit if it exists
+    if (lead?.interestedUnit) {
+      setAiSelectedUnitId(lead.interestedUnit.id)
+      const uPrice = lead.interestedUnit.priceUsd || lead.interestedUnit.priceArs || 0
+      setAiPrice(uPrice)
+      setAiDownPayment(Math.round(uPrice * 0.4))
+      if (lead.interestedUnit.priceUsd) {
+        setAiFinancingType('usd')
+      } else {
+        setAiFinancingType('fixed')
+      }
+    } else {
+      setAiSelectedUnitId('')
+      setAiPrice(0)
+      setAiDownPayment(0)
+      setAiFinancingType('fixed')
+    }
+
+    // Fetch available units
+    try {
+      const res = await fetch('/api/units?limit=100')
+      if (res.ok) {
+        const data = await res.json()
+        setUnits(data.units || [])
+        // If no unit was preselected but we have units, select the first one
+        if (!lead?.interestedUnit && data.units?.[0]) {
+          const firstUnit = data.units[0]
+          setAiSelectedUnitId(firstUnit.id)
+          const uPrice = firstUnit.priceUsd || firstUnit.priceArs || 0
+          setAiPrice(uPrice)
+          setAiDownPayment(Math.round(uPrice * 0.4))
+          if (firstUnit.priceUsd) {
+            setAiFinancingType('usd')
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching units for AI:', err)
+    }
+  }, [lead])
+
+  const handleAiUnitChange = (unitId: string) => {
+    setAiSelectedUnitId(unitId)
+    const unit = units.find(u => u.id === unitId)
+    if (unit) {
+      const uPrice = unit.priceUsd || unit.priceArs || 0
+      setAiPrice(uPrice)
+      setAiDownPayment(Math.round(uPrice * 0.4))
+      if (unit.priceUsd) {
+        setAiFinancingType('usd')
+      } else {
+        setAiFinancingType('fixed')
+      }
+    }
+  }
+
+  const generateAiResponse = async () => {
+    setAiLoading(true)
+    setAiError(null)
+    setAiResponse('')
+
+    try {
+      const res = await fetch(`/api/leads/${id}/ai-respond`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          selectedUnitId: aiSelectedUnitId || null,
+          clientQuestion: aiQuestion,
+          price: aiPrice,
+          downPayment: aiDownPayment,
+          interestRate: aiInterestRate,
+          financingType: aiFinancingType,
+          monthsOptions: aiMonthsOptions,
+        })
+      })
+
+      const result = await res.json()
+      if (!res.ok) {
+        throw new Error(result.error || 'Error al generar la respuesta de la IA.')
+      }
+
+      setAiResponse(result.data)
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Error al procesar la respuesta')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const handleCopyAiResponse = () => {
+    navigator.clipboard.writeText(aiResponse)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleSendAiWhatsApp = () => {
+    const link = generateWhatsAppLink(lead?.phone || '', aiResponse)
+    window.open(link, '_blank')
+    addActivity('WHATSAPP_SENT', 'Respuesta comercial con IA enviada por WhatsApp.')
+    setIsAiOpen(false)
+  }
 
   const fetchLead = useCallback(async () => {
     try {
@@ -436,35 +560,38 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 WhatsApp
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              {!limits.whatsappEnabled ? (
-                <div className="text-center py-4 space-y-3">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-50 dark:bg-green-950/30">
-                    <Lock className="h-5 w-5 text-green-400" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">WhatsApp no disponible en tu plan</p>
-                  <p className="text-xs text-gray-500">Activá esta función con el <strong>Plan Pro</strong>.</p>
-                  <Link
-                    href="/app/settings/billing"
-                    className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
-                  >
-                    Ver planes
-                  </Link>
-                </div>
-              ) : lead.deals.length === 0 ? (
-                <div className="text-center py-4 text-sm text-gray-500">
-                  <MessageCircle className="mx-auto mb-2 h-8 w-8 opacity-20" />
-                  <p>Sin operaciones registradas.</p>
-                  <p className="text-xs mt-1">Creá una operación para enviar un resumen por WhatsApp.</p>
-                </div>
-              ) : (
+            <CardContent className="space-y-3">
+              {limits.whatsappEnabled && lead.deals.length > 0 && (
                 <Button
-                  className="w-full bg-green-500 hover:bg-green-600 gap-2"
+                  className="w-full bg-green-500 hover:bg-green-600 gap-2 text-white"
                   onClick={openDealWhatsAppModal}
                 >
                   <Send className="h-4 w-4" />
                   Enviar resumen por WhatsApp
                 </Button>
+              )}
+              
+              <Button
+                type="button"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2 text-white font-bold transition-transform hover:scale-[1.02]"
+                onClick={openAiAssistant}
+              >
+                <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+                Asistente de Respuesta con IA
+              </Button>
+
+              {!limits.whatsappEnabled && (
+                <div className="text-center py-2 space-y-1.5 border-t border-dashed border-slate-200 dark:border-slate-800 pt-3 mt-1">
+                  <p className="text-[11px] text-gray-500">
+                    Sincronización automática de WhatsApp no disponible en tu plan.
+                  </p>
+                  <Link
+                    href="/app/settings/billing"
+                    className="inline-flex items-center gap-1 text-[11px] text-indigo-600 hover:underline font-semibold"
+                  >
+                    Ver Planes Pro 🚀
+                  </Link>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -740,6 +867,210 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 Confirmar y abrir WhatsApp
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Assistant Modal */}
+      {isAiOpen && lead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col max-h-[90vh] overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-950/40">
+                  <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">Asistente de Respuesta Comercial con IA</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Generá propuestas de financiación y respuestas personalizadas al instante</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsAiOpen(false)} 
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[400px]">
+              
+              {/* Left Column: Form & Settings */}
+              <div className="space-y-4">
+                
+                {/* Step 1: Select vehicle */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">1. Vehículo de Interés</Label>
+                  <div className="relative">
+                    <select
+                      value={aiSelectedUnitId}
+                      onChange={e => handleAiUnitChange(e.target.value)}
+                      className="w-full h-10 pl-3 pr-8 rounded-lg border bg-white dark:bg-slate-800 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700"
+                    >
+                      <option value="">Seleccionar vehículo...</option>
+                      {units.map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.title} — {u.priceUsd ? `USD ${u.priceUsd.toLocaleString('es-AR')}` : u.priceArs ? `$ ${u.priceArs.toLocaleString('es-AR')} ARS` : 'Consultar'}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+
+                {/* Step 2: Financiación Form */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Precio de Venta</Label>
+                    <Input
+                      type="number"
+                      value={aiPrice}
+                      onChange={e => setAiPrice(Number(e.target.value))}
+                      className="text-sm border-slate-200 dark:border-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Anticipo / Entrega</Label>
+                    <Input
+                      type="number"
+                      value={aiDownPayment}
+                      onChange={e => setAiDownPayment(Number(e.target.value))}
+                      className="text-sm border-slate-200 dark:border-slate-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tasa de Interés Anual (TNA %)</Label>
+                    <Input
+                      type="number"
+                      value={aiInterestRate}
+                      onChange={e => setAiInterestRate(Number(e.target.value))}
+                      className="text-sm border-slate-200 dark:border-slate-700"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Tipo de Moneda</Label>
+                    <div className="relative">
+                      <select
+                        value={aiFinancingType}
+                        onChange={e => setAiFinancingType(e.target.value as any)}
+                        className="w-full h-10 pl-3 pr-8 rounded-lg border bg-white dark:bg-slate-800 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700"
+                      >
+                        <option value="fixed">Pesos Fija ($)</option>
+                        <option value="uva">Pesos UVA (Ajustable)</option>
+                        <option value="usd">Dólares (USD)</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3: Question or Instruction */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">2. Consulta del Cliente / Instrucciones</Label>
+                  <textarea
+                    value={aiQuestion}
+                    onChange={e => setAiQuestion(e.target.value)}
+                    placeholder="Pegá el mensaje de WhatsApp del cliente o indicá qué querés responder (ej: 'El cliente quiere saber si tomamos permutas y cómo le quedan 24 y 36 cuotas')"
+                    rows={4}
+                    className="w-full rounded-lg border bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  />
+                </div>
+
+                <Button
+                  type="button"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2 text-white font-bold h-11"
+                  onClick={generateAiResponse}
+                  disabled={aiLoading}
+                >
+                  {aiLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
+                      Redactando propuesta...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 text-amber-300" />
+                      Generar Respuesta con IA ✨
+                    </>
+                  )}
+                </Button>
+
+                {aiError && (
+                  <p className="text-xs text-red-500 mt-1 font-semibold">{aiError}</p>
+                )}
+              </div>
+
+              {/* Right Column: AI Output & Actions */}
+              <div className="flex flex-col h-full space-y-4">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">3. Propuesta Sugerida</Label>
+                
+                <div className="flex-1 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800 p-4 overflow-y-auto max-h-[300px] lg:max-h-[350px]">
+                  {aiResponse ? (
+                    <div className="text-sm whitespace-pre-wrap font-sans text-slate-800 dark:text-slate-200 leading-relaxed">
+                      {aiResponse}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center text-gray-400 space-y-2 py-8">
+                      <Sparkles className="h-10 w-10 text-slate-300 dark:text-slate-700 animate-pulse" />
+                      <p className="text-xs font-medium">Acá aparecerá el borrador generado por la IA.</p>
+                      <p className="text-[10px] text-gray-400 max-w-[250px]">Completá los campos de la izquierda y presioná "Generar Respuesta con IA".</p>
+                    </div>
+                  )}
+                </div>
+
+                {aiResponse && (
+                  <div className="flex gap-3">
+                    <Button 
+                      type="button"
+                      variant="outline" 
+                      className="flex-1 gap-2 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                      onClick={handleCopyAiResponse}
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="h-4 w-4 text-green-500" />
+                          Copiado
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          Copiar Texto
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      className="flex-1 bg-green-500 hover:bg-green-600 gap-2 text-white font-bold"
+                      onClick={handleSendAiWhatsApp}
+                    >
+                      <Send className="h-4 w-4" />
+                      Enviar WhatsApp
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950/40 border-t dark:border-slate-800 flex justify-end">
+              <Button 
+                type="button"
+                variant="ghost" 
+                onClick={() => setIsAiOpen(false)}
+                className="text-slate-600 dark:text-slate-400"
+              >
+                Cerrar
+              </Button>
+            </div>
+
           </div>
         </div>
       )}
