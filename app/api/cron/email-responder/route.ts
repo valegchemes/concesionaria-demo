@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import { getPlanLimits } from '@/lib/shared/plan-limits'
 import { listUnreadEmails, sendReply, markAsRead } from '@/lib/email/gmail'
 
 const log = createLogger('API:EmailResponderCron')
@@ -19,11 +20,7 @@ export async function GET(req: Request) {
     // 2. Fetch all companies that have Gmail connected
     const connections = await prisma.gmailConnection.findMany({
       include: {
-        company: {
-          include: {
-            subscription: true
-          }
-        }
+        company: true
       }
     })
 
@@ -32,15 +29,12 @@ export async function GET(req: Request) {
     for (const connection of connections) {
       const company = connection.company
       
-      // Enforce Plan Pro limit strictly using string match just in case
-      const planId = company.subscription?.planId?.toLowerCase() || ''
-      // Dev bypass: check both company.email and connection.emailAddress since OAuth connect overwrites company.email
-      const devEmails = ['valegchemes@gmail.com', 'vgchemes@gmail.com']
-      const devBypass = devEmails.includes(company.email) || devEmails.includes(connection.emailAddress)
-      const aiEnabled = planId.includes('pro') || planId.includes('premium') || planId.includes('ia') || devBypass
+      // Use the centralized plan-limits function as the single source of truth.
+      // This correctly handles dev bypasses, all subscription plans, and future plans automatically.
+      const limits = await getPlanLimits(company.id)
       
-      if (!aiEnabled) {
-        log.info({}, `Skipping company ${company.id} - No AI Plan`)
+      if (!limits.aiEnabled) {
+        log.info({}, `Skipping company ${company.id} (${company.name}) - AI not enabled on their plan`)
         continue
       }
 
