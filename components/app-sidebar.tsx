@@ -18,6 +18,7 @@ import {
   FileText,
   ClipboardList,
   Banknote,
+  Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -40,6 +41,7 @@ const navGroups = [
       { name: 'Caja Diaria',      href: '/app/finance',           icon: Banknote,     color: 'text-emerald-400' },
       { name: 'Costos Mensuales', href: '/app/expenses',          icon: Wallet,       color: 'text-rose-400' },
       { name: 'Configuración',    href: '/app/settings',          icon: Settings,     color: 'text-slate-400' },
+      { name: 'Email con IA',     href: '/app/settings/email-ai', icon: Mail,         color: 'text-violet-400' },
       { name: 'Auditoría',        href: '/app/settings/audit',    icon: ShieldCheck,  color: 'text-indigo-400' },
       { name: 'Suscripción',      href: '/app/settings/billing',  icon: CreditCard,   color: 'text-indigo-400' },
     ],
