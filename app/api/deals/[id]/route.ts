@@ -9,6 +9,7 @@ import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { UpdateDealSchema, RecordPaymentSchema } from '@/lib/shared/validation'
 import { hasAnyPermission } from '@/lib/shared/authz'
 import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
+import { broadcastDealEvent, buildDealPayload } from '@/lib/shared/realtime'
 
 const log = createLogger('DealDetailRoutes')
 
@@ -77,6 +78,13 @@ export const PUT = withErrorHandling(
     })
 
     await invalidateAnalyticsCache(user.companyId)
+
+    // Broadcast en tiempo real a todos los usuarios de la empresa
+    void broadcastDealEvent(
+      user.companyId,
+      'deal.updated',
+      buildDealPayload(deal as Record<string, unknown>, user.id)
+    )
 
     return successResponse(deal)
   }
@@ -177,6 +185,13 @@ export const DELETE = withErrorHandling(
     })
 
     await invalidateAnalyticsCache(user.companyId)
+
+    // Broadcast en tiempo real — notificar que el deal fue eliminado
+    void broadcastDealEvent(
+      user.companyId,
+      'deal.deleted',
+      { id, triggeredBy: user.id }
+    )
 
     return successResponse({ deleted: true })
   }

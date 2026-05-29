@@ -1,17 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatPrice, formatDate } from '@/lib/utils'
-import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign, FileDown } from 'lucide-react'
+import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign, FileDown, Wifi, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { exportToExcel } from '@/lib/utils/export'
 import { KanbanBoard } from './KanbanBoard'
 import { LayoutList, Columns3 } from 'lucide-react'
+import { useRealtimeDeals } from '@/lib/hooks/use-realtime-deals'
+import type { DealRealtimePayload } from '@/lib/hooks/use-realtime-deals'
 
 interface Deal {
   id: string
@@ -40,7 +42,10 @@ export default function DealsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [userRole, setUserRole] = useState<string>('SELLER')
+  const [userId, setUserId] = useState<string>('')
+  const [companyId, setCompanyId] = useState<string>('')
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban')
+  const [realtimeFlash, setRealtimeFlash] = useState<string | null>(null)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -64,6 +69,8 @@ export default function DealsPage() {
       if (meRes.ok) {
         const me = await meRes.json()
         setUserRole(me.role)
+        setUserId(me.id ?? '')
+        setCompanyId(me.companyId ?? '')
       }
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -71,6 +78,65 @@ export default function DealsPage() {
       setLoading(false)
     }
   }
+
+  // ─── Handlers de tiempo real ─────────────────────────────────────────────
+
+  const flashRealtime = useCallback((message: string) => {
+    setRealtimeFlash(message)
+    setTimeout(() => setRealtimeFlash(null), 3000)
+  }, [])
+
+  const handleRealtimeDealUpdated = useCallback((payload: DealRealtimePayload) => {
+    setDeals(prev =>
+      prev.map(d =>
+        d.id === payload.id
+          ? {
+              ...d,
+              status: payload.status ?? d.status,
+              finalPrice: payload.finalPrice ?? d.finalPrice,
+              finalPriceCurrency: payload.finalPriceCurrency ?? d.finalPriceCurrency,
+            }
+          : d
+      )
+    )
+    flashRealtime(`Operación actualizada en tiempo real`)
+  }, [flashRealtime])
+
+  const handleRealtimeDealCreated = useCallback((payload: DealRealtimePayload) => {
+    // Si el deal ya existe (por optimistic update del mismo usuario), no duplicar
+    setDeals(prev => {
+      if (prev.some(d => d.id === payload.id)) return prev
+      const newDeal: Deal = {
+        id: payload.id,
+        status: payload.status ?? 'NEGOTIATION',
+        finalPrice: payload.finalPrice ?? 0,
+        finalPriceCurrency: payload.finalPriceCurrency ?? 'ARS',
+        createdAt: payload.createdAt ?? new Date().toISOString(),
+        lead: payload.lead ?? { name: 'Nuevo cliente', phone: '' },
+        unit: payload.unit ?? { title: 'Nueva unidad', type: 'CAR' },
+        seller: payload.seller ?? { name: 'Vendedor' },
+      }
+      return [newDeal, ...prev]
+    })
+    flashRealtime(`Nueva operación agregada`)
+  }, [flashRealtime])
+
+  const handleRealtimeDealDeleted = useCallback((payload: DealRealtimePayload) => {
+    setDeals(prev => prev.filter(d => d.id !== payload.id))
+    flashRealtime(`Operación eliminada`)
+  }, [flashRealtime])
+
+  // ─── Suscripción Pusher ───────────────────────────────────────────────────
+
+  const { isConnected } = useRealtimeDeals({
+    companyId: companyId || undefined,
+    currentUserId: userId,
+    onDealUpdated: handleRealtimeDealUpdated,
+    onDealCreated: handleRealtimeDealCreated,
+    onDealDeleted: handleRealtimeDealDeleted,
+  })
+
+  // ─── Operaciones de UI ────────────────────────────────────────────────────
 
   async function deleteDeal(id: string) {
     if (!confirm('¿Eliminar esta operación? Esta acción no se puede deshacer.')) return
@@ -132,10 +198,6 @@ export default function DealsPage() {
     }
   }
 
-  const totalRevenue = deals
-    .filter(d => d.status === 'DELIVERED')
-    .reduce((sum, d) => sum + (d.finalPriceCurrency === 'ARS' ? d.finalPrice : 0), 0)
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -157,6 +219,35 @@ export default function DealsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Indicador de tiempo real */}
+          {companyId && (
+            <div
+              title={isConnected ? 'Tiempo real activo' : 'Sin conexión en tiempo real'}
+              className={cn(
+                'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-500',
+                isConnected
+                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
+                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800/50 dark:text-slate-500'
+              )}
+            >
+              {isConnected ? (
+                <>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                  <Wifi className="h-3 w-3" />
+                  <span className="hidden sm:inline">En vivo</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3" />
+                  <span className="hidden sm:inline">Offline</span>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-1 p-1 rounded-lg bg-slate-100/60 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50">
             <button
               onClick={() => setViewMode('list')}
@@ -187,6 +278,17 @@ export default function DealsPage() {
           </Link>
         </div>
       </div>
+
+      {/* Toast de tiempo real */}
+      {realtimeFlash && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-lg text-xs text-emerald-700 dark:text-emerald-400 animate-in fade-in slide-in-from-top-2 duration-300">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          {realtimeFlash}
+        </div>
+      )}
 
       {/* Filtros de estado */}
       <div className="flex gap-1 p-1 rounded-lg surface-secondary backdrop-blur-sm shadow-sm w-fit">
@@ -309,3 +411,4 @@ export default function DealsPage() {
     </div>
   )
 }
+

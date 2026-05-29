@@ -11,6 +11,7 @@ import { hasAnyPermission } from '@/lib/shared/authz'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
 import { requireRateLimit, RATE_LIMITS, getRequestIdentifier } from '@/lib/shared/rate-limit-memory'
+import { broadcastDealEvent, buildDealPayload } from '@/lib/shared/realtime'
 
 const log = createLogger('DealRoutes')
 
@@ -115,6 +116,13 @@ export const POST = withTenantHandler(withErrorHandling(async (request: NextRequ
 
   // Invalidar caché de analíticas para reflejar el nuevo deal
   await invalidateAnalyticsCache(user.companyId)
+
+  // Broadcast en tiempo real a todos los usuarios de la empresa
+  void broadcastDealEvent(
+    user.companyId,
+    'deal.created',
+    buildDealPayload(deal as Record<string, unknown>, user.id)
+  )
 
   return successResponse(deal, 201)
 }))
