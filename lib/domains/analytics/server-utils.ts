@@ -6,15 +6,10 @@ const log = createLogger('Analytics:Cache')
 
 export async function invalidateAnalyticsCache(companyId: string) {
   try {
-    const types: (keyof typeof analyticsCacheKeys)[] = ['dashboard', 'salesProfit', 'topSellers', 'costs']
-    const ranges: TimeRange[] = ['7d', '30d', '90d', '1y', 'all']
-    const keys: string[] = []
-
-    for (const t of types) {
-      for (const r of ranges) {
-        keys.push(analyticsCacheKeys[t](companyId, r))
-      }
-    }
+    // Las claves en route.ts se generan como: \`analytics:v8:\${companyId}:\${type}:\${timeRange}:\${userId}\`
+    // Buscamos todas las claves que contengan el companyId y las borramos.
+    const pattern = \`*\${companyId}*\`
+    const keys = await kv.keys(pattern)
 
     if (keys.length > 0) {
       await kv.del(...keys)
