@@ -26,6 +26,7 @@ import { EmptyState } from './empty-state'
 import { AlertCircle, TrendingUp, Users, DollarSign, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CostItemDetail } from '@/lib/domains/analytics/types'
+import { useRealtimeDeals } from '@/lib/hooks/use-realtime-deals'
 
 
 // ============================================================================
@@ -45,7 +46,15 @@ interface AnalyticsDashboardProps {
 
 export function AnalyticsDashboard({ companyId, companyName, hideHeader = false, userRole }: AnalyticsDashboardProps) {
   const { timeRange, setTimeRange, options } = useTimeRange('30d')
-  const { dashboard, salesProfit, topSellers, costs, isLoadingAny, hasError } = useAllAnalytics(timeRange, companyId)
+  const { dashboard, salesProfit, topSellers, costs, isLoadingAny, hasError, mutateAll } = useAllAnalytics(timeRange, companyId)
+  
+  // Refresh analytics live via Pusher
+  useRealtimeDeals({
+    companyId,
+    onDealCreated: () => mutateAll(),
+    onDealUpdated: () => mutateAll(),
+    onDealDeleted: () => mutateAll()
+  })
   
   // Estados para modales de detalles
   const [revenueModalOpen, setRevenueModalOpen] = useState(false)

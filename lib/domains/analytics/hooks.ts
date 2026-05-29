@@ -123,6 +123,7 @@ interface UseSalesProfitAnalyticsReturn {
   isLoading: boolean
   isError: boolean
   error: Error | undefined
+  mutate: () => Promise<SalesVsProfitAnalytics | undefined>
   chartData: Array<{
     name: string
     date: string
@@ -153,7 +154,7 @@ export function useSalesProfitAnalytics(
     ? analyticsCacheKeys.salesProfit(companyId, timeRange)
     : null
 
-  const { data, error, isLoading } = useSWR<SalesVsProfitAnalytics>(
+  const { data, error, isLoading, mutate } = useSWR<SalesVsProfitAnalytics>(
     cacheKey ? `/api/analytics?type=sales-profit&timeRange=${timeRange}` : null,
     fetcher,
     swrConfig
@@ -190,6 +191,7 @@ export function useSalesProfitAnalytics(
     isLoading,
     isError: !!error,
     error: error || undefined,
+    mutate,
     chartData,
   }
 }
@@ -203,6 +205,7 @@ interface UseTopSellersReturn {
   isLoading: boolean
   isError: boolean
   error: Error | undefined
+  mutate: () => Promise<TopSellersAnalytics | undefined>
   chartData: Array<{
     name: string
     sales: number
@@ -218,7 +221,7 @@ export function useTopSellers(
     ? analyticsCacheKeys.topSellers(companyId, timeRange)
     : null
 
-  const { data, error, isLoading } = useSWR<TopSellersAnalytics>(
+  const { data, error, isLoading, mutate } = useSWR<TopSellersAnalytics>(
     cacheKey ? `/api/analytics?type=top-sellers&timeRange=${timeRange}` : null,
     fetcher,
     swrConfig
@@ -240,6 +243,7 @@ export function useTopSellers(
     isLoading,
     isError: !!error,
     error: error || undefined,
+    mutate,
     chartData,
   }
 }
@@ -253,6 +257,7 @@ interface UseCostAnalysisReturn {
   isLoading: boolean
   isError: boolean
   error: Error | undefined
+  mutate: () => Promise<CostAnalysisAnalytics | undefined>
   pieData: Array<{
     name: string
     value: number
@@ -269,7 +274,7 @@ export function useCostAnalysis(
     ? analyticsCacheKeys.costs(companyId, timeRange)
     : null
 
-  const { data, error, isLoading } = useSWR<CostAnalysisAnalytics>(
+  const { data, error, isLoading, mutate } = useSWR<CostAnalysisAnalytics>(
     cacheKey ? `/api/analytics?type=costs&timeRange=${timeRange}` : null,
     fetcher,
     swrConfig
@@ -292,6 +297,7 @@ export function useCostAnalysis(
     isLoading,
     isError: !!error,
     error: error || undefined,
+    mutate,
     pieData,
   }
 }
@@ -307,6 +313,8 @@ interface UseAllAnalyticsReturn {
   costs: ReturnType<typeof useCostAnalysis>
   isLoadingAny: boolean
   hasError: boolean
+  /** Fuerza un re-fetch inmediato de todos los datos analíticos */
+  mutateAll: () => void
 }
 
 export function useAllAnalytics(
@@ -321,6 +329,13 @@ export function useAllAnalytics(
   const isLoadingAny = dashboard.isLoading || salesProfit.isLoading || topSellers.isLoading || costs.isLoading
   const hasError = dashboard.isError || salesProfit.isError || topSellers.isError || costs.isError
 
+  function mutateAll() {
+    void dashboard.mutate()
+    void salesProfit.mutate()
+    void topSellers.mutate()
+    void costs.mutate()
+  }
+
   return {
     dashboard,
     salesProfit,
@@ -328,6 +343,7 @@ export function useAllAnalytics(
     costs,
     isLoadingAny,
     hasError,
+    mutateAll,
   }
 }
 
