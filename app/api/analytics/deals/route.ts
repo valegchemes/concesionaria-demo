@@ -101,28 +101,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       : getDateRangeFromTimeRange(timeRange)
 
     // Obtener deals con todos los detalles
-    // Nota: filtramos por closedAt (cuando fue marcado DELIVERED) o updatedAt como fallback
-    // Usamos un rango ampliado de ±6 horas para cubrir el offset UTC-3 de Argentina
+    // Usamos un rango ampliado de horas para cubrir el offset UTC-3 de Argentina cuando se filtra por día específico
     const deals = await prisma.deal.findMany({
       where: {
         companyId: user.companyId,
         status: 'DELIVERED',
-        OR: [
-          {
-            closedAt: {
-              gte: dateRange.start,
-              lte: dateRange.end,
-            },
-          },
-          {
-            // Fallback para deals sin closedAt (datos históricos)
-            closedAt: null,
-            updatedAt: {
-              gte: dateRange.start,
-              lte: dateRange.end,
-            },
-          },
-        ],
+        updatedAt: {
+          gte: dateRange.start,
+          lte: dateRange.end,
+        },
         ...(queryUserId && { sellerId: queryUserId }),
       },
       select: {
