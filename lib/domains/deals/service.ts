@@ -199,11 +199,15 @@ export class DealService {
       limit = 20,
       status,
       soldById,
+      updatedAtFrom,
+      updatedAtTo,
     }: {
       page?: number
       limit?: number
       status?: string
       soldById?: string
+      updatedAtFrom?: Date
+      updatedAtTo?: Date
     } = {}
   ): Promise<DealListResult> {
     log.debug({ companyId, page, limit, status }, 'Listing deals')
@@ -220,6 +224,12 @@ export class DealService {
       ),
       ...(soldById && { sellerId: soldById }),
       ...(!hasPermission(requestingUser.permissions, 'deals', 'manage_all') && requestingUser.role !== 'ADMIN' && requestingUser.role !== 'MANAGER' && { sellerId: requestingUser.id }),
+      ...(updatedAtFrom || updatedAtTo ? {
+        updatedAt: {
+          ...(updatedAtFrom && { gte: updatedAtFrom }),
+          ...(updatedAtTo && { lte: updatedAtTo }),
+        },
+      } : {}),
     }
 
     const [total, rawDeals] = await Promise.all([
@@ -231,13 +241,15 @@ export class DealService {
           status: true,
           finalPrice: true,
           finalPriceCurrency: true,
+          exchangeRate: true,
+          updatedAt: true,
           lead: { select: { name: true, phone: true } },
-          unit: { select: { title: true, type: true } },
-          seller: { select: { name: true } },
+          unit: { select: { title: true, type: true, vin: true, domain: true } },
+          seller: { select: { name: true, id: true } },
           createdAt: true,
           _count: { select: { payments: true, closingCosts: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { updatedAt: 'desc' },
         skip,
         take: limitNum,
       }),
@@ -249,10 +261,12 @@ export class DealService {
       grossAmount: Number(d.finalPrice),
       finalPrice: Number(d.finalPrice),
       finalPriceCurrency: d.finalPriceCurrency,
+      exchangeRate: d.exchangeRate ? Number(d.exchangeRate) : null,
       lead: d.lead ?? undefined,
       unit: d.unit ?? undefined,
       seller: d.seller ?? undefined,
       createdAt: d.createdAt,
+      updatedAt: d.updatedAt,
       _count: { payments: d._count.payments, costItems: d._count.closingCosts },
     })) as DealListResult['deals']
 

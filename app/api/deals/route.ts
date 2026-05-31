@@ -38,12 +38,18 @@ export const GET = withTenantHandler(withErrorHandling(async (request: NextReque
   })
   const status = searchParams.get('status') || undefined
   const soldById = searchParams.get('soldById') || undefined
+  const updatedAtFromStr = searchParams.get('updatedAtFrom')
+  const updatedAtToStr = searchParams.get('updatedAtTo')
+  const updatedAtFrom = updatedAtFromStr ? new Date(updatedAtFromStr) : undefined
+  const updatedAtTo = updatedAtToStr ? new Date(updatedAtToStr) : undefined
 
   log.info(
     {
       page: pagination.page,
       limit: pagination.limit,
       status,
+      updatedAtFrom,
+      updatedAtTo,
     },
     'Fetching deals list'
   )
@@ -60,6 +66,8 @@ export const GET = withTenantHandler(withErrorHandling(async (request: NextReque
       limit: pagination.limit,
       status: status as string | undefined,
       soldById: soldById as string | undefined,
+      updatedAtFrom,
+      updatedAtTo,
     }
   )
 
