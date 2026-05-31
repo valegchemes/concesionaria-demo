@@ -7,7 +7,7 @@ import { env } from '@/lib/env'
 import { prisma } from '@/lib/shared/prisma'
 import { createAuditLog } from '@/lib/shared/audit-log'
 import { requireRateLimit, RATE_LIMITS } from '@/lib/shared/rate-limit-memory'
-import crypto from 'crypto'
+import * as crypto from 'crypto'
 
 const log = createLogger('MPWebhook')
 
@@ -121,9 +121,13 @@ export async function POST(req: NextRequest) {
       let payment
       try {
         payment = await mpPayment.get({ id: parseInt(dataId, 10) })
-      } catch (mpErr: any) {
+      } catch (error: unknown) {
         // Si el pago no existe (error 404), es probable que sea una prueba del simulador
-        if (mpErr.status === 404 || mpErr.message?.includes('404')) {
+        const isSimulationError = error && typeof error === 'object' && 
+          (('status' in error && error.status === 404) || 
+           ('message' in error && typeof error.message === 'string' && error.message.includes('404')))
+
+        if (isSimulationError) {
           log.warn({ dataId }, 'MP payment not found (likely simulation)')
           await prisma.webhookEvent.update({
             where: { eventId },
@@ -171,15 +175,17 @@ export async function POST(req: NextRequest) {
 
       log.info({ eventId, status }, 'MP payment webhook processed')
       return new NextResponse('OK', { status: 200 })
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err)
       await prisma.webhookEvent.update({
         where: { eventId },
-        data: { status: 'failed', error: err.message },
+        data: { status: 'failed', error: errorMsg },
       })
       throw err
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err)
     log.error({ err }, 'Error processing MP webhook')
-    return new NextResponse(`Webhook Error: ${err.message}`, { status: 500 })
+    return new NextResponse(`Webhook Error: ${errorMsg}`, { status: 500 })
   }
 }
