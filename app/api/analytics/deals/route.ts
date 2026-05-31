@@ -23,7 +23,7 @@ export const maxDuration = 30
 
 const QuerySchema = z.object({
   timeRange: z.enum(['7d', '30d', '90d', '1y', 'all', 'this_month']).default('30d'),
-  type: z.enum(['revenue', 'all']).default('all'),
+  type: z.enum(['revenue', 'all', 'profit']).default('all'),
   sellerId: z.string().optional(),
   date: z.string().optional(),
   limit: z.string().default('50').transform(Number),

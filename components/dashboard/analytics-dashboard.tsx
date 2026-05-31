@@ -105,7 +105,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
 
   const { deals: dayDeals, period: dayPeriod, isLoading: dayLoading, error: dayError } = useAnalyticsDealDetails(
     timeRange,
-    'revenue',
+    'all',
     undefined,
     daySummaryOpen,
     selectedDay?.date,
