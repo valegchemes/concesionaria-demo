@@ -54,7 +54,10 @@ export function useAnalyticsDealDetails(
       const payload = await res.json()
       
       if (!res.ok) {
-        throw new Error(payload?.error?.message || 'Failed to fetch deal details')
+        const errorMsg = typeof payload?.error === 'string' 
+          ? payload.error 
+          : payload?.error?.message || 'Failed to fetch deal details'
+        throw new Error(errorMsg)
       }
       
       if (payload?.success) {
