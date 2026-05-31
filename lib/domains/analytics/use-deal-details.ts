@@ -43,6 +43,7 @@ export function useAnalyticsDealDetails(
   queryParams.set('type', type)
   if (sellerId) queryParams.set('sellerId', sellerId)
   if (date) queryParams.set('date', date)
+  queryParams.set('_v', '2') // Cache buster estático para forzar bypass en Vercel CDN de respuestas cacheadas anteriores
 
   const { data, error, isLoading } = useSWR<AnalyticsDealResponse>(
     enabled ? `/api/analytics/deals?${queryParams.toString()}` : null,
