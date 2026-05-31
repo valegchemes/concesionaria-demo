@@ -79,8 +79,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           const month = selectedDate.getUTCMonth()
           const day = selectedDate.getUTCDate()
 
+          // Argentina = UTC-3. Para cubrir el día completo en Argentina:
+          // Inicio: 00:00 Argentina = 03:00 UTC del mismo día
+          // Fin: 23:59 Argentina = 02:59 UTC del día siguiente
+          // Usamos un margen mayor (desde las 00:00 UTC hasta las 03:00 UTC del día siguiente)
+          // para garantizar cobertura completa sin importar si el servidor agrupa por UTC o local
           const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0))
-          const end = new Date(Date.UTC(year, month, day, 23, 59, 59, 999))
+          const end = new Date(Date.UTC(year, month, day + 1, 5, 59, 59, 999))
 
           return {
             start,
@@ -96,14 +101,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       : getDateRangeFromTimeRange(timeRange)
 
     // Obtener deals con todos los detalles
+    // Nota: filtramos por closedAt (cuando fue marcado DELIVERED) o updatedAt como fallback
+    // Usamos un rango ampliado de ±6 horas para cubrir el offset UTC-3 de Argentina
     const deals = await prisma.deal.findMany({
       where: {
         companyId: user.companyId,
         status: 'DELIVERED',
-        updatedAt: {
-          gte: dateRange.start,
-          lte: dateRange.end,
-        },
+        OR: [
+          {
+            closedAt: {
+              gte: dateRange.start,
+              lte: dateRange.end,
+            },
+          },
+          {
+            // Fallback para deals sin closedAt (datos históricos)
+            closedAt: null,
+            updatedAt: {
+              gte: dateRange.start,
+              lte: dateRange.end,
+            },
+          },
+        ],
         ...(queryUserId && { sellerId: queryUserId }),
       },
       select: {

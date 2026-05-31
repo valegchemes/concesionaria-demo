@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
           })
           return new NextResponse('OK (Simulation/Not Found)', { status: 202 })
         }
-        throw mpErr // Otros errores (timeout, credenciales, etc)
+        throw error // Otros errores (timeout, credenciales, etc)
       }
 
       const status = payment.status ?? 'unknown'
@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
     }
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err)
-    log.error({ err }, 'Error processing MP webhook')
+    log.error({ err: errorMsg }, 'Error processing MP webhook')
     return new NextResponse(`Webhook Error: ${errorMsg}`, { status: 500 })
   }
 }

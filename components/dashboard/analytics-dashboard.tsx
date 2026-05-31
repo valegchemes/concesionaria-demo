@@ -287,65 +287,139 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
 
               {/* Tabla Detallada Multidivisa */}
               {salesProfit.chartData && salesProfit.chartData.length > 0 && (
-                <div className="overflow-hidden rounded-xl border border-slate-200/60 dark:border-slate-800/60 surface-primary">
-                  <div className="px-4 py-3.5 border-b border-slate-200/60 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between">
+                <div className="overflow-hidden rounded-xl border border-slate-200/60 dark:border-slate-800/40 surface-primary">
+                  {/* Header */}
+                  <div className="px-5 py-4 border-b border-slate-200/60 dark:border-slate-800/40 flex items-center justify-between">
                     <div>
-                      <h4 className="text-sm font-bold text-adaptive-primary">Métricas Detalladas por Período</h4>
-                      <p className="text-xs text-adaptive-secondary">Desglose exacto en Pesos Argentinos (ARS) y Dólares (USD)</p>
+                      <h4 className="text-sm font-semibold text-adaptive-primary">Métricas por Período</h4>
+                      <p className="text-xs text-adaptive-secondary mt-0.5">Desglose en ARS y USD</p>
                     </div>
-                    <span className="text-[10px] font-extrabold px-2.5 py-1 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 rounded-full uppercase tracking-wider">
+                    <span className="text-[10px] font-bold px-2 py-1 bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 rounded-full uppercase tracking-wider">
                       {salesProfit.chartData.length} períodos
                     </span>
                   </div>
+
+                  {/* Tabla */}
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                    <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-slate-200/60 dark:border-slate-800/60 text-[11px] font-bold text-adaptive-secondary uppercase bg-slate-50/20 dark:bg-slate-900/5">
-                          <th className="px-4 py-3">Período</th>
-                          <th className="px-4 py-3 text-center">Operaciones</th>
-                          <th className="px-4 py-3 text-right">Ingresos (Ventas)</th>
-                          {!isSeller && <th className="px-4 py-3 text-right">Ganancia Neta</th>}
-                          {!isSeller && <th className="px-4 py-3 text-right">Costo Unidades</th>}
-                          {!isSeller && <th className="px-4 py-3 text-right">Gastos Operativos</th>}
+                        <tr className="text-[11px] font-semibold text-adaptive-secondary uppercase tracking-wider border-b border-slate-100 dark:border-slate-800/40">
+                          <th className="px-5 py-3 text-left">Período</th>
+                          <th className="px-4 py-3 text-center">Ops.</th>
+                          <th className="px-5 py-3 text-right">Ingresos</th>
+                          {!isSeller && <th className="px-5 py-3 text-right">Ganancia</th>}
+                          {!isSeller && <th className="px-5 py-3 text-right hidden lg:table-cell">Costo Unid.</th>}
+                          {!isSeller && <th className="px-5 py-3 text-right hidden lg:table-cell">G. Operativos</th>}
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-[13px] text-adaptive-primary">
-                        {salesProfit.chartData.map((row) => (
-                          <tr key={row.date} className="hover:bg-slate-50/40 dark:hover:bg-slate-800/20 transition-colors">
-                            <td className="px-4 py-3 font-semibold text-adaptive-primary">{row.name}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold bg-indigo-500/10 text-indigo-500 rounded-md border border-indigo-500/20">
-                                {row.dealCount}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              <div className="font-bold text-adaptive-primary">{formatCurrency(row.salesArs, 'ARS')}</div>
-                              <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.salesUsd, 'USD')}</div>
-                            </td>
-                            {!isSeller && (
-                              <td className="px-4 py-3 text-right">
-                                <div className={cn("font-black", row.profit >= 0 ? "text-emerald-600" : "text-rose-600")}>
-                                  {formatCurrency(row.profitArs, 'ARS')}
-                                </div>
-                                <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.profitUsd, 'USD')}</div>
+                      <tbody>
+                        {salesProfit.chartData.map((row, idx) => {
+                          const hasData = row.dealCount > 0
+                          return (
+                            <tr
+                              key={row.date}
+                              className={cn(
+                                "border-b border-slate-100/70 dark:border-slate-800/30 transition-colors",
+                                "hover:bg-slate-50/60 dark:hover:bg-slate-800/20",
+                                idx === salesProfit.chartData.length - 1 && "border-b-0"
+                              )}
+                            >
+                              {/* Período */}
+                              <td className="px-5 py-3.5 font-semibold text-adaptive-primary whitespace-nowrap">
+                                {row.name}
                               </td>
-                            )}
-                            {!isSeller && (
-                              <td className="px-4 py-3 text-right">
-                                <div className="font-semibold text-adaptive-primary">{formatCurrency(row.unitCostsArs, 'ARS')}</div>
-                                <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.unitCostsUsd, 'USD')}</div>
+
+                              {/* Operaciones */}
+                              <td className="px-4 py-3.5 text-center">
+                                {hasData ? (
+                                  <span className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full">
+                                    {row.dealCount}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-300 dark:text-slate-700 text-xs">—</span>
+                                )}
                               </td>
-                            )}
-                            {!isSeller && (
-                              <td className="px-4 py-3 text-right">
-                                <div className="font-semibold text-adaptive-primary">{formatCurrency(row.operationalCostsArs, 'ARS')}</div>
-                                <div className="text-[10px] text-adaptive-secondary font-medium">{formatCurrency(row.operationalCostsUsd, 'USD')}</div>
+
+                              {/* Ingresos */}
+                              <td className="px-5 py-3.5 text-right">
+                                {hasData ? (
+                                  <div>
+                                    <div className="font-bold text-adaptive-primary text-sm">{formatCurrency(row.salesArs, 'ARS')}</div>
+                                    {row.salesUsd > 0 && (
+                                      <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{formatCurrency(row.salesUsd, 'USD')}</div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-300 dark:text-slate-700 text-xs">—</span>
+                                )}
                               </td>
-                            )}
-                          </tr>
-                        ))}
+
+                              {/* Ganancia */}
+                              {!isSeller && (
+                                <td className="px-5 py-3.5 text-right">
+                                  {hasData ? (
+                                    <div>
+                                      <div className={cn("font-bold text-sm", row.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
+                                        {formatCurrency(row.profitArs, 'ARS')}
+                                      </div>
+                                      {row.profitUsd !== 0 && (
+                                        <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{formatCurrency(row.profitUsd, 'USD')}</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700 text-xs">—</span>
+                                  )}
+                                </td>
+                              )}
+
+                              {/* Costo Unidades */}
+                              {!isSeller && (
+                                <td className="px-5 py-3.5 text-right hidden lg:table-cell">
+                                  {hasData && row.unitCostsArs > 0 ? (
+                                    <div>
+                                      <div className="font-medium text-adaptive-primary text-sm">{formatCurrency(row.unitCostsArs, 'ARS')}</div>
+                                      {row.unitCostsUsd > 0 && (
+                                        <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{formatCurrency(row.unitCostsUsd, 'USD')}</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700 text-xs">—</span>
+                                  )}
+                                </td>
+                              )}
+
+                              {/* Gastos Operativos */}
+                              {!isSeller && (
+                                <td className="px-5 py-3.5 text-right hidden lg:table-cell">
+                                  {row.operationalCostsArs > 0 ? (
+                                    <div>
+                                      <div className="font-medium text-adaptive-primary text-sm">{formatCurrency(row.operationalCostsArs, 'ARS')}</div>
+                                      {row.operationalCostsUsd > 0 && (
+                                        <div className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{formatCurrency(row.operationalCostsUsd, 'USD')}</div>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-slate-300 dark:text-slate-700 text-xs">—</span>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Footer Totales */}
+                  <div className="px-5 py-3 border-t border-slate-200/60 dark:border-slate-800/40 bg-slate-50/50 dark:bg-slate-900/30 flex items-center justify-between text-xs text-adaptive-secondary">
+                    <span>
+                      Total del período: <strong className="text-adaptive-primary">
+                        {salesProfit.chartData.reduce((acc, r) => acc + r.dealCount, 0)} operaciones
+                      </strong>
+                    </span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                      {formatCurrency(salesProfit.chartData.reduce((acc, r) => acc + r.salesArs, 0), 'ARS')}
+                    </span>
                   </div>
                 </div>
               )}
