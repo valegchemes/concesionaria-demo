@@ -181,7 +181,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       'Fetched deal details for analytics'
     )
 
-    return successResponse({
+    const response = successResponse({
       deals: dealDetails,
       count: dealDetails.length,
       period: {
@@ -190,13 +190,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         label: dateRange.label,
       },
     })
+
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+    response.headers.set('Surrogate-Control', 'no-store')
+
+    return response
   } catch (error) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching deal details')
 
     if (error instanceof ValidationError) {
-      return errorResponse(error, { path: '/api/analytics/deals', method: 'GET' })
+      const errResponse = errorResponse(error, { path: '/api/analytics/deals', method: 'GET' })
+      errResponse.headers.set('Cache-Control', 'no-store')
+      return errResponse
     }
 
-    return errorResponse(new Error('Error al obtener detalles de operaciones'), { path: '/api/analytics/deals', method: 'GET' })
+    const errResponse = errorResponse(new Error('Error al obtener detalles de operaciones'), { path: '/api/analytics/deals', method: 'GET' })
+    errResponse.headers.set('Cache-Control', 'no-store')
+    return errResponse
   }
 }
