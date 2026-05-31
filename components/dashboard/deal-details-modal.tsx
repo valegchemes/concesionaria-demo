@@ -53,6 +53,7 @@ interface DealDetailsModalProps {
   }
   summary?: DealDetailsSummary
   userRole?: string
+  error?: Error | null
   onDealUpdated?: () => void
 }
 
@@ -66,6 +67,7 @@ export function DealDetailsModal({
   period,
   summary,
   userRole,
+  error,
   onDealUpdated,
 }: DealDetailsModalProps) {
   const [editingDeal, setEditingDeal] = useState<DealDetail | null>(null)
@@ -127,7 +129,13 @@ export function DealDetailsModal({
                 </div>
               )}
 
-              {isLoading ? (
+              {error ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-red-500">
+                  <AlertCircle className="h-12 w-12 opacity-50 mb-4" />
+                  <p className="font-medium text-lg">Hubo un problema</p>
+                  <p className="text-sm opacity-80">{error.message}</p>
+                </div>
+              ) : isLoading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-32 w-full rounded-lg" />

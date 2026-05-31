@@ -27,6 +27,7 @@ const QuerySchema = z.object({
   sellerId: z.string().optional(),
   date: z.string().optional(),
   limit: z.string().default('50').transform(Number),
+  companyId: z.string().optional(),
 })
 
 interface DealDetail {
@@ -56,15 +57,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       sellerId: searchParams.get('sellerId'),
       date: searchParams.get('date'),
       limit: searchParams.get('limit'),
+      companyId: searchParams.get('companyId'),
     })
 
     if (!queryParse.success) {
       throw new ValidationError('Parámetros de consulta inválidos', queryParse.error.flatten().fieldErrors)
     }
 
-    const { timeRange, type, sellerId, date, limit } = queryParse.data
+    const { timeRange, type, sellerId, date, limit, companyId } = queryParse.data
     const isSeller = user.role === 'SELLER'
     const queryUserId = isSeller ? user.id : sellerId
+    const targetCompanyId = companyId || user.companyId
 
     const dateRange = date
       ? (() => {
@@ -82,8 +85,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           // Argentina = UTC-3. Para cubrir el día completo en Argentina:
           // Inicio: 00:00 Argentina = 03:00 UTC del mismo día
           // Fin: 23:59 Argentina = 02:59 UTC del día siguiente
-          // Usamos un margen mayor (desde las 00:00 UTC hasta las 03:00 UTC del día siguiente)
-          // para garantizar cobertura completa sin importar si el servidor agrupa por UTC o local
+          // Usamos un margen ampliado (desde las 00:00 UTC hasta las 05:59 UTC del día siguiente)
           const start = new Date(Date.UTC(year, month, day, 0, 0, 0, 0))
           const end = new Date(Date.UTC(year, month, day + 1, 5, 59, 59, 999))
 
@@ -91,20 +93,18 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
             start,
             end,
             label: selectedDate.toLocaleDateString('es-AR', {
-              weekday: 'long',
-              day: '2-digit',
-              month: 'long',
-              year: 'numeric',
+              day: 'numeric',
+              month: 'short',
             }),
           }
         })()
-      : getDateRangeFromTimeRange(timeRange)
+      : getDateRangeFromTimeRange(timeRange as TimeRange)
 
     // Obtener deals con todos los detalles
     // Usamos un rango ampliado de horas para cubrir el offset UTC-3 de Argentina cuando se filtra por día específico
     const deals = await prisma.deal.findMany({
       where: {
-        companyId: user.companyId,
+        companyId: targetCompanyId,
         status: 'DELIVERED',
         updatedAt: {
           gte: dateRange.start,

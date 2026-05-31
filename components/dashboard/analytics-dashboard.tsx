@@ -76,33 +76,40 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
   } | null>(null)
 
   // Fetch detalles de deals cuando se abren los modales
-  const { deals: revenueDeal, period: revenuePeriod, isLoading: revenueLoading } = useAnalyticsDealDetails(
+  const { deals: revenueDeal, period: revenuePeriod, isLoading: revenueLoading, error: revenueError } = useAnalyticsDealDetails(
     timeRange,
     'revenue',
     undefined,
-    revenueModalOpen
+    revenueModalOpen,
+    undefined,
+    companyId
   )
 
-  const { deals: profitDeal, period: profitPeriod, isLoading: profitLoading } = useAnalyticsDealDetails(
+  const { deals: profitDeal, period: profitPeriod, isLoading: profitLoading, error: profitError } = useAnalyticsDealDetails(
+    timeRange,
+    'profit',
+    undefined,
+    profitModalOpen,
+    undefined,
+    companyId
+  )
+
+  const { deals: allDeal, period: allPeriod, isLoading: dealsLoading, error: dealsError } = useAnalyticsDealDetails(
+    timeRange,
+    'all',
+    undefined,
+    dealsModalOpen,
+    undefined,
+    companyId
+  )
+
+  const { deals: dayDeals, period: dayPeriod, isLoading: dayLoading, error: dayError } = useAnalyticsDealDetails(
     timeRange,
     'revenue',
     undefined,
-    profitModalOpen
-  )
-
-  const { deals: allDeal, period: allPeriod, isLoading: dealsLoading } = useAnalyticsDealDetails(
-    timeRange,
-    'all',
-    undefined,
-    dealsModalOpen
-  )
-
-  const { deals: dayDeals, period: dayPeriod, isLoading: dayLoading } = useAnalyticsDealDetails(
-    timeRange,
-    'all',
-    undefined,
-    daySummaryOpen && !!selectedDay,
-    selectedDay?.date
+    daySummaryOpen,
+    selectedDay?.date,
+    companyId
   )
   
   const isSeller = userRole === 'SELLER'
@@ -521,6 +528,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             title={selectedDay ? `Detalles del ${selectedDay.label}` : 'Detalles del día'}
             deals={dayDeals}
             isLoading={dayLoading}
+            error={dayError}
             period={dayPeriod}
             summary={selectedDayData ?? undefined}
             userRole={userRole}
@@ -533,6 +541,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             title="Ingresos Totales"
             deals={revenueDeal}
             isLoading={revenueLoading}
+            error={revenueError}
             period={revenuePeriod}
             userRole={userRole}
             onDealUpdated={() => mutateAll()}
@@ -544,6 +553,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             title="Ganancia Neta"
             deals={profitDeal}
             isLoading={profitLoading}
+            error={profitError}
             period={profitPeriod}
             userRole={userRole}
             onDealUpdated={() => mutateAll()}
@@ -555,6 +565,7 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             title="Operaciones Cerradas"
             deals={allDeal}
             isLoading={dealsLoading}
+            error={dealsError}
             period={allPeriod}
             userRole={userRole}
             onDealUpdated={() => mutateAll()}
