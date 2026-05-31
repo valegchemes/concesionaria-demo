@@ -29,6 +29,17 @@ interface PrismaLogEvent {
   params?: string
 }
 
+/**
+ * Opciones tipadas para la construcción del PrismaClient.
+ * Evita usar 'any' en la configuración del singleton.
+ */
+interface PrismaClientConfig {
+  log: { emit: 'event'; level: LogLevel }[]
+  datasources?: {
+    db: { url: string }
+  }
+}
+
 // ============================================================================
 // CONFIGURACIÓN DE CONNECTION POOLING
 // ============================================================================
@@ -87,7 +98,7 @@ const globalForPrisma = global as unknown as {
 function createPrismaClient(): PrismaClient {
   const databaseUrl = getDatabaseUrl()
   
-  const clientOptions: any = { log: logConfig }
+  const clientOptions: PrismaClientConfig = { log: logConfig }
 
   if (databaseUrl) {
     clientOptions.datasources = { db: { url: databaseUrl } }
@@ -158,13 +169,33 @@ type QueryArgs = Record<string, unknown>
  * Crea una Prisma Client Extension que inyecta automáticamente el companyId
  * del contexto de tenant en todas las queries de lectura y escritura.
  *
- * LECTURA (findMany, findFirst, count, groupBy, aggregate):
- *   Inyecta where.companyId = currentTenantId en la query.
+ * ## Cuándo usar `prisma` vs `prismaBypass`
  *
- * ESCRITURA (create, createMany):
- *   Inyecta data.companyId = currentTenantId en los datos.
+ * | Cliente         | Usa tenant isolation | Cuándo usarlo |
+ * |-----------------|----------------------|---------------|
+ * | `prisma`        | Sí (automático)      | Todo el código de aplicación dentro de una request HTTP |
+ * | `prismaBypass`  | No                   | Cron jobs, scripts de migración, seed, webhooks sin tenant |
  *
- * Modelos sin companyId (DealPayment, UnitPhoto, etc.) no son afectados.
+ * ## Cómo funciona
+ *
+ * El tenant ID se obtiene de `getCurrentTenantId()` que lee un `AsyncLocalStorage`
+ * inicializado por `withTenant()` en cada request. Si no hay contexto activo
+ * (scripts, tests), la extensión pasa las queries sin modificar.
+ *
+ * ## Ejemplos
+ *
+ * ```ts
+ * // ✅ Correcto: dentro de una request, usa `prisma`
+ * const leads = await prisma.lead.findMany() // WHERE companyId = $currentTenant
+ *
+ * // ✅ Correcto: en un cron job o webhook, usa `prismaBypass`
+ * const allCompanies = await prismaBypass.company.findMany()
+ *
+ * // ❌ Incorrecto: usar prismaBypass en un route handler (omite tenant isolation)
+ * const leak = await prismaBypass.lead.findMany() // Sin filtro companyId!
+ * ```
+ *
+ * @param baseClient - Instancia base de PrismaClient sin extensiones
  */
 function createTenantExtension(baseClient: PrismaClient) {
   return baseClient.$extends({

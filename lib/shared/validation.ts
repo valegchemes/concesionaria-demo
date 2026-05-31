@@ -36,10 +36,9 @@ export const PasswordSchema = z
 
 export const PhoneSchema = z
   .string()
-  .regex(/^[+\d\s\-()]+$/, "Formato de teléfono inválido")
-  .min(7, "Número de teléfono demasiado corto")
-  .max(20, "Número de teléfono demasiado largo")
-  .transform(v => v.replace(/\s/g, "")) // Elimina espacios
+  // E.164: opcionalmente + al inicio, luego 7-15 dígitos (sin espacios ni guiones)
+  .regex(/^\+?[1-9]\d{1,14}$/, "Formato de teléfono inválido (ej: +5491112345678)")
+  .transform(v => v.replace(/\s/g, "")) // Elimina espacios residuales
 
 export const NameSchema = z
   .string()
@@ -59,7 +58,17 @@ export const URLSchema = z.string().url("URL inválida")
 export const CurrencySchema = z
   .number()
   .nonnegative("Amount must be 0 or positive")
-  .or(z.string().regex(/^\d+(\.\d{2})?$/).transform(Number))
+  .max(999_999_999.99, "Amount exceeds maximum allowed value")
+  .refine(
+    (v) => Number.isFinite(v) && Math.round(v * 100) === v * 100,
+    "Amount must have at most 2 decimal places"
+  )
+  .or(
+    z.string()
+      .regex(/^\d+(\.\d{1,2})?$/, "Invalid currency format")
+      .transform(Number)
+      .refine((v) => v <= 999_999_999.99, "Amount exceeds maximum allowed value")
+  )
 
 // ============================================================================
 // Auth Schemas

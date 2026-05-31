@@ -34,6 +34,7 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Headers de seguridad + X-API-Version en todas las rutas
         source: '/(.*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
@@ -42,16 +43,31 @@ const nextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
           { key: 'X-DNS-Prefetch-Control', value: 'off' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'X-API-Version', value: 'v1.0' },
           {
+            // CSP enforced: se eliminó 'unsafe-eval' (no requerido en producción).
+            // 'unsafe-inline' se mantiene temporalmente — eliminarlo requiere
+            // implementar nonces en middleware (futura mejora).
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; report-uri /api/csp-report;",
-          },
-          {
-            // Modo report-only para detectar futuras violaciones antes de endurecer la política.
-            // Captura intentos de eliminar 'unsafe-inline'/'unsafe-eval' sin romper la app.
-            key: 'Content-Security-Policy-Report-Only',
             value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; report-uri /api/csp-report;",
           },
+          {
+            // Report-Only: política más estricta para detectar violaciones sin bloquear.
+            // Objetivo: detectar si hay scripts que requieren 'unsafe-inline' para futuras
+            // iteraciones donde se implementen nonces.
+            key: 'Content-Security-Policy-Report-Only',
+            value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; report-uri /api/csp-report;",
+          },
+        ],
+      },
+      {
+        // CORS explícito para todas las rutas de API
+        source: '/api/(.*)',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type,Authorization,X-Requested-With' },
+          { key: 'Access-Control-Max-Age', value: '86400' },
         ],
       },
     ]

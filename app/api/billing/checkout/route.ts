@@ -5,12 +5,17 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { billingService } from '@/lib/domains/billing/service'
 import { computedEnv } from '@/lib/env'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { applyRateLimit } from '@/lib/rate-limit-kv'
 
 const CheckoutSchema = z.object({
   priceId: z.string().trim().min(1, 'priceId is required'),
 })
 
 export const POST = withTenantHandler(async (request: NextRequest) => {
+  // Rate limit: máx. 10 creaciones de checkout por minuto por IP
+  const blocked = await applyRateLimit(request, { strict: true, path: '/api/billing/checkout' })
+  if (blocked) return blocked
+
   try {
     const user = await getCurrentUser()
     const json = await request.json()

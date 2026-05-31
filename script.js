@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const unit = await prisma.unit.findFirst({ where: { title: { contains: 'ZANELLA RZ' } } }); console.log(unit); } main().finally(() => prisma.$disconnect());

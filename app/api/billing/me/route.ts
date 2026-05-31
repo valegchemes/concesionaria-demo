@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { getPlanLimits } from '@/lib/shared/plan-limits'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { prisma } from '@/lib/prisma'
+import { applyRateLimit } from '@/lib/rate-limit-kv'
 
 /**
  * GET /api/billing/me
@@ -11,6 +12,10 @@ import { prisma } from '@/lib/prisma'
  * Usado por el hook usePlanLimits() del cliente.
  */
 export const GET = withTenantHandler(async (_req: NextRequest) => {
+  // Rate limit: máx. 60 consultas por minuto por IP
+  const blocked = await applyRateLimit(_req, { path: '/api/billing/me' })
+  if (blocked) return blocked
+
   try {
     const user = await getCurrentUser()
     const limits = await getPlanLimits(user.companyId)

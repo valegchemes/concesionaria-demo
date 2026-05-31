@@ -68,10 +68,14 @@ export async function POST(req: NextRequest) {
 
     const eventId = `mp_${dataId}`
 
+    // Tiempo máximo que un evento puede estar en estado 'processing' antes de
+    // considerarse "trabado" (crash del servidor, timeout, etc.)
+    const STALE_PROCESSING_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
+
     // 5. Idempotencia: verificar si ya fue procesado
     const existingEvent = await prisma.webhookEvent.findUnique({
       where: { eventId },
-      select: { status: true, processedAt: true },
+      select: { status: true, processedAt: true, receivedAt: true },
     })
 
     if (existingEvent?.status === 'processed') {
@@ -80,10 +84,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (existingEvent?.status === 'processing') {
-      return new NextResponse('Processing', { status: 202 })
+      // Verificar si el evento está "trabado": lleva más de 1h en processing.
+      // Esto ocurre cuando el servidor crasheó después de guardar en DB pero
+      // antes de completar el procesamiento. En ese caso, permitimos el reintento.
+      const isStale = existingEvent.receivedAt
+        ? Date.now() - existingEvent.receivedAt.getTime() > STALE_PROCESSING_THRESHOLD_MS
+        : false
+
+      if (!isStale) {
+        log.info({ eventId }, 'MP event already being processed')
+        return new NextResponse('Processing', { status: 202 })
+      }
+
+      log.warn({ eventId, receivedAt: existingEvent.receivedAt }, 'MP event stuck in processing — retrying')
     }
 
-    // 6. Registrar como "processing"
+    // 6. Registrar como "processing" con receivedAt para trazabilidad de idempotencia
     await prisma.webhookEvent.upsert({
       where: { eventId },
       create: {
@@ -92,9 +108,11 @@ export async function POST(req: NextRequest) {
         type: topic,
         status: 'processing',
         payload: { dataId, topic, body },
+        receivedAt: new Date(),   // Inmutable: cuándo llegó este intento
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
-      update: { status: 'processing' },
+      // En reintento de evento trabado: resetear receivedAt para el nuevo intento
+      update: { status: 'processing', receivedAt: new Date() },
     })
 
     try {

@@ -64,6 +64,33 @@ const SENSITIVE_KEYS = [
 ]
 
 /**
+ * Patrones para detectar datos sensibles en los VALORES de un string.
+ * Se aplican cuando la key no fue redactada por nombre pero el valor
+ * contiene información que no debería aparecer en logs.
+ */
+const SENSITIVE_VALUE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+  // Emails: usuario@dominio.ext
+  { pattern: /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, replacement: '[EMAIL]' },
+  // Números de tarjeta de crédito (13-16 dígitos, con o sin separadores)
+  { pattern: /\b(?:\d[ \-]?){13,15}\d\b/g, replacement: '[CARD]' },
+  // UUIDs v4 (comunes como IDs internos que no deben exponerse)
+  { pattern: /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, replacement: '[UUID]' },
+]
+
+/**
+ * Aplica redacción de patrones a un string que no fue redactado por key-name.
+ * Permite que IDs internos en contextos de debug queden legibles, pero
+ * redacta contenido sensible que aparezca embebido en strings más largos.
+ */
+function redactValuePatterns(value: string): string {
+  let result = value
+  for (const { pattern, replacement } of SENSITIVE_VALUE_PATTERNS) {
+    result = result.replace(pattern, replacement)
+  }
+  return result
+}
+
+/**
  * Redacta datos sensibles de un objeto recursivamente
  */
 function redactSensitiveData(obj: unknown, depth = 0): unknown {
@@ -72,6 +99,12 @@ function redactSensitiveData(obj: unknown, depth = 0): unknown {
 
   // Tipos primitivos: retornar tal cual
   if (obj === null || obj === undefined) return obj
+
+  // Strings sueltos: aplicar redacción de patrones
+  if (typeof obj === 'string') {
+    return redactValuePatterns(obj)
+  }
+
   if (typeof obj !== 'object') return obj
 
   // Arrays: redactar cada elemento

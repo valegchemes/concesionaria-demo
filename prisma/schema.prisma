@@ -703,11 +703,15 @@ model DigitalDocument {
 model WebhookEvent {
   id          String    @id @default(cuid())
   eventId     String    @unique
-  source      String    // 'stripe', 'other'
+  source      String    // 'mercadopago', 'stripe', etc.
   type        String
   status      String    @default("processing") // 'processing', 'processed', 'failed'
   payload     Json?
   error       String?
+  // receivedAt: momento en que el webhook llegó al servidor (inmutable).
+  // Permite detectar eventos "trabados" en 'processing' (crash del servidor)
+  // y habilitar el reintento: si status='processing' y receivedAt < (now - 1h) → reintentar.
+  receivedAt  DateTime  @default(now())
   processedAt DateTime?
   createdAt   DateTime  @default(now())
   expiresAt   DateTime
@@ -715,6 +719,8 @@ model WebhookEvent {
   @@index([eventId])
   @@index([expiresAt])
   @@index([source, status])
+  // Índice para consultar eventos trabados: WHERE status='processing' AND receivedAt < X
+  @@index([status, receivedAt])
   @@map("WebhookEvent")
 }
 
