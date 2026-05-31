@@ -188,6 +188,7 @@ export const UpdateDealSchema = z.object({
   notes: z.string().max(2000).optional().or(z.literal('')),
   finalPrice: CurrencySchema.optional(),
   finalPriceCurrency: z.enum(['ARS', 'USD']).optional(),
+  exchangeRate: z.number().positive().optional(),
 })
 
 // ============================================================================

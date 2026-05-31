@@ -449,6 +449,41 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
             isLoading={dayLoading}
             period={dayPeriod}
             summary={selectedDayData ?? undefined}
+            userRole={userRole}
+            onDealUpdated={() => mutateAll()}
+          />
+
+          <DealDetailsModal
+            isOpen={revenueModalOpen}
+            onOpenChange={setRevenueModalOpen}
+            title="Ingresos Totales"
+            deals={revenueDeal}
+            isLoading={revenueLoading}
+            period={revenuePeriod}
+            userRole={userRole}
+            onDealUpdated={() => mutateAll()}
+          />
+
+          <DealDetailsModal
+            isOpen={profitModalOpen}
+            onOpenChange={setProfitModalOpen}
+            title="Ganancia Neta"
+            deals={profitDeal}
+            isLoading={profitLoading}
+            period={profitPeriod}
+            userRole={userRole}
+            onDealUpdated={() => mutateAll()}
+          />
+
+          <DealDetailsModal
+            isOpen={dealsModalOpen}
+            onOpenChange={setDealsModalOpen}
+            title="Operaciones Cerradas"
+            deals={allDeal}
+            isLoading={dealsLoading}
+            period={allPeriod}
+            userRole={userRole}
+            onDealUpdated={() => mutateAll()}
           />
 
           <CostDetailsModal

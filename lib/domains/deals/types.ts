@@ -42,6 +42,7 @@ export interface UpdateDealCommand {
   notes?: string
   finalPrice?: number
   finalPriceCurrency?: string
+  exchangeRate?: number
 }
 
 export interface RecordPaymentCommand {

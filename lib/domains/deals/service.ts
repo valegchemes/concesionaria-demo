@@ -324,9 +324,12 @@ export class DealService {
       await this.validateStatusTransition(deal.status, command.status)
     }
 
-    // Calcular comisión si se marca como ENTREGADO
+    // Calcular comisión si se marca como ENTREGADO o si se edita el precio final de una operación ya entregada
     let commissionValue: number | undefined = undefined
-    if (command.status === 'DELIVERED' && deal.status !== 'DELIVERED') {
+    const isBecomingDelivered = command.status === 'DELIVERED' && deal.status !== 'DELIVERED'
+    const isPriceChangedOnDelivered = deal.status === 'DELIVERED' && command.finalPrice !== undefined
+
+    if (isBecomingDelivered || isPriceChangedOnDelivered) {
       // Necesitamos asegurar que tenemos la comisión del seller. Fetch si es necesario:
       const sellerIdToUse = (deal as any).seller?.id || (deal as any).sellerId;
       const sellerData = await prisma.user.findUnique({ where: { id: sellerIdToUse }, select: { commissionRate: true } })
@@ -343,6 +346,7 @@ export class DealService {
         ...(command.notes !== undefined && { notes: command.notes?.trim() || null }),
         ...(command.finalPrice && { finalPrice: command.finalPrice }),
         ...(command.finalPriceCurrency && { finalPriceCurrency: command.finalPriceCurrency }),
+        ...(command.exchangeRate !== undefined && { exchangeRate: command.exchangeRate }),
         // Setear closedAt cuando se cierra el deal (para analíticas correctas)
         ...(command.status && ['DELIVERED', 'CANCELED'].includes(command.status) && { closedAt: new Date() }),
         ...(commissionValue !== undefined && { commissionValue }),

@@ -5,11 +5,13 @@
 
 'use client'
 
-import { X, DollarSign, User, Calendar, Zap } from 'lucide-react'
+import { useState } from 'react'
+import { X, DollarSign, User, Calendar, Zap, Pencil } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/domains/analytics/hooks'
 import { cn } from '@/lib/utils'
+import { EditDealValueModal } from './edit-deal-value-modal'
 
 interface DealDetail {
   id: string
@@ -50,6 +52,8 @@ interface DealDetailsModalProps {
     label: string
   }
   summary?: DealDetailsSummary
+  userRole?: string
+  onDealUpdated?: () => void
 }
 
 export function DealDetailsModal({
@@ -61,7 +65,11 @@ export function DealDetailsModal({
   timeRange = '30d',
   period,
   summary,
+  userRole,
+  onDealUpdated,
 }: DealDetailsModalProps) {
+  const [editingDeal, setEditingDeal] = useState<DealDetail | null>(null)
+
   if (!isOpen) return null
 
   const currencySymbol = {
@@ -178,10 +186,21 @@ export function DealDetailsModal({
                         {/* Columna derecha */}
                         <div className="space-y-3">
                           {/* Valor de venta */}
-                          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
-                            <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                              Valor de Venta
-                            </p>
+                          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800 relative group/edit">
+                            <div className="flex justify-between items-start">
+                              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                                Valor de Venta
+                              </p>
+                              {(userRole === 'ADMIN' || userRole === 'MANAGER' || (userRole === 'SELLER' && deal.sellerId !== undefined)) && (
+                                <button
+                                  onClick={() => setEditingDeal(deal)}
+                                  className="opacity-0 group-hover/edit:opacity-100 transition-opacity bg-white/80 dark:bg-slate-900/80 p-1.5 rounded-md hover:bg-white dark:hover:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100"
+                                  title="Corregir Valor"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
                             <div className="flex items-baseline gap-2 mt-2">
                               <span className="text-xl font-bold text-emerald-700 dark:text-emerald-400">
                                 {currencySymbol[deal.currency as keyof typeof currencySymbol] || deal.currency}
@@ -265,6 +284,23 @@ export function DealDetailsModal({
           </div>
         )}
       </div>
+
+      {editingDeal && (
+        <EditDealValueModal
+          isOpen={!!editingDeal}
+          onClose={() => setEditingDeal(null)}
+          deal={{
+            id: editingDeal.id,
+            unitCode: editingDeal.unitCode,
+            finalPrice: editingDeal.finalPrice,
+            currency: editingDeal.currency,
+            exchangeRate: editingDeal.exchangeRate || 1,
+          }}
+          onSuccess={() => {
+            if (onDealUpdated) onDealUpdated()
+          }}
+        />
+      )}
     </div>
   )
 }
