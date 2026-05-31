@@ -51,8 +51,12 @@ export function useAnalyticsDealDetails(
     enabled ? `/api/analytics/deals?${queryParams.toString()}` : null,
     async (url: string) => {
       const res = await fetch(url)
-      if (!res.ok) throw new Error('Failed to fetch deal details')
       const payload = await res.json()
+      
+      if (!res.ok) {
+        throw new Error(payload?.error?.message || 'Failed to fetch deal details')
+      }
+      
       if (payload?.success) {
         if (payload.data !== undefined) return payload.data
         throw new Error('Response format inválido: falta data')
