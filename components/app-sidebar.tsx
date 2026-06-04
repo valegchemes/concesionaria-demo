@@ -76,7 +76,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   return (
     <aside className="sidebar-surface flex w-[220px] flex-col">
       {/* ── Brand / Company ── */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/10">
         {user.logoUrl ? (
           <Image
             src={user.logoUrl}
@@ -114,7 +114,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150',
                       isActive
                         ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-white/50 hover:bg-white/6 hover:text-white/85'
+                        : 'text-white/50 hover:bg-white/10 hover:text-white/85'
                     )}
                   >
                     {/* Active indicator stripe */}
@@ -140,10 +140,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </nav>
 
       {/* ── User Footer ── */}
-      <div className="border-t border-white/8 px-3 py-3">
+      <div className="border-t border-white/10 px-3 py-3">
         <Link
           href="/app/settings"
-          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/8 group"
+          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/10 group"
         >
           {user.avatarUrl ? (
             <Image
