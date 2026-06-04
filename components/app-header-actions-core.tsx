@@ -106,11 +106,11 @@ export function AppHeaderActionsCore() {
         <GlobalSearch />
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         {/* Actualizar / Recargar página */}
         <button
           onClick={() => window.location.reload()}
-          className="rounded-lg p-2 text-adaptive-secondary transition-colors hover:surface-secondary hover:text-adaptive-primary"
+          className="rounded-lg p-2 text-adaptive-secondary transition-all hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:text-adaptive-primary"
           title="Actualizar página"
         >
           <RefreshCw className="h-4 w-4" />
@@ -122,7 +122,7 @@ export function AppHeaderActionsCore() {
             const nextMode = mode === 'auto' ? 'dark' : mode === 'dark' ? 'light' : 'auto'
             setMode(nextMode)
           }}
-          className="rounded-lg p-2 text-adaptive-secondary transition-colors hover:surface-secondary hover:text-adaptive-primary"
+          className="rounded-lg p-2 text-adaptive-secondary transition-all hover:bg-slate-100/70 dark:hover:bg-slate-800/60 hover:text-adaptive-primary"
           title={`Tema: ${mode === 'auto' ? 'Automático (según imagen)' : mode === 'dark' ? 'Oscuro' : 'Claro'}`}
         >
           {mode === 'auto' ? <Monitor className="h-4 w-4" /> : mode === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
@@ -133,10 +133,10 @@ export function AppHeaderActionsCore() {
           <button
             onClick={() => setShowNew(v => !v)}
             className={cn(
-              'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-150',
+              'flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-all duration-150',
               showNew
-                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                : 'bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white dark:text-blue-400 dark:hover:text-white'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                : 'bg-blue-600/10 text-blue-600 hover:bg-blue-600 hover:text-white dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-600 dark:hover:text-white'
             )}
           >
             <Plus className="h-4 w-4" />
@@ -144,13 +144,13 @@ export function AppHeaderActionsCore() {
           </button>
 
           {showNew && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-white/20 surface-primary shadow-2xl backdrop-blur-xl">
+            <div className="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-adaptive surface-primary shadow-xl backdrop-blur-xl animate-slide-down">
               <div className="p-1">
                 {quickActions.map((action) => (
                   <button
                     key={action.href}
                     onClick={() => { setShowNew(false); router.push(action.href) }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-adaptive-primary transition-colors hover:surface-secondary"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-adaptive-primary transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
                   >
                     <action.icon className={cn('h-4 w-4', action.color)} />
                     {action.label}
@@ -177,7 +177,7 @@ export function AppHeaderActionsCore() {
           </button>
 
           {showNotif && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/20 surface-primary shadow-2xl backdrop-blur-xl">
+            <div className="absolute right-0 top-full z-50 mt-1.5 w-80 overflow-hidden rounded-xl border border-adaptive surface-primary shadow-xl backdrop-blur-xl animate-slide-down">
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
                 <p className="text-sm font-semibold text-adaptive-primary">Actividad Reciente</p>
                 <button onClick={() => setShowNotif(false)} className="rounded p-1 text-adaptive-secondary hover:text-adaptive-primary">
@@ -198,7 +198,7 @@ export function AppHeaderActionsCore() {
                     <button
                       key={act.id}
                       onClick={() => { setShowNotif(false); router.push(act.href) }}
-                      className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:surface-secondary"
+                      className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-100/60 dark:hover:bg-slate-800/60"
                     >
                       <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full surface-muted">
                         {activityIcon(act.type)}
@@ -219,7 +219,7 @@ export function AppHeaderActionsCore() {
         {/* Cerrar sesión */}
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="rounded-lg p-2 text-adaptive-secondary transition-colors hover:surface-secondary hover:text-red-500"
+          className="rounded-lg p-2 text-adaptive-secondary transition-all hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500"
           title="Cerrar sesión"
         >
           <LogOut className="h-4 w-4" />

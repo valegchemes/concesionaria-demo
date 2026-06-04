@@ -61,11 +61,13 @@ export default async function AppLayout({
       <GlobalBackground avatarUrl={user.avatarUrl || user.logoUrl} />
       <div className="min-h-screen flex bg-transparent">
         <AppSidebar user={user} />
-        <div className="flex-1 flex flex-col bg-transparent">
+        <div className="flex-1 flex flex-col bg-transparent min-w-0">
           <AppHeader user={user} />
           <SubscriptionGuard status={dbUser?.company?.subscription?.status || null}>
-            <main className="flex-1 p-6 overflow-auto bg-transparent">
-              {children}
+            <main className="flex-1 overflow-auto bg-transparent">
+              <div className="max-w-[1600px] mx-auto px-6 py-6">
+                {children}
+              </div>
             </main>
           </SubscriptionGuard>
         </div>

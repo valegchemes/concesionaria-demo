@@ -58,6 +58,17 @@ export default function NewDealPage() {
     notes: '',
   })
 
+  function formatWithDots(raw: string): string {
+    const digits = raw.replace(/\D/g, '') // solo dígitos
+    if (!digits) return ''
+    return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(digits))
+  }
+
+  function parseFormatted(formatted: string): number | undefined {
+    const clean = formatted.replace(/[^\d]/g, '')
+    return clean ? Number(clean) : undefined
+  }
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -113,8 +124,8 @@ export default function NewDealPage() {
     try {
       const payload = {
         ...formData,
-        finalPrice: parseFloat(formData.finalPrice),
-        depositAmount: formData.depositAmount ? parseFloat(formData.depositAmount) : undefined,
+        finalPrice: parseFormatted(formData.finalPrice) || 0,
+        depositAmount: parseFormatted(formData.depositAmount),
       }
 
       const res = await fetch('/api/deals', {
@@ -144,12 +155,16 @@ export default function NewDealPage() {
       const selectedUnit = units.find(u => u.id === value)
       if (selectedUnit) {
         if (formData.finalPriceCurrency === 'ARS' && selectedUnit.priceArs) {
-          setFormData(prev => ({ ...prev, unitId: value, finalPrice: selectedUnit.priceArs?.toString() || '' }))
+          setFormData(prev => ({ ...prev, unitId: value, finalPrice: formatWithDots(selectedUnit.priceArs?.toString() || '') }))
         } else if (formData.finalPriceCurrency === 'USD' && selectedUnit.priceUsd) {
-          setFormData(prev => ({ ...prev, unitId: value, finalPrice: selectedUnit.priceUsd?.toString() || '' }))
+          setFormData(prev => ({ ...prev, unitId: value, finalPrice: formatWithDots(selectedUnit.priceUsd?.toString() || '') }))
         }
       }
     }
+  }
+
+  function updatePriceField(field: string, value: string) {
+    setFormData(prev => ({ ...prev, [field]: formatWithDots(value) }))
   }
 
   if (fetching) {
@@ -250,11 +265,11 @@ export default function NewDealPage() {
                   <Label htmlFor="finalPrice">Precio Final Pactado *</Label>
                   <Input
                     id="finalPrice"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="numeric"
                     value={formData.finalPrice}
-                    onChange={(e) => updateField('finalPrice', e.target.value)}
-                    placeholder="0.00"
+                    onChange={(e) => updatePriceField('finalPrice', e.target.value)}
+                    placeholder="0"
                     required
                   />
                 </div>
@@ -264,10 +279,10 @@ export default function NewDealPage() {
                 <Label htmlFor="depositAmount">Sena / Deposito inicial (Opcional)</Label>
                 <Input
                   id="depositAmount"
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="numeric"
                   value={formData.depositAmount}
-                  onChange={(e) => updateField('depositAmount', e.target.value)}
+                  onChange={(e) => updatePriceField('depositAmount', e.target.value)}
                   placeholder="Monto de la reserva"
                 />
               </div>

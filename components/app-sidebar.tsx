@@ -13,12 +13,12 @@ import {
   CreditCard,
   UsersRound,
   Wallet,
-  ChevronRight,
   ShieldCheck,
   FileText,
   ClipboardList,
   Banknote,
   Mail,
+  ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -26,24 +26,24 @@ const navGroups = [
   {
     label: 'Principal',
     items: [
-      { name: 'Dashboard',    href: '/app/dashboard', icon: LayoutDashboard, color: 'text-blue-400' },
-      { name: 'Leads',        href: '/app/leads',     icon: Users,           color: 'text-violet-400' },
-      { name: 'Unidades',     href: '/app/units',     icon: Car,             color: 'text-emerald-400' },
-      { name: 'Operaciones',  href: '/app/deals',     icon: Handshake,       color: 'text-amber-400' },
-      { name: 'Gestoría',     href: '/app/gestoria',  icon: ClipboardList,   color: 'text-yellow-400' },
-      { name: 'Documentos',   href: '/app/documents', icon: FileText,        color: 'text-indigo-400' },
+      { name: 'Dashboard',    href: '/app/dashboard', icon: LayoutDashboard, accent: 'text-blue-400',    dot: 'bg-blue-500' },
+      { name: 'Leads',        href: '/app/leads',     icon: Users,           accent: 'text-violet-400',  dot: 'bg-violet-500' },
+      { name: 'Unidades',     href: '/app/units',     icon: Car,             accent: 'text-emerald-400', dot: 'bg-emerald-500' },
+      { name: 'Operaciones',  href: '/app/deals',     icon: Handshake,       accent: 'text-amber-400',   dot: 'bg-amber-500' },
+      { name: 'Gestoría',     href: '/app/gestoria',  icon: ClipboardList,   accent: 'text-yellow-400',  dot: 'bg-yellow-500' },
+      { name: 'Documentos',   href: '/app/documents', icon: FileText,        accent: 'text-indigo-400',  dot: 'bg-indigo-500' },
     ],
   },
   {
     label: 'Administración',
     items: [
-      { name: 'Equipo',           href: '/app/team',              icon: UsersRound,   color: 'text-sky-400' },
-      { name: 'Caja Diaria',      href: '/app/finance',           icon: Banknote,     color: 'text-emerald-400' },
-      { name: 'Costos Mensuales', href: '/app/expenses',          icon: Wallet,       color: 'text-rose-400' },
-      { name: 'Configuración',    href: '/app/settings',          icon: Settings,     color: 'text-slate-400' },
-      { name: 'Email con IA',     href: '/app/settings/email-ai', icon: Mail,         color: 'text-violet-400' },
-      { name: 'Auditoría',        href: '/app/settings/audit',    icon: ShieldCheck,  color: 'text-indigo-400' },
-      { name: 'Suscripción',      href: '/app/settings/billing',  icon: CreditCard,   color: 'text-indigo-400' },
+      { name: 'Equipo',           href: '/app/team',              icon: UsersRound,   accent: 'text-sky-400',    dot: 'bg-sky-500' },
+      { name: 'Caja Diaria',      href: '/app/finance',           icon: Banknote,     accent: 'text-emerald-400',dot: 'bg-emerald-500' },
+      { name: 'Costos Mensuales', href: '/app/expenses',          icon: Wallet,       accent: 'text-rose-400',   dot: 'bg-rose-500' },
+      { name: 'Email con IA',     href: '/app/settings/email-ai', icon: Mail,         accent: 'text-violet-400', dot: 'bg-violet-500' },
+      { name: 'Auditoría',        href: '/app/settings/audit',    icon: ShieldCheck,  accent: 'text-indigo-400', dot: 'bg-indigo-500' },
+      { name: 'Suscripción',      href: '/app/settings/billing',  icon: CreditCard,   accent: 'text-indigo-400', dot: 'bg-indigo-500' },
+      { name: 'Configuración',    href: '/app/settings',          icon: Settings,     accent: 'text-slate-400',  dot: 'bg-slate-500' },
     ],
   },
 ]
@@ -68,39 +68,39 @@ export function AppSidebar({ user }: AppSidebarProps) {
     user.role === 'ADMIN' ? 'Administrador' :
     user.role === 'MANAGER' ? 'Manager' : 'Vendedor'
 
+  const visibleGroups = navGroups.filter(group => {
+    if (group.label === 'Administración' && user.role === 'SELLER') return false
+    return true
+  })
+
   return (
-    <aside className="sidebar-surface flex w-56 flex-col text-adaptive-primary">
-      {/* Logo / Empresa */}
-      <div className="border-b border-adaptive px-4 py-4">
-        <div className="flex items-center gap-2.5">
-          {user.logoUrl ? (
-            <Image
-              src={user.logoUrl}
-              alt={user.companyName}
-              width={30}
-              height={30}
-              className="h-7 w-7 rounded-md bg-white object-cover"
-              unoptimized
-            />
-          ) : (
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-600/80">
-              <Store className="h-4 w-4 text-white" />
-            </div>
-          )}
-          <span className="truncate text-sm font-bold tracking-tight">{user.companyName}</span>
-        </div>
+    <aside className="sidebar-surface flex w-[220px] flex-col">
+      {/* ── Brand / Company ── */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/8">
+        {user.logoUrl ? (
+          <Image
+            src={user.logoUrl}
+            alt={user.companyName}
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-lg bg-white object-cover shadow-sm"
+            unoptimized
+          />
+        ) : (
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 shadow-sm">
+            <Store className="h-3.5 w-3.5 text-white" />
+          </div>
+        )}
+        <span className="truncate text-[13px] font-semibold tracking-tight text-white/90">
+          {user.companyName}
+        </span>
       </div>
 
-      {/* Navegación agrupada */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-        {navGroups
-          .filter(group => {
-            if (group.label === 'Administración' && user.role === 'SELLER') return false
-            return true
-          })
-          .map((group) => (
+      {/* ── Navigation ── */}
+      <nav className="flex-1 overflow-y-auto scrollbar-hide px-3 py-4 space-y-5">
+        {visibleGroups.map((group) => (
           <div key={group.label}>
-            <p className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-adaptive-secondary">
+            <p className="mb-1 px-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/30">
               {group.label}
             </p>
             <div className="space-y-0.5">
@@ -111,28 +111,25 @@ export function AppSidebar({ user }: AppSidebarProps) {
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      'group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all duration-150',
+                      'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150',
                       isActive
                         ? 'bg-white/10 text-white shadow-sm'
-                        : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                        : 'text-white/50 hover:bg-white/6 hover:text-white/85'
                     )}
                   >
-                    {/* Línea izquierda activa */}
-                    <span
-                      className={cn(
-                        'absolute left-0 h-6 w-[3px] rounded-r-full bg-blue-400 transition-all duration-200',
-                        isActive ? 'opacity-100' : 'opacity-0'
-                      )}
-                    />
+                    {/* Active indicator stripe */}
+                    {isActive && (
+                      <span className="absolute left-0 inset-y-1 w-[3px] rounded-r-full bg-blue-400" />
+                    )}
                     <item.icon
                       className={cn(
                         'h-4 w-4 shrink-0 transition-colors',
-                        isActive ? item.color : 'text-slate-500 group-hover:text-slate-300'
+                        isActive ? item.accent : 'text-white/35 group-hover:text-white/60'
                       )}
                     />
                     <span className="flex-1 truncate">{item.name}</span>
                     {isActive && (
-                      <ChevronRight className="h-3 w-3 text-slate-500" />
+                      <ChevronRight className="h-3 w-3 text-white/30 shrink-0" />
                     )}
                   </Link>
                 )
@@ -142,28 +139,32 @@ export function AppSidebar({ user }: AppSidebarProps) {
         ))}
       </nav>
 
-      {/* Usuario al pie */}
-      <div className="border-t border-white/10 px-3 py-3">
-        <div className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-white/5 transition-colors">
+      {/* ── User Footer ── */}
+      <div className="border-t border-white/8 px-3 py-3">
+        <Link
+          href="/app/settings"
+          className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/8 group"
+        >
           {user.avatarUrl ? (
             <Image
               src={user.avatarUrl}
               alt={user.name}
               width={32}
               height={32}
-              className="h-8 w-8 rounded-full border border-white/20 object-cover"
+              className="h-7 w-7 rounded-full border border-white/20 object-cover shadow-sm"
               unoptimized
             />
           ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-[11px] font-bold text-white shadow-sm">
               {user.name.charAt(0).toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-white">{user.name}</p>
-            <p className="text-[10px] text-slate-400">{roleLabel}</p>
+            <p className="truncate text-[12px] font-semibold text-white/85 group-hover:text-white transition-colors">{user.name}</p>
+            <p className="text-[10px] text-white/35">{roleLabel}</p>
           </div>
-        </div>
+          <Settings className="h-3.5 w-3.5 text-white/25 group-hover:text-white/50 shrink-0 transition-colors" />
+        </Link>
       </div>
     </aside>
   )

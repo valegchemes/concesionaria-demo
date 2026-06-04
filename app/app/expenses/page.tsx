@@ -11,11 +11,24 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
+function parseFormatted(formatted: string | number): number {
+  if (typeof formatted === 'number') return formatted;
+  const clean = formatted.replace(/[^\d]/g, '')
+  return clean ? Number(clean) : 0
+}
+
+function formatWithDots(raw: string | number): string {
+  const rawStr = typeof raw === 'number' ? raw.toString() : raw
+  const digits = rawStr.replace(/\D/g, '')
+  if (!digits) return ''
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(digits))
+}
+
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría requerida'),
   description: z.string().optional(),
-  amountArs: z.coerce.number().min(0).default(0),
-  amountUsd: z.coerce.number().min(0).default(0),
+  amountArs: z.union([z.number(), z.string()]).transform(v => parseFormatted(v)),
+  amountUsd: z.union([z.number(), z.string()]).transform(v => parseFormatted(v)),
   date: z.string().min(1, 'Fecha requerida'),
 })
 
@@ -65,10 +78,10 @@ export default function ExpensesPage() {
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ExpenseFormData>({
     defaultValues: {
-      amountArs: 0,
-      amountUsd: 0,
+      amountArs: '',
+      amountUsd: '',
       date: new Date().toISOString().split('T')[0],
-    },
+    } as any,
   })
 
   const fetchExpenses = async () => {
@@ -170,12 +183,16 @@ export default function ExpensesPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Monto ARS</Label>
-                  <Input type="number" step="0.01" {...register('amountArs')}
+                  <Input type="text" inputMode="numeric" {...register('amountArs', {
+                      onChange: (e) => { e.target.value = formatWithDots(e.target.value) }
+                    })}
                     className="bg-white/60 dark:bg-slate-900/60" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Monto USD</Label>
-                  <Input type="number" step="0.01" {...register('amountUsd')}
+                  <Input type="text" inputMode="numeric" {...register('amountUsd', {
+                      onChange: (e) => { e.target.value = formatWithDots(e.target.value) }
+                    })}
                     className="bg-white/60 dark:bg-slate-900/60" />
                 </div>
               </div>

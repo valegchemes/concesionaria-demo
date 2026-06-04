@@ -11,7 +11,7 @@ const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),
   description: z.string().optional(),
   amountArs: z.coerce.number().min(0).default(0),
-  amountUsd: z.coerce.number().min(0).default(0),
+  amountUsd: z.coerce.number().min(0).max(2_000_000, "Monto en USD es anormalmente alto").default(0),
   // Parsear la fecha como mediodía UTC para evitar desfases de timezone
   date: z.string().transform(str => {
     const [year, month, day] = str.split('-').map(Number)

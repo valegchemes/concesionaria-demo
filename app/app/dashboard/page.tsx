@@ -154,20 +154,23 @@ interface KpiCardProps {
 
 function KpiCard({ title, value, subtitle, icon: Icon, accentColor, iconColor, trend, href }: KpiCardProps) {
   const card = (
-    <Card className={`relative overflow-hidden border-l-4 ${accentColor} surface-secondary hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 group ${href ? 'cursor-pointer' : ''}`}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 pt-4 px-4">
-        <CardTitle className="text-xs font-semibold uppercase tracking-widest text-adaptive-secondary">
+    <Card className={`relative overflow-hidden border-l-[3px] ${accentColor} surface-secondary hover:-translate-y-0.5 hover:shadow-card-md transition-all duration-200 group ${href ? 'cursor-pointer' : ''}`}>
+      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 pt-4 px-4">
+        <CardTitle className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
           {title}
         </CardTitle>
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconColor} transition-transform group-hover:scale-110`}>
-          <Icon className="h-4 w-4" />
+        <div className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconColor} transition-transform duration-200 group-hover:scale-110`}>
+          <Icon className="h-3.5 w-3.5" />
         </div>
       </CardHeader>
       <CardContent className="px-4 pb-4">
-        <div className="text-2xl font-black text-adaptive-primary tabular-nums">{value}</div>
-        <p className="text-xs text-adaptive-secondary mt-0.5">{subtitle}</p>
+        <div className="text-2xl font-black text-adaptive-primary tabular">{value}</div>
+        <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{subtitle}</p>
         {trend && (
-          <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${trend.value > 0 ? 'text-emerald-500' : trend.value < 0 ? 'text-red-500' : 'text-adaptive-secondary'}`}>
+          <div className={`flex items-center gap-1 mt-2 text-[11px] font-semibold ${
+            trend.value > 0 ? 'text-emerald-600 dark:text-emerald-400'
+            : trend.value < 0 ? 'text-red-500 dark:text-red-400'
+            : 'text-muted-foreground'}`}>
             {trend.value > 0 ? <ArrowUpRight className="h-3 w-3" /> : trend.value < 0 ? <ArrowDownRight className="h-3 w-3" /> : <Minus className="h-3 w-3" />}
             {trend.label}
           </div>
@@ -194,33 +197,35 @@ interface StatPillProps {
 function StatPill({ label, value, sublabel, icon: Icon, color, href }: StatPillProps) {
   const colorMap = {
     blue: {
-      label: 'text-blue-500 dark:text-blue-400',
-      icon: 'text-blue-400',
+      bg: 'bg-blue-500/8 dark:bg-blue-500/10 border-blue-200/60 dark:border-blue-800/40',
+      label: 'text-blue-600 dark:text-blue-400',
+      icon: 'text-blue-500/60 dark:text-blue-400/60',
+      value: 'text-blue-700 dark:text-blue-300',
     },
     green: {
-      label: 'text-emerald-500 dark:text-emerald-400',
-      icon: 'text-emerald-400',
+      bg: 'bg-emerald-500/8 dark:bg-emerald-500/10 border-emerald-200/60 dark:border-emerald-800/40',
+      label: 'text-emerald-600 dark:text-emerald-400',
+      icon: 'text-emerald-500/60 dark:text-emerald-400/60',
+      value: 'text-emerald-700 dark:text-emerald-300',
     },
     red: {
+      bg: 'bg-red-500/8 dark:bg-red-500/10 border-red-200/60 dark:border-red-800/40',
       label: 'text-red-500 dark:text-red-400',
-      icon: 'text-red-400',
+      icon: 'text-red-400/60 dark:text-red-400/60',
+      value: 'text-red-600 dark:text-red-300',
     },
   }
   const c = colorMap[color]
 
   const card = (
-    <Card className={`surface-secondary hover:-translate-y-1 transition-transform duration-300 group ${href ? 'cursor-pointer' : ''}`}>
-      <CardContent className="py-4 px-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className={`text-[10px] font-bold uppercase tracking-widest ${c.label}`}>{label}</p>
-            <p className={`mt-1 text-3xl font-black text-adaptive-primary`}>{formatNumber(value)}</p>
-            <p className={`mt-0.5 text-xs text-adaptive-secondary`}>{sublabel}</p>
-          </div>
-          <Icon className={`h-10 w-10 ${c.icon} transition-transform group-hover:scale-110`} />
-        </div>
-      </CardContent>
-    </Card>
+    <div className={`flex items-center justify-between rounded-xl border p-4 ${c.bg} transition-all duration-200 hover:-translate-y-0.5 ${href ? 'cursor-pointer' : ''}`}>
+      <div>
+        <p className={`text-[10px] font-bold uppercase tracking-[0.12em] ${c.label}`}>{label}</p>
+        <p className={`mt-1 text-3xl font-black tabular ${c.value}`}>{formatNumber(value)}</p>
+        <p className={`mt-0.5 text-[11px] text-muted-foreground`}>{sublabel}</p>
+      </div>
+      <Icon className={`h-9 w-9 ${c.icon}`} />
+    </div>
   )
 
   if (href) {
@@ -294,17 +299,17 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-black text-adaptive-primary tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-adaptive-primary tracking-tight">Dashboard</h1>
         {companyName && (
-          <p className="mt-0.5 text-sm text-adaptive-secondary">{companyName}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{companyName}</p>
         )}
       </div>
 
       {/* Mis Comisiones (Solo para Vendedores) */}
       {stats.sellerCommission && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-white/5 pb-2">
-            <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-border pb-2">
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
               Mis Ganancias y Comisiones
             </h2>
             <span className="w-fit inline-flex items-center rounded-full bg-violet-500/10 dark:bg-violet-950/40 border border-violet-200/20 dark:border-violet-800/40 px-2.5 py-0.5 text-xs font-semibold text-violet-700 dark:text-violet-300">
@@ -372,7 +377,7 @@ export default async function DashboardPage() {
 
       {/* Resumen Operacional */}
       <div className="space-y-4">
-        <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
+        <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
           Resumen Operacional
         </h2>
 
@@ -448,7 +453,7 @@ export default async function DashboardPage() {
       {/* Resumen de Pagarés */}
       {(stats.notes.collectedArs > 0 || stats.notes.pendingArs > 0 || stats.notes.overdueArs > 0) && (
         <div className="space-y-4">
-          <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
+          <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
             Resumen de Pagarés (últimos 30 días)
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -486,8 +491,8 @@ export default async function DashboardPage() {
       )}
 
       {/* Analytics de Ventas */}
-      <div className="border-t border-adaptive pt-6">
-        <h2 className="mb-4 text-[11px] font-bold uppercase tracking-[0.12em] text-adaptive-secondary">
+      <div className="border-t border-border pt-6">
+        <h2 className="mb-4 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
           Analíticas de Ventas
         </h2>
         {!analyticsEnabled ? (

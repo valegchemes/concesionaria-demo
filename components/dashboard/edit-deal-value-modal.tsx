@@ -23,9 +23,21 @@ interface EditDealValueModalProps {
 export function EditDealValueModal({ isOpen, onClose, deal, onSuccess }: EditDealValueModalProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [finalPrice, setFinalPrice] = useState(deal.finalPrice.toString())
+  function formatWithDots(raw: string | number): string {
+    const rawStr = typeof raw === 'number' ? raw.toString() : raw
+    const digits = rawStr.replace(/\D/g, '')
+    if (!digits) return ''
+    return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(digits))
+  }
+
+  function parseFormatted(formatted: string): number {
+    const clean = formatted.replace(/[^\d]/g, '')
+    return clean ? Number(clean) : 0
+  }
+
+  const [finalPrice, setFinalPrice] = useState(formatWithDots(deal.finalPrice))
   const [currency, setCurrency] = useState(deal.currency)
-  const [exchangeRate, setExchangeRate] = useState(deal.exchangeRate.toString())
+  const [exchangeRate, setExchangeRate] = useState(formatWithDots(deal.exchangeRate))
 
   if (!isOpen) return null
 
@@ -35,9 +47,9 @@ export function EditDealValueModal({ isOpen, onClose, deal, onSuccess }: EditDea
 
     try {
       const payload = {
-        finalPrice: Number(finalPrice),
+        finalPrice: parseFormatted(finalPrice),
         finalPriceCurrency: currency,
-        exchangeRate: Number(exchangeRate),
+        exchangeRate: parseFormatted(exchangeRate),
       }
 
       const res = await fetch(`/api/deals/${deal.id}`, {
@@ -62,7 +74,9 @@ export function EditDealValueModal({ isOpen, onClose, deal, onSuccess }: EditDea
     }
   }
 
-  const calculatedArs = currency === 'USD' ? Number(finalPrice) * Number(exchangeRate) : Number(finalPrice)
+  const parsedFinalPrice = parseFormatted(finalPrice)
+  const parsedExchangeRate = parseFormatted(exchangeRate)
+  const calculatedArs = currency === 'USD' ? parsedFinalPrice * parsedExchangeRate : parsedFinalPrice
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -106,12 +120,11 @@ export function EditDealValueModal({ isOpen, onClose, deal, onSuccess }: EditDea
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="numeric"
                   required
                   value={finalPrice}
-                  onChange={(e) => setFinalPrice(e.target.value)}
+                  onChange={(e) => setFinalPrice(formatWithDots(e.target.value))}
                   className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-sm outline-none focus:border-violet-500 dark:border-slate-800 dark:bg-slate-900"
                   disabled={isSubmitting}
                 />
@@ -127,12 +140,11 @@ export function EditDealValueModal({ isOpen, onClose, deal, onSuccess }: EditDea
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">$</span>
               <input
-                type="number"
-                step="0.01"
-                min="1"
+                type="text"
+                inputMode="numeric"
                 required={currency === 'USD'}
                 value={exchangeRate}
-                onChange={(e) => setExchangeRate(e.target.value)}
+                onChange={(e) => setExchangeRate(formatWithDots(e.target.value))}
                 className="w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-3 py-2 text-sm outline-none focus:border-violet-500 dark:border-slate-800 dark:bg-slate-900"
                 disabled={isSubmitting || currency === 'ARS'}
               />

@@ -70,6 +70,21 @@ export const CurrencySchema = z
       .refine((v) => v <= 999_999_999.99, "Amount exceeds maximum allowed value")
   )
 
+// Esquema específico para Dólares para prevenir errores de tipeo millonarios
+export const UsdCurrencySchema = z.number()
+  .nonnegative("Amount must be 0 or positive")
+  .max(2_000_000, "Monto en USD excede el límite razonable de 2.000.000")
+  .refine(
+    (v) => Number.isFinite(v) && Math.round(v * 100) === v * 100,
+    "Amount must have at most 2 decimal places"
+  )
+  .or(
+    z.string()
+      .regex(/^\d+(\.\d{1,2})?$/, "Invalid currency format")
+      .transform(Number)
+      .refine((v) => v <= 2_000_000, "Monto en USD excede el límite razonable de 2.000.000")
+  )
+
 // ============================================================================
 // Auth Schemas
 // ============================================================================
@@ -156,9 +171,9 @@ export const CreateUnitSchema = z.object({
   brand: z.string().trim().transform(sanitizeString).optional(),
   model: z.string().trim().transform(sanitizeString).optional(),
   priceArs: CurrencySchema.optional().nullable(),
-  priceUsd: CurrencySchema.optional().nullable(),
+  priceUsd: UsdCurrencySchema.optional().nullable(),
   acquisitionCostArs: CurrencySchema.optional().nullable(),
-  acquisitionCostUsd: CurrencySchema.optional().nullable(),
+  acquisitionCostUsd: UsdCurrencySchema.optional().nullable(),
   description: z.string().max(2000).transform(sanitizeString).optional().or(z.literal("")).nullable(),
   year: z.number().int().min(1800).max(2100).optional().nullable(),
   location: z.string().max(200).transform(sanitizeString).optional().or(z.literal("")).nullable(),

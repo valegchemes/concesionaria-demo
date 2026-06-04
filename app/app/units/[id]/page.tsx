@@ -84,6 +84,21 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [costSaving, setCostSaving] = useState(false)
   const [costError, setCostError] = useState('')
 
+  function formatWithDots(raw: string | number | null): string {
+    if (raw === null || raw === undefined) return ''
+    const rawStr = typeof raw === 'number' ? raw.toString() : raw
+    const digits = rawStr.replace(/\D/g, '')
+    if (!digits) return ''
+    return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(Number(digits))
+  }
+
+  function parseFormatted(formatted: string | number | null): number | null {
+    if (formatted === null || formatted === undefined || formatted === '') return null
+    if (typeof formatted === 'number') return formatted
+    const clean = formatted.replace(/[^\d]/g, '')
+    return clean ? Number(clean) : null
+  }
+
   // PDF Generation
   const pdfRef = useRef<HTMLDivElement>(null)
   const [company, setCompany] = useState<any>(null)
@@ -127,7 +142,13 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
       if (unitRes.ok) {
         const json = await unitRes.json()
         setUnit(json.data)
-        setFormData(json.data)
+        setFormData({
+          ...json.data,
+          priceArs: formatWithDots(json.data.priceArs),
+          priceUsd: formatWithDots(json.data.priceUsd),
+          acquisitionCostArs: formatWithDots(json.data.acquisitionCostArs),
+          acquisitionCostUsd: formatWithDots(json.data.acquisitionCostUsd),
+        })
         setAttributesForm(json.data.attributes || [])
       }
       if (companyRes.ok) {
@@ -154,10 +175,10 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          priceArs: formData.priceArs != null ? Number(formData.priceArs) : null,
-          priceUsd: formData.priceUsd != null ? Number(formData.priceUsd) : null,
-          acquisitionCostArs: formData.acquisitionCostArs != null ? Number(formData.acquisitionCostArs) : null,
-          acquisitionCostUsd: formData.acquisitionCostUsd != null ? Number(formData.acquisitionCostUsd) : null,
+          priceArs: parseFormatted(formData.priceArs as string),
+          priceUsd: parseFormatted(formData.priceUsd as string),
+          acquisitionCostArs: parseFormatted(formData.acquisitionCostArs as string),
+          acquisitionCostUsd: parseFormatted(formData.acquisitionCostUsd as string),
           year: formData.year ? Number(formData.year) : null,
           attributes: attributesForm.filter(a => a.key.trim() !== '' && a.value.trim() !== ''),
         }),
@@ -188,8 +209,8 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           concept: costForm.concept,
-          amountArs: costForm.amountArs ? Number(costForm.amountArs) : null,
-          amountUsd: costForm.amountUsd ? Number(costForm.amountUsd) : null,
+          amountArs: parseFormatted(costForm.amountArs),
+          amountUsd: parseFormatted(costForm.amountUsd),
         }),
       })
       if (res.ok) {
@@ -423,22 +444,22 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Precio ARS</Label>
-                      <Input type="number" value={formData.priceArs || ''} onChange={e => updateField('priceArs', e.target.value)} />
+                      <Input type="text" inputMode="numeric" value={formData.priceArs || ''} onChange={e => updateField('priceArs', formatWithDots(e.target.value))} />
                     </div>
                     <div className="space-y-2">
                       <Label>Precio USD</Label>
-                      <Input type="number" value={formData.priceUsd || ''} onChange={e => updateField('priceUsd', e.target.value)} />
+                      <Input type="text" inputMode="numeric" value={formData.priceUsd || ''} onChange={e => updateField('priceUsd', formatWithDots(e.target.value))} />
                     </div>
                   </div>
                   {userRole === 'ADMIN' && (
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Costo de Compra ARS</Label>
-                      <Input type="number" placeholder="0" value={formData.acquisitionCostArs || ''} onChange={e => updateField('acquisitionCostArs', e.target.value)} />
+                      <Input type="text" inputMode="numeric" placeholder="0" value={formData.acquisitionCostArs || ''} onChange={e => updateField('acquisitionCostArs', formatWithDots(e.target.value))} />
                     </div>
                     <div className="space-y-2">
                       <Label>Costo de Compra USD</Label>
-                      <Input type="number" placeholder="0" value={formData.acquisitionCostUsd || ''} onChange={e => updateField('acquisitionCostUsd', e.target.value)} />
+                      <Input type="text" inputMode="numeric" placeholder="0" value={formData.acquisitionCostUsd || ''} onChange={e => updateField('acquisitionCostUsd', formatWithDots(e.target.value))} />
                     </div>
                   </div>
                   )}
@@ -665,20 +686,22 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                     <div className="space-y-2">
                       <Label className="text-xs">Monto ARS</Label>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         placeholder="0"
                         value={costForm.amountArs}
-                        onChange={e => setCostForm(p => ({ ...p, amountArs: e.target.value }))}
+                        onChange={e => setCostForm(p => ({ ...p, amountArs: formatWithDots(e.target.value) }))}
                         className="bg-background"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">Monto USD</Label>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         placeholder="0"
                         value={costForm.amountUsd}
-                        onChange={e => setCostForm(p => ({ ...p, amountUsd: e.target.value }))}
+                        onChange={e => setCostForm(p => ({ ...p, amountUsd: formatWithDots(e.target.value) }))}
                         className="bg-background"
                       />
                     </div>

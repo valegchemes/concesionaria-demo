@@ -577,6 +577,9 @@ export class UnitService {
     if (!command.amountArs && !command.amountUsd) {
       throw new ValidationError('Debe indicar al menos un monto (ARS o USD)')
     }
+    if (command.amountUsd && command.amountUsd > 2000000) {
+      throw new ValidationError('El monto en USD es anormalmente alto (máximo permitido 2.000.000). Verifica no haber tipeado un monto en ARS por error.')
+    }
 
     const item = await prisma.unitCostItem.create({
       data: {
