@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -122,7 +123,7 @@ export default function SettingsPage() {
 
       if (res.ok) {
         setLogoUrl(finalLogoUrl)
-        alert('Configuracion de empresa guardada con exito')
+        toast.success('Configuracion de empresa guardada con exito')
         router.refresh()
       } else {
         const data = await res.json().catch(() => null)
@@ -131,11 +132,11 @@ export default function SettingsPage() {
         const errMsg = Array.isArray(data?.error)
           ? data.error.map((e: any) => e.message || e.path?.join('.')).join(', ')
           : data?.error || data?.message || JSON.stringify(data)
-        alert(errMsg || `No se pudo guardar la configuracion de empresa (${res.status})`)
+        toast.error(errMsg || `No se pudo guardar la configuracion de empresa (${res.status})`)
       }
     } catch (error) {
       console.error('Company settings save error:', error)
-      alert(
+      toast.error(
         'Error guardando empresa: ' +
           (error instanceof Error ? error.message : String(error))
       )
@@ -167,7 +168,7 @@ export default function SettingsPage() {
       const exchangeRateValue = normalizedExchangeRate === '' ? null : Number(normalizedExchangeRate)
 
       if (normalizedExchangeRate !== '' && Number.isNaN(exchangeRateValue)) {
-        alert('El tipo de cambio debe ser un número válido')
+        toast.error('El tipo de cambio debe ser un número válido')
         setLoading(false)
         return
       }
@@ -198,7 +199,7 @@ export default function SettingsPage() {
               }
             : prev
         )
-        alert('Perfil guardado con exito')
+        toast.success('Perfil guardado con exito')
         router.refresh()
       } else {
         const data = await res.json().catch(() => null)
@@ -206,11 +207,11 @@ export default function SettingsPage() {
         const errMsg = Array.isArray(data?.error)
           ? data.error.map((e: any) => e.message || e.path?.join('.')).join(', ')
           : data?.error || data?.message || JSON.stringify(data)
-        alert(errMsg || `No se pudo actualizar el perfil (${res.status})`)
+        toast.error(errMsg || `No se pudo actualizar el perfil (${res.status})`)
       }
     } catch (error) {
       console.error('User settings save error:', error)
-      alert(
+      toast.error(
         'Error guardando usuario: ' +
           (error instanceof Error ? error.message : String(error))
       )

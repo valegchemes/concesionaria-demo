@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -189,7 +190,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
         setIsEditing(false)
       } else {
         const errorText = await res.text()
-        alert(`Error al guardar: ${res.status} - ${errorText}`)
+        toast.error(`Error al guardar: ${res.status} - ${errorText}`)
       }
     } catch (e) {
       console.error(e)
@@ -261,7 +262,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
       pdf.save(`Ficha_${unit.title.replace(/\s+/g, '_')}.pdf`)
     } catch (err) {
       console.error('Error generating PDF:', err)
-      alert('Hubo un error al generar el PDF. Revisa la consola.')
+      toast.error('Hubo un error al generar el PDF. Revisá la consola.')
     } finally {
       setIsGeneratingPdf(false)
     }

@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -133,12 +134,12 @@ export default function UnitsPage() {
         setIsTradeInModalOpen(false)
         fetchUnits()
         fetchTradeIns()
-        alert('Unidad creada con éxito en el inventario.')
+        toast.success('Unidad creada con éxito en el inventario.')
       } else {
-        alert(json.error || 'Error al convertir el vehículo')
+        toast.error(json.error || 'Error al convertir el vehículo')
       }
     } catch {
-      alert('Error de conexión')
+      toast.error('Error de conexión')
     } finally {
       setSubmittingTradeIn(false)
     }
@@ -189,10 +190,10 @@ export default function UnitsPage() {
         setUnits(prev => prev.filter(u => u.id !== id))
       } else {
         const data = await res.json().catch(() => ({}))
-        alert(`No se pudo eliminar: ${data?.error || res.status}`)
+        toast.error(`No se pudo eliminar: ${data?.error || res.status}`)
       }
     } catch {
-      alert('Error de conexión al intentar eliminar')
+      toast.error('Error de conexión al intentar eliminar')
     }
   }
 
@@ -222,7 +223,7 @@ export default function UnitsPage() {
       const exportUnits = Array.isArray(responseData?.data) ? responseData.data : []
 
       if (!exportUnits.length) {
-        alert('No hay unidades para exportar en este listado.')
+        toast.error('No hay unidades para exportar en este listado.')
         return
       }
 
@@ -246,7 +247,7 @@ export default function UnitsPage() {
 
       exportToExcel(rows, `Inventario_${new Date().toISOString().split('T')[0]}`, 'Inventario')
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al exportar inventario')
+      toast.error(err instanceof Error ? err.message : 'Error al exportar inventario')
     } finally {
       setExporting(false)
     }

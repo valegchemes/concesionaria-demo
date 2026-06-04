@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -120,10 +121,10 @@ export default function FinancePage() {
         setOpeningNotes('')
         fetchSession()
       } else {
-        alert(json.error)
+        toast.error(json.error)
       }
     } catch {
-      alert('Error de red al intentar abrir la caja')
+      toast.error('Error de red al intentar abrir la caja')
     } finally {
       setSubmitting(false)
     }
@@ -151,10 +152,10 @@ export default function FinancePage() {
         setClosingNotes('')
         fetchSession()
       } else {
-        alert(json.error)
+        toast.error(json.error)
       }
     } catch {
-      alert('Error de red al intentar cerrar la caja')
+      toast.error('Error de red al intentar cerrar la caja')
     } finally {
       setSubmitting(false)
     }
@@ -181,10 +182,10 @@ export default function FinancePage() {
         setTxConcept('')
         fetchSession()
       } else {
-        alert(json.error)
+        toast.error(json.error)
       }
     } catch {
-      alert('Error de red al registrar transacción')
+      toast.error('Error de red al registrar transacción')
     } finally {
       setSubmitting(false)
     }

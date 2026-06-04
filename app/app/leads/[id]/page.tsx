@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useEffect, useState, use, useCallback } from 'react'
 import Link from 'next/link'
@@ -391,7 +392,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     // Pre-select first non-canceled deal
     const defaultDeal = lead.deals.find(d => d.status !== 'CANCELED') ?? lead.deals[0]
     if (!defaultDeal) {
-      alert('No hay operaciones registradas para este lead.')
+      toast.error('No hay operaciones registradas para este lead.')
       return
     }
     const dealId = defaultDeal.id
@@ -443,7 +444,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   function confirmSendWhatsApp() {
     if (!waPhoneNumber) {
-      alert('Seleccioná un número de WhatsApp para enviar.')
+      toast.error('Seleccioná un número de WhatsApp para enviar.')
       return
     }
     const link = generateWhatsAppLink(waPhoneNumber, waPreviewMessage)

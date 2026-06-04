@@ -1,4 +1,5 @@
 'use client'
+import { toast } from 'sonner'
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
@@ -155,14 +156,14 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
       })
       
       if (res.ok) {
-        alert('Estado actualizado correctamente')
+        toast.success('Estado actualizado correctamente')
         fetchDeal() // refrescar para obtener los datos actualizados
       } else {
         const err = await res.json()
-        alert(`Error: ${err.error || 'No se pudo actualizar'}`)
+        toast.error(`Error: ${err.error || 'No se pudo actualizar'}`)
       }
     } catch (e) {
-      alert('Error de conexión')
+      toast.error('Error de conexión')
     } finally {
       setUpdatingStatus(false)
     }
@@ -195,7 +196,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
 
   function confirmSendWhatsApp() {
     if (!waPhoneNumber) {
-      alert('Seleccioná un número de WhatsApp para enviar.')
+      toast.error('Seleccioná un número de WhatsApp para enviar.')
       return
     }
     const link = generateWhatsAppLink(waPhoneNumber, waPreviewMessage)

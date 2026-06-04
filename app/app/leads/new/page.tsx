@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -133,11 +134,11 @@ export default function NewLeadPage() {
           errorMessage = errorData.error
         }
         
-        alert(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (error) {
       console.error('Error creating lead:', error)
-      alert('Error de conexión al servidor.')
+      toast.error('Error de conexión al servidor.')
     } finally {
       setLoading(false)
     }

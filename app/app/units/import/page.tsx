@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -104,7 +105,7 @@ export default function BulkImportPage() {
   const [dragOver, setDragOver] = useState(false)
 
   function handleFile(file: File) {
-    if (!file.name.endsWith('.csv')) { alert('Solo se aceptan archivos .csv'); return }
+    if (!file.name.endsWith('.csv')) { toast.error('Solo se aceptan archivos .csv'); return }
     setFileName(file.name)
     setResults(null)
     const reader = new FileReader()
@@ -117,7 +118,7 @@ export default function BulkImportPage() {
 
   async function handleImport() {
     const validRows = rows.filter(r => r.title && r._errors.filter(e => !e.includes('usará')).length === 0)
-    if (validRows.length === 0) { alert('No hay filas válidas para importar'); return }
+    if (validRows.length === 0) { toast.error('No hay filas válidas para importar'); return }
     setImporting(true)
     const errors: string[] = []
     let success = 0

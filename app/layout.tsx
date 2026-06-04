@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 
 const inter = Inter({
@@ -39,6 +40,20 @@ export default function RootLayout({
       </head>
       <body className="antialiased">
         {children}
+        <Toaster
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: 'hsl(222 40% 10%)',
+              color: 'hsl(210 40% 95%)',
+              border: '1px solid hsl(217 30% 17%)',
+              borderRadius: '0.75rem',
+              fontSize: '13px',
+            },
+          }}
+          richColors
+          closeButton
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `

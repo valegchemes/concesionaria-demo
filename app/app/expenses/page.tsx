@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -108,9 +109,9 @@ export default function ExpensesPage() {
       })
       const result = await res.json()
       if (result.success) { reset(); fetchExpenses() }
-      else alert(result.error)
+      else toast.error(result.error)
     } catch {
-      alert('Error guardando costo')
+      toast.error('Error guardando costo')
     }
   }
 
@@ -120,7 +121,7 @@ export default function ExpensesPage() {
       const res = await fetch(`/api/expenses/${id}`, { method: 'DELETE' })
       if (res.ok) fetchExpenses()
     } catch {
-      alert('Error eliminando costo')
+      toast.error('Error eliminando costo')
     }
   }
 

@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -151,10 +152,10 @@ export default function BillingPage() {
       if (data.url) {
         window.location.href = data.url
       } else {
-        alert('Error: ' + data.error)
+        toast.error('Error: ' + data.error)
       }
     } catch {
-      alert('Error de red. Intenta nuevamente.')
+      toast.error('Error de red. Intenta nuevamente.')
     } finally {
       setLoading(false)
     }

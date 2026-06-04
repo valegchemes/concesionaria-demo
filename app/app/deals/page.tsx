@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
@@ -146,10 +147,10 @@ export default function DealsPage() {
         setDeals(prev => prev.filter(d => d.id !== id))
       } else {
         const data = await res.json().catch(() => ({}))
-        alert(`No se pudo eliminar: ${data?.error || data?.message || res.status}`)
+        toast.error(`No se pudo eliminar: ${data?.error || data?.message || res.status}`)
       }
     } catch {
-      alert('Error de conexión al intentar eliminar')
+      toast.error('Error de conexión al intentar eliminar')
     }
   }
 
@@ -194,7 +195,7 @@ export default function DealsPage() {
     } catch (err) {
       console.error(err)
       setDeals(previousDeals) // Revert on failure
-      alert('Error al actualizar el estado de la operación')
+      toast.error('Error al actualizar el estado de la operación')
     }
   }
 

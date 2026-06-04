@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -139,7 +140,7 @@ export default function NewDealPage() {
         router.refresh()
       } else {
         const error = await res.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error creando operacion:', error)

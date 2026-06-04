@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -274,10 +275,10 @@ export default function LeadsPage() {
         setLeads(prev => prev.filter(l => l.id !== id))
       } else {
         const data = await res.json().catch(() => ({}))
-        alert(`No se pudo eliminar el lead: ${data?.error || res.status}`)
+        toast.error(`No se pudo eliminar el lead: ${data?.error || res.status}`)
       }
     } catch {
-      alert('Error de conexión al intentar eliminar')
+      toast.error('Error de conexión al intentar eliminar')
     }
   }
 

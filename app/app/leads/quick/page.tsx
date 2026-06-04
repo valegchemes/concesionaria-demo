@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -113,7 +114,7 @@ export default function QuickLeadPage() {
         router.push('/app/leads')
       } else {
         const error = await res.json()
-        alert('Error: ' + JSON.stringify(error))
+        toast.error('Error: ' + JSON.stringify(error))
       }
     } catch (error) {
       console.error('Error creating lead:', error)

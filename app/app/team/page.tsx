@@ -1,4 +1,5 @@
-'use client'
+﻿'use client'
+import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -126,10 +127,10 @@ export default function TeamPage() {
         router.refresh()
       } else {
         const data = await res.json().catch(() => ({}))
-        alert(`No se pudo eliminar: ${data?.error || data?.message || `Error ${res.status}`}`)
+        toast.error(`No se pudo eliminar: ${data?.error || data?.message || `Error ${res.status}`}`)
       }
     } catch {
-      alert('Error de conexión al intentar eliminar')
+      toast.error('Error de conexión al intentar eliminar')
     }
   }
 
