@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/domains/analytics/hooks'
 import { cn } from '@/lib/utils'
 import { EditDealValueModal } from './edit-deal-value-modal'
+import useSWR from 'swr'
 
 interface DealDetail {
   id: string
@@ -71,6 +72,10 @@ export function DealDetailsModal({
   onDealUpdated,
 }: DealDetailsModalProps) {
   const [editingDeal, setEditingDeal] = useState<DealDetail | null>(null)
+
+  // Fetch current company exchange rate
+  const { data: meData } = useSWR('/api/me', (url) => fetch(url).then(res => res.json()))
+  const globalExchangeRate = meData?.exchangeRateArsPerUsd ? Number(meData.exchangeRateArsPerUsd) : null
 
   if (!isOpen) return null
 
@@ -219,20 +224,27 @@ export function DealDetailsModal({
                                 {deal.currency}
                               </Badge>
                             </div>
-                            {deal.currency === 'USD' ? (
-                              <div className="space-y-1 mt-2 text-xs text-muted-foreground">
-                                <p>
-                                  Equivale a <strong>{formatCurrency(deal.finalPrice * deal.exchangeRate, 'ARS')}</strong> con tipo de cambio <strong>{deal.exchangeRate.toFixed(2)} ARS/USD</strong>
+                            {(() => {
+                              // If global config has exchange rate, use it instead of 1.00
+                              const effectiveExchangeRate = (deal.exchangeRate === 1 && globalExchangeRate) 
+                                ? globalExchangeRate 
+                                : globalExchangeRate || deal.exchangeRate
+
+                              return deal.currency === 'USD' ? (
+                                <div className="space-y-1 mt-2 text-xs text-muted-foreground">
+                                  <p>
+                                    Equivale a <strong>{formatCurrency(deal.finalPrice * effectiveExchangeRate, 'ARS')}</strong> con tipo de cambio <strong>{effectiveExchangeRate.toFixed(2)} ARS/USD</strong>
+                                  </p>
+                                  <p>
+                                    Precio original: <strong>{formatCurrency(deal.finalPrice, 'USD')}</strong>
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-muted-foreground mt-2">
+                                  Tipo de cambio actual: {effectiveExchangeRate.toFixed(2)} ARS/USD
                                 </p>
-                                <p>
-                                  Precio original: <strong>{formatCurrency(deal.finalPrice, 'USD')}</strong>
-                                </p>
-                              </div>
-                            ) : (
-                              <p className="text-xs text-muted-foreground mt-2">
-                                Tipo de cambio: {deal.exchangeRate.toFixed(2)} ARS/USD
-                              </p>
-                            )}
+                              )
+                            })()}
                           </div>
 
                           {/* Fechas */}
