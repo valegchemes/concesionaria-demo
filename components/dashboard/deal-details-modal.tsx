@@ -6,7 +6,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, DollarSign, User, Calendar, Zap, Pencil, AlertCircle } from 'lucide-react'
+import { X, DollarSign, User, Calendar, Zap, Pencil, AlertCircle, Package } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCurrency } from '@/lib/domains/analytics/hooks'
