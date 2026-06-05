@@ -244,7 +244,7 @@ export class DealService {
           exchangeRate: true,
           updatedAt: true,
           lead: { select: { name: true, phone: true } },
-          unit: { select: { title: true, type: true, vin: true, domain: true } },
+          unit: { select: { title: true, type: true, vin: true, domain: true, acquisitionCostArs: true, acquisitionCostUsd: true } },
           seller: { select: { name: true, id: true } },
           createdAt: true,
           _count: { select: { payments: true, closingCosts: true } },

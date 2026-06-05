@@ -28,6 +28,8 @@ interface DealDetail {
   buyerName?: string
   buyerPhone?: string
   unitModel?: string
+  unitCostArs?: number
+  unitCostUsd?: number
 }
 
 interface DealDetailsSummary {
@@ -76,6 +78,8 @@ export function DealDetailsModal({
   // Fetch current company exchange rate
   const { data: meData } = useSWR('/api/me', (url) => fetch(url).then(res => res.json()))
   const globalExchangeRate = meData?.exchangeRateArsPerUsd ? Number(meData.exchangeRateArsPerUsd) : null
+
+  const isProfitView = title.toLowerCase().includes('ganancia') || title.toLowerCase().includes('profit')
 
   if (!isOpen) return null
 
@@ -245,6 +249,45 @@ export function DealDetailsModal({
                               )
                             })()}
                           </div>
+
+                          {/* Info de Rentabilidad (Solo visible en Ganancia Neta y si hay costos cargados) */}
+                          {isProfitView && (deal.unitCostArs || deal.unitCostUsd) && (
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+                                Rentabilidad de la Operación
+                              </p>
+                              {(() => {
+                                const effectiveRate = (deal.exchangeRate === 1 && globalExchangeRate) ? globalExchangeRate : (globalExchangeRate || deal.exchangeRate || 1000)
+                                const dealTotalArs = deal.currency === 'USD' ? deal.finalPrice * effectiveRate : deal.finalPrice
+                                const dealTotalUsd = deal.currency === 'USD' ? deal.finalPrice : deal.finalPrice / effectiveRate
+                                
+                                const costArs = deal.unitCostArs || (deal.unitCostUsd ? deal.unitCostUsd * effectiveRate : 0)
+                                const costUsd = deal.unitCostUsd || (deal.unitCostArs ? deal.unitCostArs / effectiveRate : 0)
+                                
+                                const profitArs = dealTotalArs - costArs
+                                const profitUsd = dealTotalUsd - costUsd
+
+                                return (
+                                  <div className="grid grid-cols-2 gap-3 mt-2">
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Costo Unidad</p>
+                                      <p className="text-sm font-semibold">
+                                        {deal.unitCostUsd ? `U$S ${formatCurrency(costUsd, 'USD')}` : `$ ${formatCurrency(costArs, 'ARS')}`}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Ganancia Neta</p>
+                                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                        {deal.currency === 'USD' 
+                                          ? `U$S ${formatCurrency(profitUsd, 'USD')}` 
+                                          : `$ ${formatCurrency(profitArs, 'ARS')}`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          )}
 
                           {/* Fechas */}
                           <div className="grid grid-cols-2 gap-2">

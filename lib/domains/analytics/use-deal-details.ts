@@ -23,6 +23,8 @@ export interface DealDetail {
   buyerName?: string
   buyerPhone?: string
   unitModel?: string
+  unitCostArs?: number
+  unitCostUsd?: number
 }
 
 interface DealPeriod {
@@ -106,6 +108,8 @@ export function useAnalyticsDealDetails(
           buyerName: lead?.name,
           buyerPhone: lead?.phone,
           unitModel: unit?.vin || unit?.domain || undefined,
+          unitCostArs: unit?.acquisitionCostArs ? Number(unit.acquisitionCostArs) : undefined,
+          unitCostUsd: unit?.acquisitionCostUsd ? Number(unit.acquisitionCostUsd) : undefined,
         }
       })
     : undefined
