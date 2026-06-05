@@ -85,8 +85,8 @@ export function DealDetailsModal({
   }
 
   return (
-    <div className="modal-overlay flex items-start justify-center p-6">
-      <div className="relative mx-auto flex min-h-[280px] max-w-6xl flex-col overflow-hidden rounded-[32px] border border-adaptive bg-white/95 shadow-2xl backdrop-blur-xl dark:bg-slate-950/95">
+    <div className="modal-overlay flex items-center justify-center p-4 sm:p-6">
+      <div className="relative mx-auto flex min-h-[280px] max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-adaptive bg-white/95 shadow-2xl backdrop-blur-xl dark:bg-slate-950/95">
         {/* Header */}
         <div className="bg-slate-900 text-white px-5 py-4 flex justify-between items-center border-b border-adaptive">
           <div>
@@ -110,9 +110,8 @@ export function DealDetailsModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto">
-            <div className="p-5">
+        <div className="flex-1 overflow-y-auto p-5 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+          <div className="space-y-6">
               {summary && (
                 <div className="grid gap-3 lg:grid-cols-4 mb-6">
                   <div className="surface-secondary rounded-3xl border border-adaptive p-4">
@@ -151,7 +150,7 @@ export function DealDetailsModal({
                   {deals.map((deal) => (
                     <div
                       key={deal.id}
-                      className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                      className="group flex flex-col gap-4 rounded-xl border border-slate-200/60 bg-white p-5 shadow-sm transition-all hover:border-slate-300 hover:shadow-md dark:border-slate-800/60 dark:bg-slate-900 dark:hover:border-slate-700"
                     >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Columna izquierda */}
@@ -183,13 +182,13 @@ export function DealDetailsModal({
                           {/* Comprador */}
                           {deal.buyerName && (
                             <div>
-                              <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+                              <p className="text-[10px] font-semibold tracking-widest text-slate-500 uppercase">
                                 Comprador
                               </p>
                               <div className="mt-1">
-                                <p className="text-sm font-medium">{deal.buyerName}</p>
+                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{deal.buyerName}</p>
                                 {deal.buyerPhone && (
-                                  <p className="text-xs text-muted-foreground">{deal.buyerPhone}</p>
+                                  <p className="text-xs text-slate-500">{deal.buyerPhone}</p>
                                 )}
                               </div>
                             </div>
@@ -280,20 +279,20 @@ export function DealDetailsModal({
 
                       {/* Divisor */}
                       <div className="border-t mt-4 pt-3 flex items-center justify-between">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400">
                           {deal.status}
                         </Badge>
-                        <code className="text-[10px] text-muted-foreground">{deal.id}</code>
+                        <code className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{deal.id}</code>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <p className="text-muted-foreground text-sm">Sin operaciones en este período</p>
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Package className="h-12 w-12 text-slate-300 dark:text-slate-700 mb-4" />
+                  <p className="text-slate-500 font-medium">Sin operaciones en este período</p>
                 </div>
               )}
-            </div>
           </div>
         </div>
 
