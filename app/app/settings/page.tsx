@@ -436,7 +436,7 @@ export default function SettingsPage() {
                     value={exchangeRateArsPerUsd}
                     onChange={e => setExchangeRateArsPerUsd(e.target.value)}
                   />
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-400 dark:text-slate-500">
                     Ingresa el valor del dólar que querés usar en los cálculos del sistema. Dejá vacío para usar el valor por defecto.
                   </p>
                 </div>
