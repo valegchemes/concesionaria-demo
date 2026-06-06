@@ -294,10 +294,13 @@ export class UnitService {
   async delete(id: string, companyId: string): Promise<void> {
     log.info({ unitId: id }, 'Deleting unit')
 
-    // Verify unit exists (sin filtrar isActive para poder borrar unidades vendidas)
+    // Verify unit exists and fetch its media for deletion
     const unitExists = await prisma.unit.findFirst({
       where: { id, companyId },
-      select: { id: true },
+      include: {
+        photos: true,
+        digitalDocuments: true,
+      }
     })
     if (!unitExists) throw new NotFoundError('Unit', id)
 
@@ -320,13 +323,47 @@ export class UnitService {
       )
     }
 
-    // Soft delete
-    await prisma.unit.update({
-      where: { id },
-      data: { isActive: false },
-    })
+    // Collect URLs to delete from Blob Storage
+    const urlsToDelete: string[] = []
+    
+    for (const photo of unitExists.photos) {
+      if (isVercelBlobUrl(photo.url)) urlsToDelete.push(photo.url)
+    }
+    
+    for (const doc of unitExists.digitalDocuments) {
+      const meta = doc.metadata as { url?: string } | null;
+      if (meta?.url && typeof meta.url === 'string' && isVercelBlobUrl(meta.url)) {
+        urlsToDelete.push(meta.url)
+      }
+    }
 
-    log.info({ unitId: id }, 'Unit deleted')
+    // Delete physical files from Blob Storage
+    if (urlsToDelete.length > 0) {
+      try {
+        await deleteFiles(urlsToDelete)
+        log.info({ unitId: id, count: urlsToDelete.length }, 'Deleted physical files from Blob storage during manual delete')
+      } catch (err) {
+        log.error({ error: err instanceof Error ? err.message : String(err), unitId: id }, 'Error deleting physical files from blob storage during manual delete')
+      }
+    }
+
+    // Soft delete & cleanup DB
+    await prisma.$transaction([
+      prisma.unitPhoto.deleteMany({ where: { unitId: id } }),
+      prisma.digitalDocument.deleteMany({ where: { unitId: id } }),
+      prisma.unitAttribute.deleteMany({ where: { unitId: id } }),
+      prisma.unit.update({
+        where: { id },
+        data: { 
+          isActive: false,
+          description: null,
+          location: null,
+          tags: [], 
+        },
+      })
+    ])
+
+    log.info({ unitId: id }, 'Unit deleted and media cleaned up')
   }
 
   /**
