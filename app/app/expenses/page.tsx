@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
@@ -105,7 +105,11 @@ export default function ExpensesPage() {
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          amountArs: parseFormatted(data.amountArs),
+          amountUsd: parseFormatted(data.amountUsd),
+        }),
       })
       const result = await res.json()
       if (result.success) { reset(); fetchExpenses() }
@@ -170,7 +174,7 @@ export default function ExpensesPage() {
                 <Label className="text-xs font-semibold">Categoría</Label>
                 <Input {...register('category', { required: 'La categoría es obligatoria' })}
                   placeholder="Ej: Luz, Alquiler, Sueldos"
-                  className="bg-white/60 dark:bg-slate-900/60" />
+                  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
                 {errors.category && <p className="text-xs text-red-500">{errors.category.message}</p>}
               </div>
 
@@ -178,7 +182,7 @@ export default function ExpensesPage() {
                 <Label className="text-xs font-semibold">Detalle (Opcional)</Label>
                 <Input {...register('description')}
                   placeholder="Factura #1234"
-                  className="bg-white/60 dark:bg-slate-900/60" />
+                  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -187,21 +191,21 @@ export default function ExpensesPage() {
                   <Input type="text" inputMode="numeric" {...register('amountArs', {
                       onChange: (e) => { e.target.value = formatWithDots(e.target.value) }
                     })}
-                    className="bg-white/60 dark:bg-slate-900/60" />
+                    className="bg-white dark:bg-slate-950" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold">Monto USD</Label>
                   <Input type="text" inputMode="numeric" {...register('amountUsd', {
                       onChange: (e) => { e.target.value = formatWithDots(e.target.value) }
                     })}
-                    className="bg-white/60 dark:bg-slate-900/60" />
+                    className="bg-white dark:bg-slate-950" />
                 </div>
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Fecha</Label>
                 <Input type="date" {...register('date', { required: 'La fecha es obligatoria' })}
-                  className="bg-white/60 dark:bg-slate-900/60" />
+                  className="bg-white dark:bg-slate-950" />
                 {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
               </div>
 
@@ -230,7 +234,7 @@ export default function ExpensesPage() {
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="w-44 bg-white/60 dark:bg-slate-900/60"
+                className="w-44 bg-white dark:bg-slate-950"
               />
             </CardHeader>
             <CardContent>
