@@ -4,22 +4,20 @@ import { env } from '@/lib/env'
 Sentry.init({
   dsn: env.NEXT_PUBLIC_SENTRY_DSN || env.SENTRY_DSN,
   
-  // Adjust this value in production, or use tracesSampler for greater control
+  // Solo capturar el 10% de transacciones en producción para reducir carga
   tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
   
-  // Setting this option to true will print useful information to the console while you're setting up Sentry.
   debug: env.NODE_ENV === 'development',
   
-  replaysOnErrorSampleRate: 1.0,
+  // Reducido a 0: el replay de sesiones genera tráfico constante via tunnelRoute
+  // y tiene alto impacto en el billing de Vercel (cada chunk = 1 invocación)
+  replaysSessionSampleRate: 0,
   
-  // This sets the sample rate to be 10%. You may want this to be 100% while
-  // in development and sample at a lower rate in production
-  replaysSessionSampleRate: 0.1,
+  // Solo grabar replay en errores graves, y solo el 10% de ellos
+  replaysOnErrorSampleRate: 0.1,
   
-  // You can remove this option if you're not planning to use the Sentry Session Replay feature:
   integrations: [
     Sentry.replayIntegration({
-      // Additional Replay configuration goes in here, for example:
       maskAllText: true,
       blockAllMedia: true,
     }),

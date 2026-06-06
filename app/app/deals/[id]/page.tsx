@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import { 
   ArrowLeft, User, Car, Handshake, DollarSign, Calendar, Clock, CreditCard, UserCircle, 
   MessageCircle, Send, X, Lock, AlertTriangle
@@ -96,7 +97,9 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
   const [deal, setDeal] = useState<DealDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const { limits } = usePlanLimits()
-  const [me, setMe] = useState<CurrentUser | null>(null)
+  const { user: meData } = useCurrentUser()
+  // Construir el objeto 'me' desde el hook compartido
+  const me = meData ? { companyName: meData.companyName || '', whatsappCentral: meData.whatsappCentral || null } : null
 
   // WhatsApp deal modal state
   const [waModalOpen, setWaModalOpen] = useState(false)
@@ -105,23 +108,7 @@ export default function DealDetailPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     fetchDeal()
-    fetchCurrentUser()
   }, [id])
-
-  async function fetchCurrentUser() {
-    try {
-      const res = await fetch('/api/me', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
-        setMe({
-          companyName: data.companyName || '',
-          whatsappCentral: data.whatsappCentral || null,
-        })
-      }
-    } catch (error) {
-      console.error('Error fetching current user:', error)
-    }
-  }
 
   async function fetchDeal() {
     try {

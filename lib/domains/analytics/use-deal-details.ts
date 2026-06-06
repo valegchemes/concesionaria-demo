@@ -85,7 +85,8 @@ export function useAnalyticsDealDetails(
   const { data, error, isLoading } = useSWR(swrKey, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: false,
-    dedupingInterval: 30000,
+    // 2 minutos de deduplicación — los detalles de deals para modales no cambian frecuentemente
+    dedupingInterval: 120000,
   })
 
   // paginatedResponse devuelve { success: true, data: [...], pagination: {...} }

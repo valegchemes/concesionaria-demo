@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useEffect, useState, useCallback } from 'react'
@@ -15,6 +15,7 @@ import { KanbanBoard } from './KanbanBoard'
 import { LayoutList, Columns3 } from 'lucide-react'
 import { useRealtimeDeals } from '@/lib/hooks/use-realtime-deals'
 import type { DealRealtimePayload } from '@/lib/hooks/use-realtime-deals'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 
 interface Deal {
   id: string
@@ -42,11 +43,13 @@ export default function DealsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
-  const [userRole, setUserRole] = useState<string>('SELLER')
-  const [userId, setUserId] = useState<string>('')
-  const [companyId, setCompanyId] = useState<string>('')
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban')
   const [realtimeFlash, setRealtimeFlash] = useState<string | null>(null)
+
+  const { user: currentUser } = useCurrentUser()
+  const userRole = currentUser?.role ?? 'SELLER'
+  const userId = currentUser?.id ?? ''
+  const companyId = currentUser?.companyId ?? ''
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -59,19 +62,10 @@ export default function DealsPage() {
 
   async function fetchInitialData() {
     try {
-      const [dealsRes, meRes] = await Promise.all([
-        fetch('/api/deals', { cache: 'no-store' }),
-        fetch('/api/me', { cache: 'no-store' }),
-      ])
+      const dealsRes = await fetch('/api/deals', { cache: 'no-store' })
       if (dealsRes.ok) {
         const data = await dealsRes.json()
         setDeals(data.data || [])
-      }
-      if (meRes.ok) {
-        const me = await meRes.json()
-        setUserRole(me.role)
-        setUserId(me.id ?? '')
-        setCompanyId(me.companyId ?? '')
       }
     } catch (err) {
       console.error('Error fetching data:', err)

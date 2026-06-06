@@ -1,8 +1,9 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,7 +47,7 @@ export default function NewLeadPage() {
   const [loading, setLoading] = useState(false)
   const [users, setUsers] = useState<User[]>([])
   const [units, setUnits] = useState<Unit[]>([])
-  const [currentUser, setCurrentUser] = useState<any>(null)
+  const { user: currentUser } = useCurrentUser()
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -61,23 +62,14 @@ export default function NewLeadPage() {
   useEffect(() => {
     fetchUsers()
     fetchUnits()
-    fetchMe()
   }, [])
 
-  async function fetchMe() {
-    try {
-      const res = await fetch('/api/me', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
-        setCurrentUser(data)
-        if (data.role === 'SELLER') {
-          setFormData(prev => ({ ...prev, assignedToId: data.id }))
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching current user:', error)
+  // Pre-asignar al vendedor actual si su rol es SELLER
+  useEffect(() => {
+    if (currentUser?.role === 'SELLER') {
+      setFormData(prev => ({ ...prev, assignedToId: currentUser.id }))
     }
-  }
+  }, [currentUser])
 
   async function fetchUsers() {
     try {

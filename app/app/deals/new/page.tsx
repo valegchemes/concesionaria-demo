@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -40,7 +41,7 @@ const statusOptions = [
 
 export default function NewDealPage() {
   const router = useRouter()
-  const [me, setMe] = useState<CurrentUser | null>(null)
+  const { user: me, isLoading: meLoading } = useCurrentUser()
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
 
@@ -79,18 +80,16 @@ export default function NewDealPage() {
   }
 
   useEffect(() => {
+    if (meLoading) return // Esperar a que useCurrentUser resuelva
     async function loadData() {
       try {
-        const meRes = await fetch('/api/me', { cache: 'no-store' })
-        const currentUser = meRes.ok ? await meRes.json() : null
-        setMe(currentUser)
-
         const requests: Promise<Response>[] = [
-          fetch('/api/leads', { cache: 'no-store' }),
-          fetch('/api/units', { cache: 'no-store' }),
+          // Fix 2.3: Limitar a activos para reducir transferencia
+          fetch('/api/leads?limit=100&status=ACTIVE', { cache: 'no-store' }),
+          fetch('/api/units?limit=100&status=AVAILABLE', { cache: 'no-store' }),
         ]
 
-        if (currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER') {
+        if (me?.role === 'ADMIN' || me?.role === 'MANAGER') {
           requests.push(fetch('/api/users', { cache: 'no-store' }))
         }
 
@@ -109,12 +108,12 @@ export default function NewDealPage() {
         if (sellersRes?.ok) {
           const data = await sellersRes.json()
           setSellers(Array.isArray(data) ? data : [])
-        } else if (currentUser) {
-          setSellers([{ id: currentUser.id, name: currentUser.name }])
+        } else if (me) {
+          setSellers([{ id: me.id, name: me.name }])
         }
 
-        if (currentUser?.id) {
-          setFormData(prev => ({ ...prev, sellerId: currentUser.id }))
+        if (me?.id) {
+          setFormData(prev => ({ ...prev, sellerId: me.id }))
         }
       } catch (err) {
         console.error('Error cargando datos para operacion:', err)
@@ -124,7 +123,7 @@ export default function NewDealPage() {
     }
 
     void loadData()
-  }, [])
+  }, [me, meLoading])
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()

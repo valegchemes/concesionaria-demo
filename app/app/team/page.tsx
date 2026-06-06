@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 
 interface TeamMember {
   id: string
@@ -23,12 +24,6 @@ interface TeamMember {
   whatsappNumber?: string
   avatarUrl?: string
   commissionRate: number
-}
-
-interface CurrentUser {
-  id: string
-  role: string
-  companySlug?: string
 }
 
 function getAvatarGradient(name: string): string {
@@ -50,7 +45,7 @@ function getAvatarGradient(name: string): string {
 export default function TeamPage() {
   const router = useRouter()
   const { limits } = usePlanLimits()
-  const [me, setMe] = useState<CurrentUser | null>(null)
+  const { user: me } = useCurrentUser()
   const [members, setMembers] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -74,11 +69,7 @@ export default function TeamPage() {
 
   async function fetchInitialData() {
     try {
-      const [meRes, teamRes] = await Promise.all([
-        fetch('/api/me', { cache: 'no-store' }),
-        fetch('/api/users', { cache: 'no-store' }),
-      ])
-      if (meRes.ok) { const d = await meRes.json(); setMe({ id: d.id, role: d.role, companySlug: d.companySlug }) }
+      const teamRes = await fetch('/api/users', { cache: 'no-store' })
       if (teamRes.ok) { const d = await teamRes.json(); setMembers(d) }
     } catch (err) {
       console.error('Error fetching team:', err)
@@ -322,13 +313,11 @@ export default function TeamPage() {
 
             return (
               <Card key={member.id} className="group relative overflow-hidden surface-primary hover:-translate-y-1 transition-transform duration-300">
-                {/* Acento de color en la parte superior */}
                 <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${gradient} opacity-70`} />
 
                 <CardContent className="pt-6 pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      {/* Avatar con gradiente dinámico o imagen */}
                       {member.avatarUrl ? (
                         <div className="flex h-12 w-12 items-center justify-center rounded-full overflow-hidden shadow-md border-2 border-white/50">
                           <Image src={member.avatarUrl} alt={member.name} width={48} height={48} className="object-cover w-full h-full" />
@@ -361,7 +350,6 @@ export default function TeamPage() {
                       </div>
                     </div>
 
-                    {/* Acciones */}
                     {isAdmin && (
                       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         <button
@@ -370,7 +358,7 @@ export default function TeamPage() {
                             setEditFormData({
                               name: member.name,
                               email: member.email,
-                              password: '', // Blank
+                              password: '',
                               role: member.role,
                               whatsappNumber: member.whatsappNumber || '',
                               avatarUrl: member.avatarUrl || '',
@@ -395,7 +383,6 @@ export default function TeamPage() {
                     )}
                   </div>
 
-                  {/* Contacto */}
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center gap-2 text-sm text-adaptive-secondary">
                       <Mail className="h-3.5 w-3.5 shrink-0" />

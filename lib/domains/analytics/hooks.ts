@@ -31,12 +31,14 @@ import { analyticsCacheKeys } from './types'
 const ANALYTICS_CACHE_TIME_MS = 5 * 60 * 1000 // 5 minutos
 
 const swrConfig: SWRConfiguration = {
-  refreshInterval: ANALYTICS_CACHE_TIME_MS,
+  // Sin refreshInterval — el servidor ya tiene KV cache de 5 min (analytics:v8).
+  // La revalidación reactiva se hace vía Pusher (debouncedMutateAll en AnalyticsDashboard).
+  // El polling automático duplicaba trabajo innecesariamente.
   revalidateOnFocus: false,
-  revalidateOnReconnect: true,
-  dedupingInterval: 5000, // 5 segundos de deduplicación
-  errorRetryCount: 3,
-  errorRetryInterval: 3000,
+  revalidateOnReconnect: false,
+  dedupingInterval: 60000, // 60 segundos de deduplicación (era 5s)
+  errorRetryCount: 2,
+  errorRetryInterval: 5000,
 }
 
 // ============================================================================

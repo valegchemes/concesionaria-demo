@@ -1,8 +1,9 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Building2, User, Globe, Loader2, Save, PenLine, CheckCircle, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,7 @@ interface CurrentUser {
 export default function SettingsPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [me, setMe] = useState<CurrentUser | null>(null)
+  const { user: me, mutate: mutateMe } = useCurrentUser()
   const isCompanyAdmin = me?.role === 'ADMIN'
 
   const [companyName, setCompanyName] = useState('')
@@ -51,22 +52,19 @@ export default function SettingsPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [exchangeRateArsPerUsd, setExchangeRateArsPerUsd] = useState('')
 
+  // Inicializar campos del formulario cuando el usuario carga desde SWR
+  useEffect(() => {
+    if (!me) return
+    setUserName(me.name || '')
+    setUserEmail(me.email || '')
+    setAvatarUrl(me.avatarUrl || '')
+    setExchangeRateArsPerUsd(me.exchangeRateArsPerUsd ? String(me.exchangeRateArsPerUsd) : '')
+  }, [me])
+
   useEffect(() => {
     async function fetchSettings() {
       try {
-        const [meRes, companyRes] = await Promise.all([
-          fetch('/api/me', { cache: 'no-store' }),
-          fetch('/api/settings/company', { cache: 'no-store' }),
-        ])
-
-        if (meRes.ok) {
-          const meData = await meRes.json()
-          setMe(meData)
-          setUserName(meData.name || '')
-          setUserEmail(meData.email || '')
-          setAvatarUrl(meData.avatarUrl || '')
-          setExchangeRateArsPerUsd(meData.exchangeRateArsPerUsd ? String(meData.exchangeRateArsPerUsd) : '')
-        }
+        const companyRes = await fetch('/api/settings/company', { cache: 'no-store' })
 
         if (companyRes.ok) {
           const companyData = await companyRes.json()

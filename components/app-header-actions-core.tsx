@@ -42,6 +42,9 @@ export function AppHeaderActionsCore() {
   const [loadingNotif, setLoadingNotif] = useState(false)
   const newRef = useRef<HTMLDivElement>(null)
   const notifRef = useRef<HTMLDivElement>(null)
+  // Caché de notificaciones: evita re-fetch si se abre/cierra el panel en < 60s
+  const notifCacheRef = useRef<{ data: Activity[]; ts: number } | null>(null)
+  const NOTIF_TTL_MS = 60_000
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -56,6 +59,13 @@ export function AppHeaderActionsCore() {
   async function openNotifications() {
     setShowNotif(v => !v)
     if (!showNotif) {
+      // Usar caché si está vigente (< 60s)
+      const cached = notifCacheRef.current
+      if (cached && Date.now() - cached.ts < NOTIF_TTL_MS) {
+        setActivities(cached.data)
+        return
+      }
+
       setLoadingNotif(true)
       try {
         const [leadsRes, dealsRes] = await Promise.all([
@@ -85,6 +95,9 @@ export function AppHeaderActionsCore() {
         const combined = [...leadActivities, ...dealActivities]
           .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
           .slice(0, 6)
+
+        // Guardar en caché
+        notifCacheRef.current = { data: combined, ts: Date.now() }
         setActivities(combined)
       } catch {
         setActivities([])

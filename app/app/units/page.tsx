@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useEffect, useState } from 'react'
@@ -89,8 +89,15 @@ export default function UnitsPage() {
       if (urlStatus) setStatusFilter(urlStatus)
     }
     fetchUnits()
-    fetchTradeIns()
+    // fetchTradeIns() se llama solo cuando el usuario activa el tab TRADE_IN (ver useEffect abajo)
   }, [])
+
+  // Lazy: cargar trade-ins solo cuando el usuario navega a ese tab
+  useEffect(() => {
+    if (statusFilter === 'TRADE_IN' && tradeIns.length === 0) {
+      fetchTradeIns()
+    }
+  }, [statusFilter])
 
   async function fetchTradeIns() {
     try {

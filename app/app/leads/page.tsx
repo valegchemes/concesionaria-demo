@@ -1,8 +1,9 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -224,7 +225,8 @@ export default function LeadsPage() {
   const [selectedSeller, setSelectedSeller] = useState<string>('ALL')
   const dragId = useRef<string | null>(null)
 
-  const [userRole, setUserRole] = useState<string>('SELLER')
+  const { user: currentUser } = useCurrentUser()
+  const userRole = currentUser?.role ?? 'SELLER'
 
   useEffect(() => { 
     if (typeof window !== 'undefined') {
@@ -239,10 +241,9 @@ export default function LeadsPage() {
 
   async function fetchInitialData() {
     try {
-      const [leadsRes, teamRes, meRes] = await Promise.all([
+      const [leadsRes, teamRes] = await Promise.all([
         fetch('/api/leads', { cache: 'no-store' }),
         fetch('/api/users', { cache: 'no-store' }),
-        fetch('/api/me', { cache: 'no-store' }),
       ])
       
       if (leadsRes.ok) {
@@ -253,12 +254,6 @@ export default function LeadsPage() {
       if (teamRes.ok) {
         const teamData = await teamRes.json()
         setTeam(teamData)
-      }
-
-      if (meRes.ok) {
-        const meData = await meRes.json()
-        setUserRole(meData.role)
-        setMe(meData)
       }
     } catch (err) {
       console.error('Error fetching data:', err)
@@ -401,7 +396,7 @@ export default function LeadsPage() {
             })}
           </div>
           
-          {(me?.role === 'ADMIN' || me?.role === 'MANAGER') && team.length > 0 && (
+          {(currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER') && team.length > 0 && (
             <select
               className="h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-700 dark:text-slate-300"
               value={selectedSeller}
@@ -442,7 +437,7 @@ export default function LeadsPage() {
               />
             </div>
             
-            {(me?.role === 'ADMIN' || me?.role === 'MANAGER') && team.length > 0 && (
+            {(currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER') && team.length > 0 && (
               <select
                 className="h-10 rounded-lg border border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm px-3 py-2 text-sm text-slate-700 dark:text-slate-300"
                 value={selectedSeller}

@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 
 import { useEffect, useState, use, useCallback } from 'react'
 import Link from 'next/link'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -140,8 +141,7 @@ const DEAL_STATUS_LABELS: Record<string, string> = {
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   // Unwrap promise for Next.js 15
   const { id } = use(params)
-  
-  const [me, setMe] = useState<CurrentUser | null>(null)
+
   const [lead, setLead] = useState<Lead | null>(null)
   const [loading, setLoading] = useState(true)
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
@@ -151,6 +151,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [activeTab, setActiveTab] = useState<'info' | 'notes'>('info')
   const { limits } = usePlanLimits()
+  const { user: meData } = useCurrentUser()
+  const me: CurrentUser | null = meData
+    ? { companyName: meData.companyName || '', whatsappCentral: meData.whatsappCentral || null }
+    : null
+
 
   // WhatsApp deal modal state
   const [waModalOpen, setWaModalOpen] = useState(false)
@@ -308,27 +313,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     }
   }, [])
 
-  const fetchCurrentUser = useCallback(async () => {
-    try {
-      const res = await fetch('/api/me', { cache: 'no-store' })
-      if (res.ok) {
-        const data = await res.json()
-        setMe({
-          companyName: data.companyName || '',
-          whatsappCentral: data.whatsappCentral || null,
-        })
-      }
-    } catch (error) {
-      console.error('Error fetching current user:', error)
-    }
-  }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchLead()
     void fetchTemplates()
-    void fetchCurrentUser()
-  }, [fetchCurrentUser, fetchLead, fetchTemplates])
+  }, [fetchLead, fetchTemplates])
 
   async function addTask(e: React.FormEvent) {
     e.preventDefault()

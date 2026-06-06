@@ -3,6 +3,7 @@
 import { toast } from 'sonner'
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -105,8 +106,9 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [company, setCompany] = useState<any>(null)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [activeTab, setActiveTab] = useState<any>('details')
-  const [userRole, setUserRole] = useState<string>('SELLER')
   const { limits, loading: limitsLoading } = usePlanLimits()
+  const { user: currentUser } = useCurrentUser()
+  const userRole = currentUser?.role ?? 'SELLER'
 
   async function saveUnitAttributes(updatedAttrs: { key: string; value: string }[]) {
     try {
@@ -135,10 +137,9 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
 
   async function fetchUnit() {
     try {
-      const [unitRes, companyRes, meRes] = await Promise.all([
+      const [unitRes, companyRes] = await Promise.all([
         fetch(`/api/units/${id}`),
         fetch('/api/settings/company'),
-        fetch('/api/me'),
       ])
       if (unitRes.ok) {
         const json = await unitRes.json()
@@ -155,10 +156,6 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
       if (companyRes.ok) {
         const json = await companyRes.json()
         setCompany(json)
-      }
-      if (meRes.ok) {
-        const json = await meRes.json()
-        setUserRole(json.role)
       }
     } catch (e) {
       console.error(e)
