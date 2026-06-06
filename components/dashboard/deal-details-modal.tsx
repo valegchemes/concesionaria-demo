@@ -75,8 +75,15 @@ export function DealDetailsModal({
 }: DealDetailsModalProps) {
   const [editingDeal, setEditingDeal] = useState<DealDetail | null>(null)
 
-  // Fetch current company exchange rate
-  const { data: meData } = useSWR('/api/me', (url) => fetch(url).then(res => res.json()))
+  // Fetch current company exchange rate (condicional y cacheado localmente)
+  const { data: meData } = useSWR(
+    isOpen ? '/api/me' : null, 
+    (url) => fetch(url).then(res => res.json()),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000 // 1 minuto de deduplicación
+    }
+  )
   const globalExchangeRate = meData?.exchangeRateArsPerUsd ? Number(meData.exchangeRateArsPerUsd) : null
 
   const isProfitView = title.toLowerCase().includes('ganancia') || title.toLowerCase().includes('profit')

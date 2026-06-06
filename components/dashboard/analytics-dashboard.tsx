@@ -8,7 +8,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -48,12 +48,21 @@ export function AnalyticsDashboard({ companyId, companyName, hideHeader = false,
   const { timeRange, setTimeRange, options } = useTimeRange('30d')
   const { dashboard, salesProfit, topSellers, costs, isLoadingAny, hasError, mutateAll } = useAllAnalytics(timeRange, companyId)
   
-  // Refresh analytics live via Pusher
+  // Refresh analytics live via Pusher con debounce para evitar tormentas de revalidación
+  const mutateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
+  const debouncedMutateAll = useCallback(() => {
+    if (mutateTimeoutRef.current) clearTimeout(mutateTimeoutRef.current)
+    mutateTimeoutRef.current = setTimeout(() => {
+      mutateAll()
+    }, 5000) // 5 segundos de ventana para agrupar eventos (debounce)
+  }, [mutateAll])
+
   useRealtimeDeals({
     companyId,
-    onDealCreated: () => mutateAll(),
-    onDealUpdated: () => mutateAll(),
-    onDealDeleted: () => mutateAll()
+    onDealCreated: debouncedMutateAll,
+    onDealUpdated: debouncedMutateAll,
+    onDealDeleted: debouncedMutateAll
   })
   
   // Estados para modales de detalles
