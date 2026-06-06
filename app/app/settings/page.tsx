@@ -188,15 +188,7 @@ export default function SettingsPage() {
         setPassword('')
         setCurrentPassword('')
         setAvatarUrl(finalAvatarUrl)
-        setMe((prev) =>
-          prev
-            ? {
-                ...prev,
-                name: userName,
-                email: userEmail,
-              }
-            : prev
-        )
+        mutateMe()
         toast.success('Perfil guardado con exito')
         router.refresh()
       } else {
