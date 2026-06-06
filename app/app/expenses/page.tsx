@@ -171,7 +171,7 @@ export default function ExpensesPage() {
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5">
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Categoría</Label>
+                <Label className="text-xs font-semibold text-adaptive-primary">Categoría</Label>
                 <Input {...register('category', { required: 'La categoría es obligatoria' })}
                   placeholder="Ej: Luz, Alquiler, Sueldos"
                   className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
@@ -179,7 +179,7 @@ export default function ExpensesPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Detalle (Opcional)</Label>
+                <Label className="text-xs font-semibold text-adaptive-primary">Detalle (Opcional)</Label>
                 <Input {...register('description')}
                   placeholder="Factura #1234"
                   className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
@@ -187,14 +187,14 @@ export default function ExpensesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Monto ARS</Label>
+                  <Label className="text-xs font-semibold text-adaptive-primary">Monto ARS</Label>
                   <Input type="text" inputMode="numeric" {...register('amountArs', {
                       onChange: (e) => { e.target.value = formatWithDots(e.target.value) }
                     })}
                     className="bg-white dark:bg-slate-950" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Monto USD</Label>
+                  <Label className="text-xs font-semibold text-adaptive-primary">Monto USD</Label>
                   <Input type="text" inputMode="numeric" {...register('amountUsd', {
                       onChange: (e) => { e.target.value = formatWithDots(e.target.value) }
                     })}
@@ -203,7 +203,7 @@ export default function ExpensesPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Fecha</Label>
+                <Label className="text-xs font-semibold text-adaptive-primary">Fecha</Label>
                 <Input type="date" {...register('date', { required: 'La fecha es obligatoria' })}
                   className="bg-white dark:bg-slate-950" />
                 {errors.date && <p className="text-xs text-red-500">{errors.date.message}</p>}
