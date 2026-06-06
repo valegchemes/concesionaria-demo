@@ -8,9 +8,10 @@ import { listUnreadEmails, sendReply, markAsRead } from '@/lib/email/gmail'
 const log = createLogger('API:EmailResponderCron')
 
 export async function GET(req: Request) {
-  // 1. Verify Vercel Cron Secret for security
+  // 1. Verify Vercel Cron Secret for security (Estricto: No permitir si no hay secreto configurado)
   const authHeader = req.headers.get('authorization')
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    log.error({ authHeader }, 'Intento de acceso no autorizado o falta CRON_SECRET al email-responder')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

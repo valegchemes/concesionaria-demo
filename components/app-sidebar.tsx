@@ -110,6 +110,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                   <Link
                     key={item.name}
                     href={item.href}
+                    prefetch={false}
                     className={cn(
                       'relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-all duration-150',
                       isActive
@@ -143,6 +144,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       <div className="border-t border-white/10 px-3 py-3">
         <Link
           href="/app/settings"
+          prefetch={false}
           className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-white/10 group"
         >
           {user.avatarUrl ? (
