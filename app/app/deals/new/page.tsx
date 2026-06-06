@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { toast } from 'sonner'
 
 import { useState, useEffect } from 'react'
@@ -57,6 +57,14 @@ export default function NewDealPage() {
     status: 'NEGOTIATION',
     depositAmount: '',
     notes: '',
+  })
+
+  // Estado para toma de usado
+  const [useTradeIn, setUseTradeIn] = useState(false)
+  const [tradeInData, setTradeInData] = useState({
+    description: '',
+    type: 'CAR',
+    expectedValue: '',
   })
 
   function formatWithDots(raw: string): string {
@@ -123,10 +131,18 @@ export default function NewDealPage() {
     setLoading(true)
 
     try {
-      const payload = {
+      const payload: any = {
         ...formData,
         finalPrice: parseFormatted(formData.finalPrice) || 0,
         depositAmount: parseFormatted(formData.depositAmount),
+      }
+
+      if (useTradeIn && tradeInData.description) {
+        payload.tradeIn = {
+          description: tradeInData.description,
+          type: tradeInData.type,
+          expectedValue: parseFormatted(tradeInData.expectedValue) || 0,
+        }
       }
 
       const res = await fetch('/api/deals', {
@@ -304,6 +320,77 @@ export default function NewDealPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle>Vehículo en Parte de Pago (Opcional)</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Registrar unidad usada como trade-in</p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="useTradeIn"
+                className="h-4 w-4 rounded border-gray-300"
+                checked={useTradeIn}
+                onChange={(e) => setUseTradeIn(e.target.checked)}
+              />
+              <Label htmlFor="useTradeIn" className="font-medium cursor-pointer">
+                Recibir Usado
+              </Label>
+            </div>
+          </CardHeader>
+          
+          {useTradeIn && (
+            <CardContent className="space-y-4 pt-4 border-t mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="col-span-1 md:col-span-1 space-y-2">
+                  <Label htmlFor="tradeInType">Tipo de Unidad</Label>
+                  <select
+                    id="tradeInType"
+                    value={tradeInData.type}
+                    onChange={(e) => setTradeInData({ ...tradeInData, type: e.target.value })}
+                    className="h-10 w-full rounded-md border bg-background px-3"
+                  >
+                    <option value="CAR">Auto / Camioneta</option>
+                    <option value="MOTORCYCLE">Moto</option>
+                    <option value="BOAT">Náutica</option>
+                  </select>
+                </div>
+                
+                <div className="col-span-1 md:col-span-2 space-y-2">
+                  <Label htmlFor="tradeInDesc">Descripción del Vehículo *</Label>
+                  <Input
+                    id="tradeInDesc"
+                    value={tradeInData.description}
+                    onChange={(e) => setTradeInData({ ...tradeInData, description: e.target.value })}
+                    placeholder="Ej: VW Golf 1.4 TSI Highline 2018"
+                    required={useTradeIn}
+                  />
+                </div>
+                
+                <div className="col-span-1 md:col-span-3 space-y-2">
+                  <Label htmlFor="tradeInValue">
+                    Valor de Toma Pactado ({formData.finalPriceCurrency}) *
+                  </Label>
+                  <Input
+                    id="tradeInValue"
+                    type="text"
+                    inputMode="numeric"
+                    value={tradeInData.expectedValue}
+                    onChange={(e) => setTradeInData({ ...tradeInData, expectedValue: formatWithDots(e.target.value) })}
+                    placeholder="0"
+                    required={useTradeIn}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    El monto ingresado aquí será registrado como el costo de adquisición de la unidad entrante. 
+                    No se deducirá automáticamente del precio final de la operación.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          )}
+        </Card>
 
         <Card>
           <CardHeader>

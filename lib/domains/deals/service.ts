@@ -96,49 +96,94 @@ export class DealService {
       )
     }
 
-    // Create deal
-    const deal = await prisma.deal.create({
-      data: {
-        finalPrice: command.finalPrice,
-        finalPriceCurrency: command.finalPriceCurrency,
-        status: command.status || 'NEGOTIATION',
-        depositAmount: command.depositAmount,
-        leadId: command.leadId,
-        unitId: command.unitId,
-        sellerId: command.sellerId,
-        notes: command.notes?.trim(),
-        companyId: command.companyId,
-      },
-      include: {
-        lead: { select: { id: true, name: true, phone: true } },
-        unit: { select: { id: true, title: true, type: true } },
-        payments: true,
-        closingCosts: true,
-        seller: { select: { id: true, name: true, email: true } },
-      },
-    }) as unknown as DealWithRelations
+    // Create deal and trade-in inside a transaction
+    const deal = await withTransaction(async (tx) => {
+      const newDeal = await tx.deal.create({
+        data: {
+          finalPrice: command.finalPrice,
+          finalPriceCurrency: command.finalPriceCurrency,
+          status: command.status || 'NEGOTIATION',
+          depositAmount: command.depositAmount,
+          leadId: command.leadId,
+          unitId: command.unitId,
+          sellerId: command.sellerId,
+          notes: command.notes?.trim(),
+          companyId: command.companyId,
+        },
+        include: {
+          lead: { select: { id: true, name: true, phone: true } },
+          unit: { select: { id: true, title: true, type: true } },
+          payments: true,
+          closingCosts: true,
+          seller: { select: { id: true, name: true, email: true } },
+        },
+      })
+
+      if (command.tradeIn) {
+        // 1. Create the Unit for the trade-in
+        const newUnit = await tx.unit.create({
+          data: {
+            title: command.tradeIn.description,
+            type: command.tradeIn.type as any,
+            status: 'IN_PREP',
+            priceArs: command.finalPriceCurrency === 'ARS' ? command.tradeIn.expectedValue : null,
+            priceUsd: command.finalPriceCurrency === 'USD' ? command.tradeIn.expectedValue : null,
+            acquisitionCostArs: command.finalPriceCurrency === 'ARS' ? command.tradeIn.expectedValue : null,
+            acquisitionCostUsd: command.finalPriceCurrency === 'USD' ? command.tradeIn.expectedValue : null,
+            acquisitionType: 'TRADE_IN',
+            isFromTradeIn: true,
+            companyId: command.companyId,
+            createdById: command.createdById || command.sellerId,
+          }
+        })
+
+        // 2. Create the TradeIn record
+        const tradeInRecord = await tx.tradeIn.create({
+          data: {
+            description: command.tradeIn.description,
+            expectedValue: command.tradeIn.expectedValue,
+            offeredValue: command.tradeIn.expectedValue,
+            finalValue: command.tradeIn.expectedValue,
+            isConverted: true,
+            convertedToUnitId: newUnit.id,
+            convertedAt: new Date(),
+            dealId: newDeal.id,
+          }
+        })
+
+        // Sincronizar tradeInId en el Unit por las dudas
+        await tx.unit.update({
+          where: { id: newUnit.id },
+          data: { tradeInId: tradeInRecord.id }
+        })
+
+        ;(newDeal as any).tradeIn = tradeInRecord
+      }
+
+      // Sincronizar estados si la operación es RESERVADA
+      if (newDeal.status === 'RESERVED') {
+        await Promise.all([
+          tx.lead.update({
+            where: { id: command.leadId },
+            data: { status: 'RESERVED' },
+          }),
+          tx.unit.update({
+            where: { id: command.unitId },
+            data: { status: 'RESERVED' },
+          })
+        ])
+      } else {
+        // Update lead status to indicate deal in progress
+        await tx.lead.update({
+          where: { id: command.leadId },
+          data: { status: 'OFFER' },
+        })
+      }
+
+      return newDeal as unknown as DealWithRelations
+    })
 
     log.info({ dealId: deal.id }, 'Deal created successfully')
-
-    // Sincronizar estados si la operación es RESERVADA
-    if (deal.status === 'RESERVED') {
-      await Promise.all([
-        prisma.lead.update({
-          where: { id: command.leadId },
-          data: { status: 'RESERVED' },
-        }),
-        prisma.unit.update({
-          where: { id: command.unitId },
-          data: { status: 'RESERVED' },
-        })
-      ])
-    } else {
-      // Update lead status to indicate deal in progress
-      await prisma.lead.update({
-        where: { id: command.leadId },
-        data: { status: 'OFFER' },
-      })
-    }
 
     return deal
   }

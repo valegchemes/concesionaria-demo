@@ -254,6 +254,11 @@ export const CreateDealSchema = z.object({
   status: DealStatusEnum.default('NEGOTIATION'),
   depositAmount: CurrencySchema.optional(),
   notes: z.string().max(1000).optional().or(z.literal("")),
+  tradeIn: z.object({
+    description: z.string().min(1, "Descripción de la unidad es requerida"),
+    type: UnitTypeEnum,
+    expectedValue: CurrencySchema,
+  }).optional(),
 })
 
 export type CreateDealInput = z.infer<typeof CreateDealSchema>

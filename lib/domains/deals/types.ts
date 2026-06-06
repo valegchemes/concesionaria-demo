@@ -28,6 +28,11 @@ export interface CreateDealCommand {
   notes?: string
   companyId: string
   createdById: string
+  tradeIn?: {
+    description: string
+    type: 'CAR' | 'MOTORCYCLE' | 'BOAT'
+    expectedValue: number
+  }
 }
 
 export interface RequestingUser {
