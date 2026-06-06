@@ -101,7 +101,7 @@ export function ImageUploader({
 
   return (
     <div className="space-y-4">
-      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition">
+      <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 text-center hover:border-slate-400 dark:hover:border-slate-500 transition">
         <input
           ref={fileInputRef}
           type="file"
@@ -117,12 +117,12 @@ export function ImageUploader({
           className="cursor-pointer block"
         >
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-sm font-medium text-slate-200 dark:text-slate-700">
             {isUploading
               ? `Subiendo... ${progress}%`
               : 'Arrastra imágenes aquí o haz clic para seleccionar'}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
             PNG, JPG, HEIC hasta 20MB (se comprimen automáticamente). Máx {maxFiles} fotos.
           </p>
         </label>
@@ -136,7 +136,7 @@ export function ImageUploader({
 
       {uploadedImages.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-2">
+          <h3 className="text-sm font-medium text-slate-200 dark:text-slate-700 mb-2">
             Imágenes subidas ({uploadedImages.length}/{maxFiles})
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
