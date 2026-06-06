@@ -249,6 +249,9 @@ export function UnitForm() {
     }
   }
 
+  const inputCls = "w-full h-9 px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:placeholder:text-slate-500"
+  const labelCls = "block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5"
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-2xl text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -408,13 +411,13 @@ export function UnitForm() {
       )}
 
       <div>
-        <Label htmlFor="type" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Tipo de Unidad *</Label>
+        <label htmlFor="type" className={labelCls}>Tipo de Unidad *</label>
         <select
           id="type"
           name="type"
           value={formData.type}
           onChange={handleInputChange}
-          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={inputCls}
           required
         >
           <option value="">Seleccionar tipo</option>
@@ -426,7 +429,7 @@ export function UnitForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <Label htmlFor="brand" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Marca *</Label>
+          <label htmlFor="brand" className={labelCls}>Marca *</label>
           <CreatableCombobox 
             options={dictionary.map(d => d.brand)}
             value={formData.brand}
@@ -436,7 +439,7 @@ export function UnitForm() {
           />
         </div>
         <div>
-          <Label htmlFor="model" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Modelo *</Label>
+          <label htmlFor="model" className={labelCls}>Modelo *</label>
           <CreatableCombobox 
             options={dictionary.find(d => d.brand.toLowerCase() === formData.brand.toLowerCase())?.models || []}
             value={formData.model}
@@ -446,40 +449,40 @@ export function UnitForm() {
           />
         </div>
         <div>
-          <Label htmlFor="year" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Año</Label>
-          <Input id="year" name="year" type="number" value={formData.year} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+          <label htmlFor="year" className={labelCls}>Año</label>
+          <input id="year" name="year" type="number" value={formData.year} onChange={handleInputChange} className={inputCls} />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div>
-          <Label htmlFor="domain" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Patente</Label>
-          <Input id="domain" name="domain" placeholder="ej: AB123CD" value={formData.domain} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+          <label htmlFor="domain" className={labelCls}>Patente</label>
+          <input id="domain" name="domain" placeholder="ej: AB123CD" value={formData.domain} onChange={handleInputChange} className={inputCls} />
         </div>
         <div>
-          <Label htmlFor="kilometraje" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Kilometraje</Label>
-          <Input id="kilometraje" name="kilometraje" type="number" placeholder="ej: 45000" value={formData.kilometraje} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+          <label htmlFor="kilometraje" className={labelCls}>Kilometraje</label>
+          <input id="kilometraje" name="kilometraje" type="number" placeholder="ej: 45000" value={formData.kilometraje} onChange={handleInputChange} className={inputCls} />
         </div>
         <div>
-          <Label htmlFor="engineNumber" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">N° Motor</Label>
-          <Input id="engineNumber" name="engineNumber" placeholder="Opcional" value={formData.engineNumber} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+          <label htmlFor="engineNumber" className={labelCls}>N° Motor</label>
+          <input id="engineNumber" name="engineNumber" placeholder="Opcional" value={formData.engineNumber} onChange={handleInputChange} className={inputCls} />
         </div>
         <div>
-          <Label htmlFor="frameNumber" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">N° Chasis</Label>
-          <Input id="frameNumber" name="frameNumber" placeholder="Opcional" value={formData.frameNumber} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+          <label htmlFor="frameNumber" className={labelCls}>N° Chasis</label>
+          <input id="frameNumber" name="frameNumber" placeholder="Opcional" value={formData.frameNumber} onChange={handleInputChange} className={inputCls} />
         </div>
       </div>
 
       {/* Costos de la concesionaria — clave para calcular ganancia real */}
-      <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
+      <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 rounded-lg p-4 space-y-3">
         <div>
-          <h3 className="text-sm font-semibold text-amber-800">💰 Costos de la Concesionaria</h3>
-          <p className="text-xs text-amber-700 mt-0.5">Precio al que compraste la unidad (no visible al cliente)</p>
+          <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-400">💰 Costos de la Concesionaria</h3>
+          <p className="text-xs text-amber-700 dark:text-amber-500 mt-0.5">Precio al que compraste la unidad (no visible al cliente)</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="acquisitionCostArs" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Costo de Compra (ARS)</Label>
-            <Input
+            <label htmlFor="acquisitionCostArs" className={labelCls}>Costo de Compra (ARS)</label>
+            <input
               id="acquisitionCostArs"
               name="acquisitionCostArs"
               type="text"
@@ -487,11 +490,12 @@ export function UnitForm() {
               placeholder="ej: 90.000.000"
               value={formData.acquisitionCostArs}
               onChange={handlePriceChange('acquisitionCostArs')}
-             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+              className={inputCls}
+            />
           </div>
           <div>
-            <Label htmlFor="acquisitionCostUsd" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Costo de Compra (USD)</Label>
-            <Input
+            <label htmlFor="acquisitionCostUsd" className={labelCls}>Costo de Compra (USD)</label>
+            <input
               id="acquisitionCostUsd"
               name="acquisitionCostUsd"
               type="text"
@@ -499,15 +503,16 @@ export function UnitForm() {
               placeholder="ej: 90.000"
               value={formData.acquisitionCostUsd}
               onChange={handlePriceChange('acquisitionCostUsd')}
-             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+              className={inputCls}
+            />
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <Label htmlFor="priceUsd" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Precio de Venta (USD)</Label>
-          <Input
+          <label htmlFor="priceUsd" className={labelCls}>Precio de Venta (USD)</label>
+          <input
             id="priceUsd"
             name="priceUsd"
             type="text"
@@ -515,12 +520,13 @@ export function UnitForm() {
             placeholder="ej: 95.000"
             value={formData.priceUsd}
             onChange={handlePriceChange('priceUsd')}
-           className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+            className={inputCls}
+          />
         </div>
 
         <div>
-          <Label htmlFor="priceArs" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Precio de Venta (ARS)</Label>
-          <Input
+          <label htmlFor="priceArs" className={labelCls}>Precio de Venta (ARS)</label>
+          <input
             id="priceArs"
             name="priceArs"
             type="text"
@@ -528,25 +534,26 @@ export function UnitForm() {
             placeholder="ej: 95.000.000"
             value={formData.priceArs}
             onChange={handlePriceChange('priceArs')}
-           className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
+            className={inputCls}
+          />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="description" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Descripción</Label>
+        <label htmlFor="description" className={labelCls}>Descripción</label>
         <textarea
           id="description"
           name="description"
           placeholder="Descripción detallada del vehículo..."
           value={formData.description}
           onChange={handleInputChange}
-          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 text-sm border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:placeholder:text-slate-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           rows={4}
         />
       </div>
 
       <div>
-        <Label className="mb-4 block text-sm font-semibold text-slate-900 dark:text-slate-100">Imágenes *</Label>
+        <label className={`${labelCls} mb-4`}>Imágenes *</label>
         <ImageUploader onImagesUpload={setImages} maxFiles={5} />
       </div>
 
