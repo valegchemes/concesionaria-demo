@@ -88,6 +88,7 @@ export default async function UnitDetailPage({ params }: UnitPageProps) {
                 src={unit.photos[0].url}
                 alt={unit.title}
                 fill
+                unoptimized={true}
                 className="object-cover"
               />
             ) : (
@@ -105,6 +106,7 @@ export default async function UnitDetailPage({ params }: UnitPageProps) {
                     src={photo.url}
                     alt={unit.title}
                     fill
+                    unoptimized={true}
                     className="object-cover"
                   />
                 </div>

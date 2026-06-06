@@ -70,6 +70,7 @@ export default async function CatalogPage() {
                   src={unit.photos[0].url}
                   alt={unit.title}
                   fill
+                  unoptimized={true}
                   className="object-cover"
                 />
               ) : (

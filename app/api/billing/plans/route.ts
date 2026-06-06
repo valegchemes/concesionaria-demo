@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const revalidate = 3600
 import { NextResponse } from 'next/server'
 import { NextRequest } from 'next/server'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
