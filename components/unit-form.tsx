@@ -408,13 +408,13 @@ export function UnitForm() {
       )}
 
       <div>
-        <Label htmlFor="type">Tipo de Unidad *</Label>
+        <Label htmlFor="type" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Tipo de Unidad *</Label>
         <select
           id="type"
           name="type"
           value={formData.type}
           onChange={handleInputChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         >
           <option value="">Seleccionar tipo</option>
@@ -426,7 +426,7 @@ export function UnitForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <Label htmlFor="brand">Marca *</Label>
+          <Label htmlFor="brand" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Marca *</Label>
           <CreatableCombobox 
             options={dictionary.map(d => d.brand)}
             value={formData.brand}
@@ -436,7 +436,7 @@ export function UnitForm() {
           />
         </div>
         <div>
-          <Label htmlFor="model">Modelo *</Label>
+          <Label htmlFor="model" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Modelo *</Label>
           <CreatableCombobox 
             options={dictionary.find(d => d.brand.toLowerCase() === formData.brand.toLowerCase())?.models || []}
             value={formData.model}
@@ -446,27 +446,27 @@ export function UnitForm() {
           />
         </div>
         <div>
-          <Label htmlFor="year">Año</Label>
-          <Input id="year" name="year" type="number" value={formData.year} onChange={handleInputChange} />
+          <Label htmlFor="year" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Año</Label>
+          <Input id="year" name="year" type="number" value={formData.year} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div>
-          <Label htmlFor="domain">Patente</Label>
-          <Input id="domain" name="domain" placeholder="ej: AB123CD" value={formData.domain} onChange={handleInputChange} />
+          <Label htmlFor="domain" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Patente</Label>
+          <Input id="domain" name="domain" placeholder="ej: AB123CD" value={formData.domain} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
         </div>
         <div>
-          <Label htmlFor="kilometraje">Kilometraje</Label>
-          <Input id="kilometraje" name="kilometraje" type="number" placeholder="ej: 45000" value={formData.kilometraje} onChange={handleInputChange} />
+          <Label htmlFor="kilometraje" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Kilometraje</Label>
+          <Input id="kilometraje" name="kilometraje" type="number" placeholder="ej: 45000" value={formData.kilometraje} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
         </div>
         <div>
-          <Label htmlFor="engineNumber">N° Motor</Label>
-          <Input id="engineNumber" name="engineNumber" placeholder="Opcional" value={formData.engineNumber} onChange={handleInputChange} />
+          <Label htmlFor="engineNumber" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">N° Motor</Label>
+          <Input id="engineNumber" name="engineNumber" placeholder="Opcional" value={formData.engineNumber} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
         </div>
         <div>
-          <Label htmlFor="frameNumber">N° Chasis</Label>
-          <Input id="frameNumber" name="frameNumber" placeholder="Opcional" value={formData.frameNumber} onChange={handleInputChange} />
+          <Label htmlFor="frameNumber" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">N° Chasis</Label>
+          <Input id="frameNumber" name="frameNumber" placeholder="Opcional" value={formData.frameNumber} onChange={handleInputChange}  className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
         </div>
       </div>
 
@@ -478,7 +478,7 @@ export function UnitForm() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="acquisitionCostArs">Costo de Compra (ARS)</Label>
+            <Label htmlFor="acquisitionCostArs" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Costo de Compra (ARS)</Label>
             <Input
               id="acquisitionCostArs"
               name="acquisitionCostArs"
@@ -487,10 +487,10 @@ export function UnitForm() {
               placeholder="ej: 90.000.000"
               value={formData.acquisitionCostArs}
               onChange={handlePriceChange('acquisitionCostArs')}
-            />
+             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
           </div>
           <div>
-            <Label htmlFor="acquisitionCostUsd">Costo de Compra (USD)</Label>
+            <Label htmlFor="acquisitionCostUsd" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Costo de Compra (USD)</Label>
             <Input
               id="acquisitionCostUsd"
               name="acquisitionCostUsd"
@@ -499,14 +499,14 @@ export function UnitForm() {
               placeholder="ej: 90.000"
               value={formData.acquisitionCostUsd}
               onChange={handlePriceChange('acquisitionCostUsd')}
-            />
+             className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <Label htmlFor="priceUsd">Precio de Venta (USD)</Label>
+          <Label htmlFor="priceUsd" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Precio de Venta (USD)</Label>
           <Input
             id="priceUsd"
             name="priceUsd"
@@ -515,11 +515,11 @@ export function UnitForm() {
             placeholder="ej: 95.000"
             value={formData.priceUsd}
             onChange={handlePriceChange('priceUsd')}
-          />
+           className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
         </div>
 
         <div>
-          <Label htmlFor="priceArs">Precio de Venta (ARS)</Label>
+          <Label htmlFor="priceArs" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Precio de Venta (ARS)</Label>
           <Input
             id="priceArs"
             name="priceArs"
@@ -528,25 +528,25 @@ export function UnitForm() {
             placeholder="ej: 95.000.000"
             value={formData.priceArs}
             onChange={handlePriceChange('priceArs')}
-          />
+           className="bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800" />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="description">Descripción</Label>
+        <Label htmlFor="description" className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1.5 block">Descripción</Label>
         <textarea
           id="description"
           name="description"
           placeholder="Descripción detallada del vehículo..."
           value={formData.description}
           onChange={handleInputChange}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           rows={4}
         />
       </div>
 
       <div>
-        <Label className="mb-4 block">Imágenes *</Label>
+        <Label className="mb-4 block text-sm font-semibold text-slate-900 dark:text-slate-100">Imágenes *</Label>
         <ImageUploader onImagesUpload={setImages} maxFiles={5} />
       </div>
 
