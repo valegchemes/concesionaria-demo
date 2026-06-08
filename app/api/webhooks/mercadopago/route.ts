@@ -50,14 +50,16 @@ export async function POST(req: NextRequest) {
     const topic = url.searchParams.get('topic') ?? url.searchParams.get('type')
     const dataId = url.searchParams.get('data.id') ?? url.searchParams.get('id')
 
-    // 4. Verificar firma si el secret está configurado
+    // 4. Verificar firma — OBLIGATORIO. Sin secret configurado, rechazar siempre.
     const secret = env.MP_WEBHOOK_SECRET
-    if (secret) {
-      const valid = verifyMPSignature(xSignature, xRequestId, dataId, secret)
-      if (!valid) {
-        log.warn({ clientIp, xRequestId }, 'MP webhook signature invalid')
-        return new NextResponse('Forbidden', { status: 403 })
-      }
+    if (!secret) {
+      log.error({}, 'MP_WEBHOOK_SECRET no configurado — rechazando webhook por seguridad')
+      return new NextResponse('Webhook not configured', { status: 503 })
+    }
+    const valid = verifyMPSignature(xSignature, xRequestId, dataId, secret)
+    if (!valid) {
+      log.warn({ clientIp, xRequestId }, 'MP webhook signature invalid')
+      return new NextResponse('Forbidden', { status: 403 })
     }
 
     // Solo procesamos notificaciones de pagos
@@ -144,9 +146,17 @@ export async function POST(req: NextRequest) {
 
       const status = payment.status ?? 'unknown'
       const externalReference = payment.external_reference ?? null
-      const companyIdFromRef = externalReference
-        ? JSON.parse(externalReference).companyId
-        : null
+      let companyIdFromRef: string | null = null
+      try {
+        if (externalReference) {
+          const parsed = JSON.parse(externalReference)
+          if (typeof parsed?.companyId === 'string' && parsed.companyId.length > 0) {
+            companyIdFromRef = parsed.companyId
+          }
+        }
+      } catch {
+        log.warn({ externalReference }, 'externalReference con formato inválido — ignorando companyId')
+      }
 
       // 8. Sincronizar con la suscripción local
       await billingService.syncSubscriptionFromPayment({

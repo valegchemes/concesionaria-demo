@@ -140,45 +140,9 @@ import { headers as nextHeaders } from 'next/headers'
  * Only use for reads - mutations MUST use getCurrentUser() or requireAuth().
  */
 export async function getCurrentUserFromHeaders(request?: Request) {
-  // 1. Try request.headers first (most reliable in Route Handlers)
-  const reqUserId = request?.headers.get('x-user-id')
-  const reqCompanyId = request?.headers.get('x-company-id')
-  const reqRole = request?.headers.get('x-user-role')
-
-  if (reqUserId && reqCompanyId) {
-    return {
-      id: reqUserId,
-      companyId: reqCompanyId,
-      role: reqRole || 'SELLER',
-      email: '',
-      name: '',
-      permissions: [] as string[],
-    }
-  }
-
-  // 2. Try next/headers (works in Server Components + some Route Handler contexts)
-  try {
-    const headersList = await nextHeaders()
-    const nhUserId = headersList.get('x-user-id')
-    const nhCompanyId = headersList.get('x-company-id')
-    const nhRole = headersList.get('x-user-role')
-
-    if (nhUserId && nhCompanyId) {
-      return {
-        id: nhUserId,
-        companyId: nhCompanyId,
-        role: nhRole || 'SELLER',
-        email: '',
-        name: '',
-        permissions: [] as string[],
-      }
-    }
-  } catch {
-    // nextHeaders() can throw "called outside a request scope" in some contexts
-    // This is expected when called from scripts or tests — just fall through
-  }
-
-  // 3. Fallback: full session lookup (slowest, but guaranteed)
+  // Siempre usar la sesión de NextAuth como fuente autoritativa.
+  // Los headers x-user-* se usan SOLO para el companyId en withTenantContext,
+  // NUNCA para decisiones de autenticación o autorización.
   return getCurrentUser()
 }
 
@@ -187,13 +151,5 @@ export async function getCurrentUserFromHeaders(request?: Request) {
  * Useful to decide between getCurrentUserFromHeaders vs getCurrentUser.
  */
 export async function hasAuthHeaders(request?: Request): Promise<boolean> {
-  const hasInReq = !!(request?.headers.get('x-user-id') && request?.headers.get('x-company-id'))
-  if (hasInReq) return true
-
-  try {
-    const headersList = await nextHeaders()
-    return !!(headersList.get('x-user-id') && headersList.get('x-company-id'))
-  } catch {
-    return false
-  }
+  return false
 }

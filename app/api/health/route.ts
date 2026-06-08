@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { env } from '@/lib/shared/config'
+import { createLogger } from '@/lib/shared/logger'
 
 export const dynamic = 'force-dynamic'
+
+const log = createLogger('API:Health')
 
 /**
  * Health check endpoint for monitoring
@@ -20,7 +23,7 @@ export async function GET() {
     await prisma.$queryRaw`SELECT 1`
     checks.database = true
   } catch (error) {
-    console.error('Health check: Database connection failed', error)
+    log.error({ error: error instanceof Error ? error.message : String(error) }, 'Health check: Database connection failed')
   }
 
   // Check required environment variables
@@ -34,9 +37,7 @@ export async function GET() {
 
   return NextResponse.json(
     {
-      status: isHealthy ? 'healthy' : 'unhealthy',
-      ...checks,
-      version: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev',
+      status: isHealthy ? 'ok' : 'error',
     },
     {
       status: isHealthy ? 200 : 503,
