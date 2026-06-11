@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatPrice } from '@/lib/utils'
 import {
   ArrowLeft, ExternalLink, Users, Plus, Trash2, TrendingUp,
@@ -476,9 +477,24 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Título</Label>
-                    <Input value={formData.title || ''} onChange={e => updateField('title', e.target.value)} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Título</Label>
+                      <Input value={formData.title || ''} onChange={e => updateField('title', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Estado</Label>
+                      <Select value={formData.status || ''} onValueChange={val => updateField('status', val)}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Seleccionar estado" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(statuses).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
