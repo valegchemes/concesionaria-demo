@@ -258,6 +258,19 @@ export class UnitService {
       }
     }
 
+    if (command.photos !== undefined) {
+      await prisma.unitPhoto.deleteMany({ where: { unitId: id } })
+      if (command.photos.length > 0) {
+        await prisma.unitPhoto.createMany({
+          data: command.photos.map((p, index) => ({
+            unitId: id,
+            url: p.url,
+            order: p.order ?? index,
+          }))
+        })
+      }
+    }
+
     // Update unit
     const updated = await prisma.unit.update({
       where: { id },

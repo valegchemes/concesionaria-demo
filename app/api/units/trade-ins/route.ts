@@ -3,6 +3,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { z } from 'zod'
+
+const ConvertTradeInSchema = z.object({
+  tradeInId: z.string(),
+  title: z.string().min(1),
+  type: z.enum(['CAR', 'MOTORCYCLE', 'BOAT']),
+  year: z.union([z.string(), z.number()]).transform((val) => (val ? parseInt(String(val), 10) : null)).refine((val) => val === null || (val >= 1800 && val <= 2100), 'Año inválido').optional().nullable(),
+  domain: z.string().optional().nullable(),
+  vin: z.string().optional().nullable(),
+  engineNumber: z.string().optional().nullable(),
+  acquisitionCostArs: z.number().optional().nullable(),
+  acquisitionCostUsd: z.number().optional().nullable(),
+  priceArs: z.number().optional().nullable(),
+  priceUsd: z.number().optional().nullable(),
+  photos: z.array(z.object({ url: z.string(), order: z.number() })).optional(),
+})
 
 export const GET = withTenantHandler(async (request: NextRequest) => {
   try {
@@ -52,6 +68,12 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
     const companyId = user.companyId
 
     const body = await request.json()
+    const parseResult = ConvertTradeInSchema.safeParse(body)
+
+    if (!parseResult.success) {
+      return NextResponse.json({ success: false, error: 'Datos inválidos', details: parseResult.error.flatten().fieldErrors }, { status: 400 })
+    }
+
     const {
       tradeInId,
       title,
@@ -63,16 +85,9 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
       acquisitionCostArs,
       acquisitionCostUsd,
       priceArs,
-      priceUsd
-    } = body
-
-    if (!tradeInId) {
-      return NextResponse.json({ success: false, error: 'tradeInId es requerido' }, { status: 400 })
-    }
-
-    if (!title || !type) {
-      return NextResponse.json({ success: false, error: 'Título y Tipo son requeridos' }, { status: 400 })
-    }
+      priceUsd,
+      photos
+    } = parseResult.data
 
     const tradeIn = await prisma.tradeIn.findFirst({
       where: {
@@ -97,7 +112,7 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
           companyId,
           title,
           type,
-          year: year ? parseInt(year, 10) : null,
+          year,
           domain: domain || null,
           vin: vin || null,
           engineNumber: engineNumber || null,
@@ -109,7 +124,15 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
           status: 'IN_PREP',
           isFromTradeIn: true,
           tradeInId: tradeIn.id,
-          createdById: user.id
+          createdById: user.id,
+          ...(photos && photos.length > 0 && {
+            photos: {
+              create: photos.map((p, index) => ({
+                url: p.url,
+                order: p.order ?? index,
+              }))
+            }
+          }),
         }
       })
 

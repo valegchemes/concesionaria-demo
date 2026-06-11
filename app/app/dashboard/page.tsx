@@ -27,9 +27,9 @@ async function getDashboardData(companyId: string, userId: string, role: string)
     prisma.lead.count({ where: { ...leadWhere, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } } }),
     prisma.lead.count({ where: { ...leadWhere, status: 'NEW' } }),
     prisma.lead.count({ where: { ...leadWhere, status: 'LOST' } }),
-    prisma.unit.count({ where: { companyId, isActive: true } }),
-    prisma.unit.count({ where: { companyId, isActive: true, status: 'AVAILABLE' } }),
-    prisma.unit.count({ where: { companyId, isActive: true, status: 'SOLD' } }),
+    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: false } }),
+    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: false, status: 'AVAILABLE' } }),
+    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: false, status: 'SOLD' } }),
     prisma.deal.count({ where: { ...dealWhere, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } } }),
     prisma.deal.count({ where: { ...dealWhere, status: 'DELIVERED' } }),
     prisma.deal.count({ where: { ...dealWhere, status: 'CANCELED' } }),
@@ -429,7 +429,7 @@ export default async function DashboardPage() {
             sublabel="negociaciones activas"
             icon={Clock}
             color="blue"
-            href="/app/deals?status=ACTIVE"
+            href="/app/deals?status=NEGOTIATION,RESERVED,APPROVED,IN_PAYMENT"
           />
           <StatPill
             label="Completadas"

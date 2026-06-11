@@ -56,6 +56,7 @@ export interface UpdateUnitCommand {
   notes?: string
   status?: 'AVAILABLE' | 'RESERVED' | 'SOLD' | 'DISCARDED' | 'IN_PREP'
   attributes?: Array<{ key: string; value: string }>
+  photos?: Array<{ url: string; order: number }>
 }
 
 export interface SearchUnitsFilter {

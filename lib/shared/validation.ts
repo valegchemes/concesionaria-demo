@@ -258,10 +258,19 @@ export const CreateDealSchema = z.object({
     description: z.string().min(1, "Descripción de la unidad es requerida"),
     type: UnitTypeEnum,
     expectedValue: CurrencySchema,
+    photos: z.array(z.object({ url: z.string(), order: z.number() })).optional(),
   }).optional(),
 })
 
-export type CreateDealInput = z.infer<typeof CreateDealSchema>
+// Override the tradeIn type to include photos
+export type CreateDealInput = Omit<z.infer<typeof CreateDealSchema>, 'tradeIn'> & {
+  tradeIn?: {
+    description: string
+    type: 'CAR' | 'MOTORCYCLE' | 'BOAT'
+    expectedValue: number
+    photos?: Array<{ url: string; order: number }>
+  } | null
+}
 export type LeadStatus = z.infer<typeof LeadStatusEnum>
 export type LeadSource = z.infer<typeof LeadSourceEnum>
 export type UnitType = z.infer<typeof UnitTypeEnum>

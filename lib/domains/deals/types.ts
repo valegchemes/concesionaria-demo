@@ -32,6 +32,7 @@ export interface CreateDealCommand {
     description: string
     type: 'CAR' | 'MOTORCYCLE' | 'BOAT'
     expectedValue: number
+    photos?: Array<{ url: string; order: number }>
   }
 }
 

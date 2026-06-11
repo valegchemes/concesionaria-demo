@@ -134,6 +134,14 @@ export class DealService {
             isFromTradeIn: true,
             companyId: command.companyId,
             createdById: command.createdById || command.sellerId,
+            ...(command.tradeIn.photos && command.tradeIn.photos.length > 0 && {
+              photos: {
+                create: command.tradeIn.photos.map((p, index) => ({
+                  url: p.url,
+                  order: p.order ?? index,
+                }))
+              }
+            })
           }
         })
 
@@ -428,7 +436,17 @@ export class DealService {
         where: { id: deal.leadId },
         data: { status: 'SOLD' as LeadStatus },
       })
+      // Archivar unidad principal
       await unitService.archiveUnit(deal.unitId, companyId)
+      // Archivar unidad de trade-in si existe
+      const tradeIn = await prisma.tradeIn.findFirst({
+        where: { dealId: id, isConverted: true },
+        select: { convertedToUnitId: true },
+      })
+      if (tradeIn?.convertedToUnitId) {
+        await unitService.archiveUnit(tradeIn.convertedToUnitId, companyId)
+        log.info({ dealId: id, tradeInUnitId: tradeIn.convertedToUnitId }, 'Trade-in unit archived')
+      }
       log.info({ dealId: id, unitId: deal.unitId }, 'Unit archived and lead marked as SOLD')
     } else if (command.status === 'RESERVED') {
       await Promise.all([
