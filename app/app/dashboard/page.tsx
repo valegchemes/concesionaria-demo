@@ -20,6 +20,7 @@ async function getDashboardData(companyId: string, userId: string, role: string)
   const [
     totalLeads, activeLeads, newLeads, lostLeads,
     totalUnits, availableUnits, soldUnits,
+    tradeInTotal, tradeInSold, pendingTradeIns,
     activeDeals, completedDeals, canceledDeals,
     paidInstallmentsThisMonth, pendingInstallments, overdueInstallments,
   ] = await prisma.$transaction([
@@ -27,9 +28,12 @@ async function getDashboardData(companyId: string, userId: string, role: string)
     prisma.lead.count({ where: { ...leadWhere, status: { in: ['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER'] } } }),
     prisma.lead.count({ where: { ...leadWhere, status: 'NEW' } }),
     prisma.lead.count({ where: { ...leadWhere, status: 'LOST' } }),
-    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: false } }),
-    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: false, status: 'AVAILABLE' } }),
-    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: false, status: 'SOLD' } }),
+    prisma.unit.count({ where: { companyId, isActive: true } }),
+    prisma.unit.count({ where: { companyId, isActive: true, status: 'AVAILABLE' } }),
+    prisma.unit.count({ where: { companyId, isActive: true, status: 'SOLD' } }),
+    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: true } }),
+    prisma.unit.count({ where: { companyId, isActive: true, isFromTradeIn: true, status: 'SOLD' } }),
+    prisma.tradeIn.count({ where: { deal: { companyId }, isConverted: false } }),
     prisma.deal.count({ where: { ...dealWhere, status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] } } }),
     prisma.deal.count({ where: { ...dealWhere, status: 'DELIVERED' } }),
     prisma.deal.count({ where: { ...dealWhere, status: 'CANCELED' } }),
@@ -110,7 +114,7 @@ async function getDashboardData(companyId: string, userId: string, role: string)
 
   return {
     leads: { total: totalLeads, active: activeLeads, new: newLeads, lost: lostLeads },
-    units: { total: totalUnits, available: availableUnits, sold: soldUnits },
+    units: { total: totalUnits, available: availableUnits, sold: soldUnits, tradeInTotal, tradeInSold, pendingTradeIns },
     deals: { active: activeDeals, completed: completedDeals, canceled: canceledDeals },
     notes: { collectedArs, pendingArs, overdueArs },
     sellerCommission: isSeller ? {
@@ -243,7 +247,7 @@ export default async function DashboardPage() {
 
   let stats: {
     leads: { total: number; active: number; new: number; lost: number }
-    units: { total: number; available: number; sold: number }
+    units: { total: number; available: number; sold: number; tradeInTotal: number; tradeInSold: number; pendingTradeIns: number }
     deals: { active: number; completed: number; canceled: number }
     notes: { collectedArs: number; pendingArs: number; overdueArs: number }
     sellerCommission: {
@@ -255,7 +259,7 @@ export default async function DashboardPage() {
     } | null
   } = {
     leads: { total: 0, active: 0, new: 0, lost: 0 },
-    units: { total: 0, available: 0, sold: 0 },
+    units: { total: 0, available: 0, sold: 0, tradeInTotal: 0, tradeInSold: 0, pendingTradeIns: 0 },
     deals: { active: 0, completed: 0, canceled: 0 },
     notes: { collectedArs: 0, pendingArs: 0, overdueArs: 0 },
     sellerCommission: null
@@ -446,6 +450,39 @@ export default async function DashboardPage() {
             icon={XCircle}
             color="red"
             href="/app/deals?status=CANCELED"
+          />
+        </div>
+      </div>
+
+      {/* Resumen de Usados en Parte de Pago */}
+      <div className="space-y-4">
+        <h2 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          Usados en Parte de Pago (Permutas)
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatPill
+            label="A Ingresar"
+            value={stats.units.pendingTradeIns}
+            sublabel="pendientes de conversión"
+            icon={Clock}
+            color="blue"
+            href="/app/units?status=TRADE_IN"
+          />
+          <StatPill
+            label="En Stock"
+            value={stats.units.tradeInTotal - stats.units.tradeInSold}
+            sublabel="permutas disponibles"
+            icon={Car}
+            color="green"
+            href="/app/units"
+          />
+          <StatPill
+            label="Vendidos"
+            value={stats.units.tradeInSold}
+            sublabel="permutas liquidadas"
+            icon={CheckCircle}
+            color="blue"
+            href="/app/units?status=SOLD"
           />
         </div>
       </div>
