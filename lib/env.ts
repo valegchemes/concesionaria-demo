@@ -86,7 +86,7 @@ const envSchema = z.object({
       // Ajustado a 0.2 para permitir hashes hexadecimales de 64 caracteres (max 16 chars únicos -> 16/64 = 0.25)
       const uniqueChars = new Set(val).size
       const entropy = uniqueChars / val.length
-      return entropy > 0.2 
+      return entropy > 0.2
     }, 'DIAG_SECRET_TOKEN must have sufficient entropy (variety of characters)')
     .refine(val => {
       // Rechazar valores de ejemplo
@@ -127,13 +127,6 @@ function getEnv(): EnvConfig {
   const parsed = envSchema.safeParse(process.env)
 
   if (!parsed.success) {
-    const isBuild = process.env.npm_lifecycle_event === 'build' || process.env.SKIP_ENV_VALIDATION === 'true'
-    if (isBuild) {
-      console.warn('⚠️ Skipped environment validation during build.')
-      cachedEnv = process.env as unknown as EnvConfig
-      return cachedEnv
-    }
-    
     console.error('❌ Invalid environment variables:')
     console.error(parsed.error.flatten().fieldErrors)
     const error = new Error('Invalid environment variables')

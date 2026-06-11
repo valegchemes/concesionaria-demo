@@ -84,8 +84,7 @@ export default function NewDealPage() {
     async function loadData() {
       try {
         const requests: Promise<Response>[] = [
-          // Fix 2.3: Limitar a activos para reducir transferencia
-          fetch('/api/leads?limit=100&status=ACTIVE', { cache: 'no-store' }),
+          fetch('/api/leads?limit=100', { cache: 'no-store' }),
           fetch('/api/units?limit=100&status=AVAILABLE', { cache: 'no-store' }),
         ]
 
