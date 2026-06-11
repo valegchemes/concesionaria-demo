@@ -387,10 +387,11 @@ export class UnitService {
     newStatus: string
   ): Promise<void> {
     const validTransitions: Record<string, string[]> = {
-      AVAILABLE: ['RESERVED', 'SOLD', 'DISCARDED'],
-      RESERVED: ['AVAILABLE', 'SOLD', 'DISCARDED'],
+      AVAILABLE: ['IN_PREP', 'RESERVED', 'SOLD', 'DISCARDED'],
+      IN_PREP: ['AVAILABLE', 'RESERVED', 'SOLD', 'DISCARDED'],
+      RESERVED: ['AVAILABLE', 'IN_PREP', 'SOLD', 'DISCARDED'],
       SOLD: [],
-      DISCARDED: ['AVAILABLE'],
+      DISCARDED: ['AVAILABLE', 'IN_PREP'],
     }
 
     const allowed = validTransitions[currentStatus] || []
