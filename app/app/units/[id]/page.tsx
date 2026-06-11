@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatPrice } from '@/lib/utils'
 import {
   ArrowLeft, ExternalLink, Users, Plus, Trash2, TrendingUp,
-  ShoppingCart, Wrench, DollarSign, AlertCircle, FileText, Loader2, Lock, ShieldAlert
+  ShoppingCart, Wrench, DollarSign, AlertCircle, FileText, Loader2, Lock, ShieldAlert, Upload
 } from 'lucide-react'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
@@ -79,6 +79,8 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [formData, setFormData] = useState<Partial<Unit>>({})
   const [attributesForm, setAttributesForm] = useState<{key: string, value: string}[]>([])
   const [activePhotoIdx, setActivePhotoIdx] = useState(0)
+  const [photosForm, setPhotosForm] = useState<{ id: string; url: string; order: number }[]>([])
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
 
   // Cost form
   const [showCostForm, setShowCostForm] = useState(false)
@@ -152,6 +154,11 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           acquisitionCostUsd: formatWithDots(json.data.acquisitionCostUsd),
         })
         setAttributesForm(json.data.attributes || [])
+        setPhotosForm((json.data.photos || []).map((p: any, idx: number) => ({
+          id: p.id,
+          url: p.url,
+          order: p.order ?? idx,
+        })))
       }
       if (companyRes.ok) {
         const json = await companyRes.json()
@@ -162,6 +169,41 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
     } finally {
       setLoading(false)
     }
+  }
+
+  async function uploadPhoto(file: File): Promise<string> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch('/api/blob', {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) throw new Error('Error subiendo imagen')
+    const data = await res.json()
+    return data.url
+  }
+
+  async function handlePhotoUpload(files: FileList) {
+    setUploadingPhotos(true)
+    try {
+      const urls = await Promise.all(
+        Array.from(files).map(async (file) => {
+          const url = await uploadPhoto(file)
+          return { id: crypto.randomUUID(), url, order: photosForm.length }
+        })
+      )
+      setPhotosForm(prev => [...prev, ...urls])
+      toast.success(`${urls.length} foto(s) subida(s)`)
+    } catch (e) {
+      console.error(e)
+      toast.error('Error subiendo fotos')
+    } finally {
+      setUploadingPhotos(false)
+    }
+  }
+
+  function removePhoto(photoId: string) {
+    setPhotosForm(prev => prev.filter(p => p.id !== photoId))
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -179,6 +221,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           acquisitionCostUsd: parseFormatted(formData.acquisitionCostUsd as unknown as string),
           year: formData.year ? Number(formData.year) : null,
           attributes: attributesForm.filter(a => a.key.trim() !== '' && a.value.trim() !== ''),
+          photos: photosForm.map((p, idx) => ({ url: p.url, order: p.order ?? idx })),
         }),
       })
       if (res.ok) {
@@ -525,10 +568,79 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Photos Management */}
+                  <div className="space-y-3 pt-4 border-t border-border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label className="text-base font-semibold text-foreground">Fotos de la Unidad</Label>
+                        <p className="text-xs text-muted-foreground">Subí, eliminá o reordená las fotos. La primera será la portada.</p>
+                      </div>
+                    </div>
+                    <div className="border-2 border-dashed border-border rounded-xl p-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={e => e.target.files && handlePhotoUpload(e.target.files)}
+                        disabled={uploadingPhotos}
+                        className="hidden"
+                        id="photo-upload"
+                      />
+                      <label
+                        htmlFor="photo-upload"
+                        className={`cursor-pointer flex flex-col items-center justify-center p-8 rounded-lg border-2 border-dashed border-border transition-colors ${
+                          uploadingPhotos ? 'opacity-50' : 'hover:border-primary/50 hover:bg-primary/5'
+                        }`}
+                      >
+                        <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                        <p className="text-sm font-medium text-foreground">
+                          {uploadingPhotos
+                            ? 'Subiendo fotos...'
+                            : 'Arrastra fotos aquí o hacé clic para seleccionar'}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PNG, JPG, WebP hasta 5MB cada una
+                        </p>
+                      </label>
+                    </div>
+                    {photosForm.length > 0 && (
+                      <div className="space-y-3">
+                        <p className="text-sm font-medium text-foreground">Fotos actuales ({photosForm.length})</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {photosForm.map((photo, idx) => (
+                            <div key={photo.id} className="relative group">
+                              <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted">
+                                <img
+                                  src={photo.url}
+                                  alt={`Foto ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 bg-destructive/90 text-destructive-foreground rounded-full shadow-md hover:bg-destructive"
+                                  onClick={() => removePhoto(photo.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <div className="absolute bottom-1 left-1 right-1 bg-black/60 text-white text-xs text-center px-1 rounded-b">
+                                #{idx + 1}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </form>
-          ) : (
+        ) : (
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Detalles</CardTitle>
@@ -564,8 +676,8 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 )}
               </CardContent>
-            </Card>
-          )}
+              </Card>
+            )}
 
           {(activeTab === 'details' || activeTab === 'costs') && (
           <Card className="border border-border overflow-hidden">
