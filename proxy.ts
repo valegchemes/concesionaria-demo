@@ -37,7 +37,6 @@ const PUBLIC_ROUTES = [
   '/catalog',
   '/api/email/gmail/callback',
   '/api/cron',
-  '/api/admin/migrate-gmail', // Temp for migration
   // /api/diag ya NO es pública — protegida por Bearer token (DIAG_SECRET_TOKEN)
 ]
 
