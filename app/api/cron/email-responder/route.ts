@@ -142,7 +142,7 @@ Devolvé únicamente el texto redactado de la propuesta de correo de respuesta (
           }
 
           const resJson = await geminiRes.json()
-          let replyBody = resJson.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar respuesta'
+          const replyBody = resJson.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar respuesta'
           
           // Format basic Markdown to HTML just in case for email
           const htmlBody = replyBody

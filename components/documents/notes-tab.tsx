@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -188,18 +188,22 @@ export function NotesTab() {
     }
   }, [statusFilter])
 
+  const mountedRef = useRef(true)
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const urlStatus = params.get('status')
-      if (urlStatus) {
+      if (urlStatus && mountedRef.current) {
         setStatusFilter(urlStatus)
       }
     }
+    return () => { mountedRef.current = false }
   }, [])
 
   useEffect(() => {
     fetchNotes()
+    return () => { mountedRef.current = false }
   }, [fetchNotes])
 
   // Filter notes locally by search query (matching lead name, lead phone, or unit title)

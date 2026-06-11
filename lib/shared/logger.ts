@@ -181,12 +181,12 @@ function createBrowserLogger(options: LoggerOptions): ModuleLogger {
 }
 
 // Cache de loggers server-side (pino es pesado, no reinstanciar)
-let pinoInstance: unknown = null
+const pinoInstance: unknown = null
 
 function getPinoLogger(options: LoggerOptions): ModuleLogger {
   try {
     // Importación dinámica para que no se incluya en el bundle del cliente
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const pino = require('pino')
 
     const logLevel = (() => {

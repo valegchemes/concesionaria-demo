@@ -78,7 +78,7 @@ export function useRealtimeDeals({
       setLastEvent(payload)
       onDealUpdated?.(payload)
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [currentUserId, onDealUpdated]
   )
 
@@ -88,7 +88,7 @@ export function useRealtimeDeals({
       setLastEvent(payload)
       onDealCreated?.(payload)
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [currentUserId, onDealCreated]
   )
 
@@ -98,7 +98,7 @@ export function useRealtimeDeals({
       setLastEvent(payload)
       onDealDeleted?.(payload)
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
     [currentUserId, onDealDeleted]
   )
 
@@ -178,6 +178,7 @@ export function useRealtimeDeals({
   }, [companyId]) // Solo re-suscribir si cambia la empresa
 
   // Re-bindear callbacks cuando cambian (sin reconectar)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const channel = channelRef.current
     if (!channel) return

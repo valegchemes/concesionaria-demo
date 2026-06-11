@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 
 export type ThemeMode = 'auto' | 'light' | 'dark'
 export type BackgroundTheme = 'light' | 'dark' | 'neutral'
@@ -75,13 +75,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [brightness, setBrightness] = useState<number>(128)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [currentImage, setCurrentImage] = useState<string>('')
+  const mountedRef = useRef(true)
 
   // Initialize mode from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('theme-mode') as ThemeMode
-    if (saved && ['auto', 'light', 'dark'].includes(saved)) {
+    if (saved && ['auto', 'light', 'dark'].includes(saved) && mountedRef.current) {
       setModeState(saved)
     }
+    return () => { mountedRef.current = false }
   }, [])
 
   const setMode = useCallback((newMode: ThemeMode) => {
@@ -100,6 +102,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Re-calculate or force theme when mode or image changes
   useEffect(() => {
+    if (!mountedRef.current) return
     if (mode === 'dark') {
       setComputedTheme('dark')
       applyThemeToDOM('dark')
@@ -112,6 +115,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setComputedTheme(calcTheme)
       applyThemeToDOM(calcTheme)
     }
+    return () => { mountedRef.current = false }
   }, [mode, brightness, applyThemeToDOM])
 
   const updateThemeImage = useCallback(async (imageUrl: string) => {

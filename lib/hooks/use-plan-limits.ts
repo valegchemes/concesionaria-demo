@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export interface PlanLimits {
   planName: string
@@ -35,24 +35,30 @@ let cachedLimits: PlanLimits | null = null
 export function usePlanLimits() {
   const [limits, setLimits] = useState<PlanLimits>(cachedLimits ?? DEFAULT_LIMITS)
   const [loading, setLoading] = useState(!cachedLimits)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
     if (cachedLimits) {
-      setLimits(cachedLimits)
-      setLoading(false)
+      if (mountedRef.current) {
+        setLimits(cachedLimits)
+        setLoading(false)
+      }
       return
     }
 
     fetch('/api/billing/me')
       .then((r) => r.json())
       .then((data) => {
-        if (!data.error) {
+        if (!data.error && mountedRef.current) {
           cachedLimits = data
           setLimits(data)
         }
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (mountedRef.current) setLoading(false)
+      })
+    return () => { mountedRef.current = false }
   }, [])
 
   return { limits, loading }

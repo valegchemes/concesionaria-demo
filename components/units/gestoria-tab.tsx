@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -46,6 +46,7 @@ export function GestoriaTab({ unitId, attributes, onSaveAttributes }: GestoriaTa
   const [notes, setNotes] = useState<string>('')
   const [isSaving, setIsSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const mountedRef = useRef(true)
 
   // Initialize values from active attributes
   useEffect(() => {
@@ -59,11 +60,16 @@ export function GestoriaTab({ unitId, attributes, onSaveAttributes }: GestoriaTa
       }
       loadedStatuses[item.key] = val
     })
-
+    
+    if (!mountedRef.current) return
+    
     const notesMatch = attributes.find(a => a.key === 'gestor_notes')
     
-    setStatuses(loadedStatuses)
-    setNotes(notesMatch?.value || '')
+    if (mountedRef.current) {
+      setStatuses(loadedStatuses)
+      setNotes(notesMatch?.value || '')
+    }
+    return () => { mountedRef.current = false }
   }, [attributes])
 
   const handleStatusChange = (key: string, newStatus: StatusType) => {

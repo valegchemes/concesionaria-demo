@@ -106,7 +106,13 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
     } catch (e) { console.error(e) }
   }, [])
 
-  useEffect(() => { fetchDocs(); fetchLeads() }, [fetchDocs, fetchLeads])
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    fetchDocs()
+    fetchLeads()
+    return () => { mountedRef.current = false }
+  }, [fetchDocs, fetchLeads])
 
   // ── Signature handlers ─────────────────────────────────────────────────────
   function clearSig() { sigRef.current?.clear(); setSigDataUrl(null) }

@@ -117,7 +117,7 @@ export function CostBreakdownChart({ data, isLoading, onCategoryClick }: CostBre
   const mainCategories = data.filter((d) => d.percentage >= threshold)
   const minorCategories = data.filter((d) => d.percentage < threshold)
   
-  let processedData = [...mainCategories]
+  const processedData = [...mainCategories]
   if (minorCategories.length > 0) {
     const minorValue = minorCategories.reduce((sum, item) => sum + item.value, 0)
     const minorPercent = minorCategories.reduce((sum, item) => sum + item.percentage, 0)

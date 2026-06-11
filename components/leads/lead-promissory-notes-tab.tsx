@@ -89,13 +89,14 @@ export function LeadPromissoryNotesTab({ leadId, unitId, unitTitle }: Props) {
   useEffect(() => {
     const amt = parseFloat(form.amount)
     const count = parseInt(form.installmentsCount)
-    if (!amt || !count || !form.issueDate) { setPreview([]); return }
+    if (!amt || !count || !form.issueDate) return
     const installAmt = Math.round((amt / count) * 100) / 100
     const start = new Date(form.issueDate)
-    setPreview(Array.from({ length: count }, (_, i) => {
+    const preview = Array.from({ length: count }, (_, i) => {
       const d = new Date(start); d.setMonth(d.getMonth() + i + 1)
       return { amount: installAmt, dueDate: d.toISOString() }
-    }))
+    })
+    setPreview(preview)
   }, [form.amount, form.installmentsCount, form.issueDate])
 
   async function createNote(e: React.FormEvent) {

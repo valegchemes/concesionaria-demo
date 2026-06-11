@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -313,7 +313,13 @@ export function PromissoryNotesTab({ unitId }: Props) {
     } catch (e) { console.error(e) }
   }, [])
 
-  useEffect(() => { fetchNotes(); fetchLeads() }, [fetchNotes, fetchLeads])
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    fetchNotes()
+    fetchLeads()
+    return () => { mountedRef.current = false }
+  }, [fetchNotes, fetchLeads])
 
   if (loading) return (
     <div className="flex items-center justify-center py-16 text-muted-foreground">

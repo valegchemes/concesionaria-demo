@@ -36,12 +36,15 @@ export function GlobalSearch() {
   const [isLoading, setIsLoading] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+  const mountedRef = useRef(true)
 
   // Debounced search
   useEffect(() => {
     if (query.trim().length < 2) {
-      setResults([])
-      setIsLoading(false)
+      if (mountedRef.current) {
+        setResults([])
+        setIsLoading(false)
+      }
       return
     }
 
@@ -51,15 +54,17 @@ export function GlobalSearch() {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
         if (res.ok) {
           const data = await res.json()
-          setResults(data.data || [])
+          if (mountedRef.current) {
+            setResults(data.data || [])
+          }
         } else {
-          setResults([])
+          if (mountedRef.current) setResults([])
         }
       } catch (error) {
         console.error('Search error:', error)
-        setResults([])
+        if (mountedRef.current) setResults([])
       } finally {
-        setIsLoading(false)
+        if (mountedRef.current) setIsLoading(false)
       }
     }, 300)
 

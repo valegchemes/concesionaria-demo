@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { AlertCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -15,17 +15,21 @@ export function SubscriptionGuard({
   const router = useRouter()
   const pathname = usePathname()
   const [isBlocked, setIsBlocked] = useState(false)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
     const inactiveStatuses = ['PAST_DUE', 'CANCELED', 'UNPAID', 'PAUSED']
     const isInactive = status && inactiveStatuses.includes(status)
     const isBillingPage = pathname?.startsWith('/app/settings/billing')
 
-    if (isInactive && !isBillingPage) {
-      setIsBlocked(true)
-    } else {
-      setIsBlocked(false)
+    if (mountedRef.current) {
+      if (isInactive && !isBillingPage) {
+        setIsBlocked(true)
+      } else {
+        setIsBlocked(false)
+      }
     }
+    return () => { mountedRef.current = false }
   }, [status, pathname])
 
   if (isBlocked) {

@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 export type BackgroundTheme = 'light' | 'dark' | 'neutral'
 
@@ -89,6 +89,7 @@ export function useBackgroundTheme(initialImageUrl?: string): UseBackgroundTheme
   const [theme, setTheme] = useState<BackgroundTheme>('neutral')
   const [brightness, setBrightness] = useState<number>(128)
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const mountedRef = useRef(true)
 
   const updateTheme = useCallback(async (imageUrl: string) => {
     if (!imageUrl) return
@@ -123,6 +124,7 @@ export function useBackgroundTheme(initialImageUrl?: string): UseBackgroundTheme
 
   // Inicializar con imagen por defecto si no hay una
   useEffect(() => {
+    if (!mountedRef.current) return
     if (initialImageUrl) {
       updateTheme(initialImageUrl)
     } else {
@@ -130,6 +132,7 @@ export function useBackgroundTheme(initialImageUrl?: string): UseBackgroundTheme
       const defaultImage = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'
       updateTheme(defaultImage)
     }
+    return () => { mountedRef.current = false }
   }, [initialImageUrl, updateTheme])
 
   return {
