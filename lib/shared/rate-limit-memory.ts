@@ -204,6 +204,32 @@ export async function requireRateLimit(
 }
 
 /**
+ * Rate limit estricto (fail-closed) para endpoints críticos: auth, pagos, webhooks
+ * NUNCA fail-open - si hay error, bloquea la request
+ */
+export async function requireStrictRateLimit(
+  identifier: string,
+  config: RateLimitConfig
+): Promise<void> {
+  try {
+    const result = await checkRateLimit(identifier, config)
+    if (!result.success) {
+      const retryAfter = result.reset - Math.floor(Date.now() / 1000)
+      throw new RateLimitError(
+        `Rate limit exceeded. Try again in ${retryAfter} seconds.`
+      )
+    }
+  } catch (error) {
+    // FAIL-CLOSED: Si hay cualquier error (store corrupto, etc.), BLOQUEAR
+    log.error(
+      { error: error instanceof Error ? error.message : String(error), identifier },
+      'Rate limit error - FAIL-CLOSED bloqueando request crítico'
+    )
+    throw new RateLimitError('Rate limit service unavailable - request blocked for security')
+  }
+}
+
+/**
  * Configuraciones predefinidas de rate limiting
  */
 export const RATE_LIMITS = {
@@ -227,6 +253,20 @@ export const RATE_LIMITS = {
   
   /** Webhooks: 1000 req/min (Stripe puede enviar muchos) */
   WEBHOOK: { limit: 1000, windowSeconds: 60, prefix: 'rl:webhook' },
+} as const
+
+/**
+ * Configuraciones estrictas (fail-closed) para endpoints críticos
+ */
+export const STRICT_RATE_LIMITS = {
+  /** Auth endpoints: 5 req/10s */
+  AUTH: { limit: 5, windowSeconds: 10, prefix: 'rl:strict:auth' },
+  
+  /** Billing/Pagos: 10 req/30s */
+  BILLING: { limit: 10, windowSeconds: 30, prefix: 'rl:strict:billing' },
+  
+  /** Webhooks internos: 20 req/10s */
+  WEBHOOK_INTERNAL: { limit: 20, windowSeconds: 10, prefix: 'rl:strict:webhook' },
 } as const
 
 /**

@@ -27,6 +27,7 @@ interface DigitalDoc {
   createdAt: string
   lead: { id: string; name: string; phone: string }
   unit?: { id: string; title: string }
+  accessToken?: string
 }
 
 // ── Config maps ───────────────────────────────────────────────────────────────
@@ -49,12 +50,14 @@ function buildWhatsAppUrl(
   ref: string | null,
   docId: string,
   buyerName?: string,
-  unitTitle?: string
+  unitTitle?: string,
+  accessToken?: string
 ) {
   const typeLabel = DOC_TYPES.find(t => t.value === docType)?.label ?? docType
   const refStr = ref ? ` N° ${ref}` : ''
   const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-  const downloadUrl = `${baseUrl}/api/public/documents/${docId}/download`
+  const tokenParam = accessToken ? `?token=${encodeURIComponent(accessToken)}` : ''
+  const downloadUrl = `${baseUrl}/api/public/documents/${docId}/download${tokenParam}`
   
   const greeting = buyerName 
     ? `Hola ${buyerName} ${String.fromCodePoint(0x1F44B)}` 
@@ -109,7 +112,19 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
   function clearSig() { sigRef.current?.clear(); setSigDataUrl(null) }
   function saveSig() {
     if (!sigRef.current || sigRef.current.isEmpty()) { setSigDataUrl(null); setShowSig(false); return }
-    setSigDataUrl(sigRef.current.toDataURL('image/png'))
+    
+    const dataUrl = sigRef.current.toDataURL('image/png')
+    const sizeKB = Math.round((dataUrl.length * 3) / 4 / 1024) // base64 -> bytes approx
+    
+    if (sizeKB > 500) {
+      alert('Firma muy grande (>500KB). Simplifique el trazo.')
+      return
+    }
+    if (sizeKB > 200) {
+      if (!confirm(`Advertencia: firma grande (${sizeKB}KB). ¿Continuar?`)) return
+    }
+    
+    setSigDataUrl(dataUrl)
     setShowSig(false)
   }
 
@@ -243,7 +258,7 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
                           {/* WhatsApp quick-send */}
                           {doc.lead.phone && (
                             <a
-                              href={buildWhatsAppUrl(doc.lead.phone, doc.type, doc.referenceNumber, doc.id, doc.lead?.name, doc.unit?.title)}
+                              href={buildWhatsAppUrl(doc.lead.phone, doc.type, doc.referenceNumber, doc.id, doc.lead?.name, doc.unit?.title, doc.accessToken)}
                               target="_blank"
                               rel="noopener noreferrer"
                               title="Enviar aviso por WhatsApp"
@@ -411,10 +426,6 @@ export function DigitalDocumentsTab({ unitId }: { unitId: string }) {
 
             <div className="rounded-xl border-2 border-dashed border-border bg-background overflow-hidden relative">
               <SignaturePad ref={sigRef} />
-              {/* Force signature pad ink to invert in dark mode using CSS approach or simple filter */}
-              <style dangerouslySetInnerHTML={{__html: `
-                .dark canvas { filter: invert(1); }
-              `}} />
             </div>
 
             <div className="flex items-center gap-2 justify-between">

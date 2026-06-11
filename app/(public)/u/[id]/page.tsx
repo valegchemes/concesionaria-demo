@@ -100,7 +100,7 @@ export default async function UnitDetailPage({ params }: UnitPageProps) {
           
           {unit.photos.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
-              {unit.photos.slice(1, 5).map((photo: any) => (
+              {unit.photos.slice(1, 5).map((photo) => (
                 <div key={photo.id} className="aspect-square bg-gray-200 rounded relative overflow-hidden">
                   <Image
                     src={photo.url}
@@ -150,7 +150,7 @@ export default async function UnitDetailPage({ params }: UnitPageProps) {
             <div>
               <h3 className="font-semibold mb-2">Especificaciones</h3>
               <dl className="grid grid-cols-2 gap-2">
-                {unit.attributes.map((attr: any) => (
+                {unit.attributes.map((attr) => (
                   <div key={attr.key} className="flex justify-between">
                     <dt className="text-gray-600 capitalize">{attr.key}:</dt>
                     <dd className="font-medium">{attr.value}</dd>

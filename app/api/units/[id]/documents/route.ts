@@ -6,6 +6,7 @@ import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { getPlanLimits } from '@/lib/shared/plan-limits'
+import { generateDocAccessToken } from '@/lib/shared/doc-token'
 
 const CreateDocSchema = z.object({
   type: z.enum(['BOLETO_COMPRAVENTA', 'RECIBO', 'CONTRATO']),
@@ -159,6 +160,8 @@ export const POST = withTenantHandler(withErrorHandling(
       },
     })
 
-    return successResponse(doc, 201)
+    const accessToken = await generateDocAccessToken(doc.id)
+
+    return successResponse({ ...doc, accessToken }, 201)
   }
 ))

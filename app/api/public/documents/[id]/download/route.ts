@@ -12,13 +12,25 @@ const DOC_LABELS: Record<string, string> = {
 
 const log = createLogger('API:PublicDocumentDownload')
 
+import { verifyDocAccessToken } from '@/lib/shared/doc-token'
+
 export const GET = async (
-  _req: NextRequest,
+  req: NextRequest,
   context?: unknown
 ) => {
   try {
     const { id } = await (context as { params: Promise<{ id: string }> }).params
-    
+
+    // Validate access token
+    const token = req.nextUrl.searchParams.get('token')
+    if (!token) {
+      return NextResponse.json({ error: 'Token requerido' }, { status: 401 })
+    }
+    const payload = await verifyDocAccessToken(token)
+    if (!payload || payload.docId !== id) {
+      return NextResponse.json({ error: 'Token inválido o expirado' }, { status: 403 })
+    }
+
     // Find the digital document by its ID (UUID v4)
     const doc = await prisma.digitalDocument.findUnique({
       where: { id },
@@ -47,7 +59,7 @@ export const GET = async (
     await new Promise<void>((resolve, reject) => {
       pdf.on('end', resolve)
       pdf.on('error', (err) => {
-        console.error('PDFKit error:', err)
+        log.error({ err }, 'PDFKit error')
         reject(err)
       })
 
@@ -153,7 +165,7 @@ export const GET = async (
             const imageBuffer = Buffer.from(base64Data, 'base64')
             pdf.image(imageBuffer, 55, sigTop - 10, { fit: [175, 45], align: 'center' })
           } catch (e) {
-            console.error('Failed to embed company signature image', e)
+            log.error({ err: String(e) }, 'Failed to embed company signature image')
           }
         }
         pdf.moveTo(55, sigTop + 40).lineTo(230, sigTop + 40).strokeColor(dark).lineWidth(0.8).stroke()
@@ -166,7 +178,7 @@ export const GET = async (
             const imageBuffer = Buffer.from(base64Data, 'base64')
             pdf.image(imageBuffer, W - 230, sigTop - 10, { fit: [175, 45], align: 'center' })
           } catch (e) {
-            console.error('Failed to embed signature image', e)
+            log.error({ err: String(e) }, 'Failed to embed signature image')
           }
         }
         

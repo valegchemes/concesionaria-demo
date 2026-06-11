@@ -133,14 +133,14 @@ export async function checkStrictRateLimit(
       reset: reset * 1000,
     }
   } catch (error) {
-    // Fallback in-memory — defensa en profundidad cuando KV está caído
-    log.warn({ error: error instanceof Error ? error.message : String(error), key }, 'Strict rate limit KV error — using in-memory fallback')
-    const { allowed, current } = checkInMemory(key, STRICT_MAX, 10)
+    // FAIL-CLOSED para endpoints críticos (auth, pagos, webhooks)
+    // Si KV está caído, BLOQUEAR la request y alertar
+    log.error({ error: error instanceof Error ? error.message : String(error), key }, 'KV DOWN - BLOQUEANDO REQUEST CRÍTICO (fail-closed)')
     return {
-      success: allowed,
+      success: false,
       limit: STRICT_MAX,
-      remaining: Math.max(0, STRICT_MAX - current),
-      reset: reset * 1000,
+      remaining: 0,
+      reset: Date.now() + 10000,
     }
   }
 }

@@ -70,10 +70,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             'image/webp',
             'image/gif',
             'image/avif',
-            'image/heic',
-            'image/heif',
-            'image/bmp',
-            'image/tiff',
           ],
           maximumSizeInBytes: 5 * 1024 * 1024,
           tokenPayload: JSON.stringify({

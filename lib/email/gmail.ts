@@ -1,6 +1,10 @@
 import { google } from 'googleapis'
 import nodemailer from 'nodemailer'
 import { prisma } from '@/lib/prisma'
+import { decrypt } from '@/lib/shared/crypto'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('GmailClient')
 
 const SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
@@ -35,6 +39,7 @@ export function generateAuthUrl(companyId: string) {
 
 /**
  * Gets a fresh OAuth client for a specific company, refreshing the token if needed
+ * Supports dual read: new encrypted fields (preferred) + legacy plaintext fields (fallback for migration)
  */
 export async function getCompanyGmailClient(companyId: string) {
   const connection = await prisma.gmailConnection.findUnique({
@@ -43,25 +48,61 @@ export async function getCompanyGmailClient(companyId: string) {
 
   if (!connection) return null
 
+  let accessToken: string | undefined
+  let refreshToken: string | undefined
+  let expiryDate: number | undefined
+
+  // 1. Try NEW encrypted fields first
+  if (connection.accessTokenEnc && connection.refreshTokenEnc) {
+    try {
+      accessToken = decrypt(connection.accessTokenEnc)
+      refreshToken = decrypt(connection.refreshTokenEnc)
+      expiryDate = connection.tokenExpiry?.getTime()
+    } catch (e) {
+      log.error({ err: String(e) }, '[Gmail] Failed to decrypt tokens, falling back to legacy')
+      accessToken = undefined
+      refreshToken = undefined
+    }
+  }
+
+  // 2. FALLBACK: Legacy plaintext fields (for migration period)
+  if (!accessToken && connection.accessToken && connection.refreshToken) {
+    log.warn({ companyId }, '[Gmail] Using LEGACY plaintext tokens - run migration script')
+    accessToken = connection.accessToken
+    refreshToken = connection.refreshToken
+    expiryDate = connection.tokenExpiry?.getTime()
+  }
+
+  if (!accessToken || !refreshToken) {
+    log.error({ companyId }, '[Gmail] No valid tokens found for company')
+    return null
+  }
+
   const oAuth2Client = getOAuth2Client()
   oAuth2Client.setCredentials({
-    access_token: connection.accessToken,
-    refresh_token: connection.refreshToken,
-    expiry_date: connection.tokenExpiry.getTime()
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expiry_date: expiryDate
   })
 
   // Listen for automatic token refreshes by the google library
+  // Save to NEW encrypted fields
   oAuth2Client.on('tokens', async (tokens) => {
     if (tokens.access_token) {
+      const { encrypt } = await import('@/lib/shared/crypto')
       const updateData: any = {
-        accessToken: tokens.access_token
+        accessTokenEnc: encrypt(tokens.access_token),
       }
       if (tokens.refresh_token) {
-        updateData.refreshToken = tokens.refresh_token
+        updateData.refreshTokenEnc = encrypt(tokens.refresh_token)
       }
       if (tokens.expiry_date) {
         updateData.tokenExpiry = new Date(tokens.expiry_date)
       }
+      // Clear legacy fields after successful encryption
+      updateData.accessToken = null
+      updateData.refreshToken = null
+      
       await prisma.gmailConnection.update({
         where: { companyId },
         data: updateData

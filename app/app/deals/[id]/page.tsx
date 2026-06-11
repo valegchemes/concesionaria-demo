@@ -53,9 +53,9 @@ interface DealDetail {
     email: string
     whatsappNumber: string | null
   }
-  payments: any[]
-  closingCosts: any[]
-  tradeIn: any | null
+  payments: Array<{ id: string; amount: number; currency: string; method: string; receivedAt: string; notes: string | null }>
+  closingCosts: Array<{ id: string; concept: string; amountArs: number | null; amountUsd: number | null }>
+  tradeIn: { id: string; description: string; expectedValue: number; offeredValue: number; finalValue: number } | null
 }
 
 interface CurrentUser {

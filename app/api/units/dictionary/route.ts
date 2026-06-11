@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { prisma } from '@/lib/shared/prisma'
 import defaultVehicles from '@/lib/shared/vehicles-ar.json'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:VehicleDictionary')
 
 export async function GET(req: NextRequest) {
   try {
@@ -56,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data: responseData }, { status: 200 })
   } catch (error) {
-    console.error('Error fetching vehicle dictionary:', error)
+    log.error({ err: String(error) }, 'Error fetching vehicle dictionary')
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

@@ -3,12 +3,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getOAuth2Client } from '@/lib/email/gmail'
 import { prisma } from '@/lib/prisma'
 import { google } from 'googleapis'
+import { encrypt } from '@/lib/shared/crypto'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:GmailCallback')
 
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams
     const code = searchParams.get('code')
-    const companyId = searchParams.get('state') // We passed companyId in state
+    const companyId = searchParams.get('state')
 
     if (!code || !companyId) {
       return NextResponse.json({ error: 'Missing code or state parameter' }, { status: 400 })
@@ -32,21 +36,24 @@ export async function GET(req: NextRequest) {
        return NextResponse.json({ error: 'Could not retrieve email address from Google' }, { status: 400 })
     }
 
-    // Save or update in database
+    // Save to NEW encrypted fields
+    const accessTokenEnc = encrypt(tokens.access_token!)
+    const refreshTokenEnc = encrypt(tokens.refresh_token!)
+
     await prisma.gmailConnection.upsert({
       where: { companyId },
       update: {
         emailAddress,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        tokenExpiry: new Date(tokens.expiry_date)
+        accessTokenEnc,
+        refreshTokenEnc,
+        tokenExpiry: new Date(tokens.expiry_date!),
       },
       create: {
         companyId,
         emailAddress,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        tokenExpiry: new Date(tokens.expiry_date)
+        accessTokenEnc,
+        refreshTokenEnc,
+        tokenExpiry: new Date(tokens.expiry_date!),
       }
     })
 
@@ -59,7 +66,7 @@ export async function GET(req: NextRequest) {
     // Redirect back to settings page
     return NextResponse.redirect(new URL('/app/settings/email-ai', req.url))
   } catch (error) {
-    console.error('Error in Google OAuth callback:', error)
+    log.error({ err: String(error) }, 'Error in Google OAuth callback')
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })
   }
 }

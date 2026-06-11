@@ -127,9 +127,35 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
 }
 
 /**
- * Añade headers de seguridad y deshabilita cache
+ * Añade headers de seguridad, CSP con nonces y deshabilita cache
  */
 function addSecurityHeaders(response: NextResponse): NextResponse {
+  const nonce = crypto.randomUUID()
+
+  // Header para que Next.js use el nonce en scripts autoinyectados
+  response.headers.set('x-csp-nonce', nonce)
+
+  // CSP estricto SIN unsafe-inline
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https: wss:",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "report-uri /api/csp-report",
+  ].join('; ')
+
+  response.headers.set('Content-Security-Policy', csp)
+
+  // Report-Only para detectar violaciones sin bloquear
+  const cspRO = csp.replace("script-src 'self' ", "script-src 'self' 'report-sample' ")
+  response.headers.set('Content-Security-Policy-Report-Only', cspRO)
+
+  // Headers de seguridad tradicionales
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-XSS-Protection', '1; mode=block')
@@ -229,10 +255,6 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
 
 export const config = {
   matcher: [
-    '/api/((?!auth|webhooks|diag).*)',
-    '/app/:path*',
-    '/app',
-    '/login',
-    '/register',
+    '/((?!api/auth|api/webhooks|api/diag|api/health|_next/static|_next/image|favicon.ico|public|sw.js|icon-|vercel|next|globe|file|window).*)',
   ],
 }

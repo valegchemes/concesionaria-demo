@@ -2,6 +2,9 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/prisma'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:GmailStatus')
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,7 +26,7 @@ export async function GET(req: NextRequest) {
       interactions 
     })
   } catch (error) {
-    console.error('Error fetching Gmail status:', error)
+    log.error({ err: String(error) }, 'Error fetching Gmail status')
     return NextResponse.json({ error: 'Failed to fetch status' }, { status: 500 })
   }
 }

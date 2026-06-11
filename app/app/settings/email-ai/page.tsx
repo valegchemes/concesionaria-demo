@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
+import { sanitizeForRender } from '@/lib/shared/sanitize-html'
 
 type EmailInteraction = {
   id: string
@@ -307,7 +308,7 @@ export default function EmailAIPage() {
                           </p>
                           <div 
                             className="text-xs text-slate-300 prose prose-invert max-w-none prose-p:my-1"
-                            dangerouslySetInnerHTML={{ __html: interaction.replyBody }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeForRender(interaction.replyBody) }}
                           />
                         </div>
                       </motion.div>

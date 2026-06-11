@@ -32,8 +32,7 @@ const envSchema = z.object({
       ]
       const valLower = val.toLowerCase()
       return !weakSecrets.some(weak => valLower.includes(weak))
-    }, 'NEXTAUTH_SECRET must not contain common weak patterns')
-    .optional(),
+    }, 'NEXTAUTH_SECRET must not contain common weak patterns'),
   NEXTAUTH_URL: z.string().optional(),
 
   // Database
@@ -162,5 +161,13 @@ export const computedEnv = {
       throw new Error('PUBLIC_URL is required in production')
     }
     return url
+  },
+
+  get NEXTAUTH_SECRET() {
+    const e = getEnv()
+    if (e.NODE_ENV === 'production' && !e.NEXTAUTH_SECRET) {
+      throw new Error('NEXTAUTH_SECRET is required in production')
+    }
+    return e.NEXTAUTH_SECRET
   },
 } as const

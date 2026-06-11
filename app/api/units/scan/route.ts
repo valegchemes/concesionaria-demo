@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/shared/auth-helpers'
 import { getPlanLimits } from '@/lib/shared/plan-limits'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:UnitScan')
 
 // Mock database of premium visual scan test cards
 const MOCK_VEHICLES: Record<string, any> = {
@@ -152,7 +155,7 @@ Si no lográs divisar algún campo de forma nítida, ponelo como string vacío "
 
     return NextResponse.json({ success: true, data: parsedData })
   } catch (error: any) {
-    console.error('Error scanning card:', error)
+    log.error({ err: String(error) }, 'Error scanning card')
     return NextResponse.json({ error: error.message || 'Error al escanear la cédula.' }, { status: 500 })
   }
 }

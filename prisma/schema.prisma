@@ -792,16 +792,20 @@ enum CashTransactionType {
 }
 
 model GmailConnection {
-  id           String   @id @default(cuid())
-  companyId    String   @unique
-  emailAddress String
-  accessToken  String   @db.Text
-  refreshToken String   @db.Text
-  tokenExpiry  DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  companyId       String   @unique
+  emailAddress    String
+  // Legacy fields (deprecated - keep for migration)
+  accessToken     String?  @db.Text
+  refreshToken    String?  @db.Text
+  tokenExpiry     DateTime?
+  // New encrypted fields
+  accessTokenEnc  String?  @db.Text
+  refreshTokenEnc String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@map("GmailConnection")

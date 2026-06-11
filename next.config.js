@@ -35,6 +35,7 @@ const nextConfig = {
     return [
       {
         // Headers de seguridad + X-API-Version en todas las rutas
+        // CSP se maneja en middleware.ts con nonces
         source: '/(.*)',
         headers: [
           { key: 'X-Frame-Options', value: 'DENY' },
@@ -44,20 +45,6 @@ const nextConfig = {
           { key: 'X-DNS-Prefetch-Control', value: 'off' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'X-API-Version', value: 'v1.0' },
-          {
-            // CSP enforced: se eliminó 'unsafe-eval' (no requerido en producción).
-            // 'unsafe-inline' se mantiene temporalmente — eliminarlo requiere
-            // implementar nonces en middleware (futura mejora).
-            key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; report-uri /api/csp-report;",
-          },
-          {
-            // Report-Only: política más estricta para detectar violaciones sin bloquear.
-            // Objetivo: detectar si hay scripts que requieren 'unsafe-inline' para futuras
-            // iteraciones donde se implementen nonces.
-            key: 'Content-Security-Policy-Report-Only',
-            value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; report-uri /api/csp-report;",
-          },
         ],
       },
       {

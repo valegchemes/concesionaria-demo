@@ -2,10 +2,37 @@
 
 import React from 'react'
 import { formatPrice } from '@/lib/utils'
+import type { Unit, Company, UnitAttribute } from '@prisma/client'
 
 interface UnitPdfTemplateProps {
-  unit: any
-  company: any
+  unit: {
+    id: string
+    title: string
+    type: string
+    description: string | null
+    location: string | null
+    priceArs: number | null
+    priceUsd: number | null
+    year: number | null
+    status: string
+    vin: string | null
+    domain: string | null
+    engineNumber: string | null
+    frameNumber: string | null
+    hin: string | null
+    registrationNumber: string | null
+    tags: string[]
+    photos?: { id: string; url: string; order?: number }[]
+    attributes?: { id: string; key: string; value: string; unitId?: string }[]
+  }
+  company: {
+    name: string
+    phone: string | null
+    whatsappCentral: string | null
+    email: string | null
+    logoUrl: string | null
+    subscription?: { status: string } | null
+  }
 }
 
 export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateProps>(
@@ -20,7 +47,7 @@ export const UnitPdfTemplate = React.forwardRef<HTMLDivElement, UnitPdfTemplateP
       if (unit.engineNumber) specs.push({ label: 'Motor', value: unit.engineNumber })
       
       if (unit.attributes && unit.attributes.length > 0) {
-        unit.attributes.forEach((attr: any) => {
+        unit.attributes.forEach((attr) => {
           specs.push({ label: attr.key, value: attr.value })
         })
       }

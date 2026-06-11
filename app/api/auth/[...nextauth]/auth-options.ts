@@ -121,7 +121,7 @@ export const authOptions: NextAuthOptions = {
           ? '__Secure-next-auth.callback-url'
           : 'next-auth.callback-url',
       options: {
-        httpOnly: false,
+        httpOnly: true,
         sameSite: 'lax',
         path: '/',
         secure: env.NODE_ENV === 'production',

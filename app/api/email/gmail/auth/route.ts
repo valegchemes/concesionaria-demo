@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/shared/auth-helpers'
 import { getPlanLimits } from '@/lib/shared/plan-limits'
 import { generateAuthUrl } from '@/lib/email/gmail'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:GmailAuth')
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,7 +20,7 @@ export async function GET(req: NextRequest) {
     
     return NextResponse.redirect(url)
   } catch (error) {
-    console.error('Error initiating Google OAuth:', error)
+    log.error({ err: String(error) }, 'Error initiating Google OAuth')
     return NextResponse.json({ error: 'Failed to initiate authentication' }, { status: 500 })
   }
 }

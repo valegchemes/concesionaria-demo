@@ -511,9 +511,6 @@ export default function SettingsPage() {
 
             <div className="rounded-xl border-2 border-dashed border-border bg-background overflow-hidden relative">
               <SignaturePad ref={sigRef} />
-              <style dangerouslySetInnerHTML={{__html: `
-                .dark canvas { filter: invert(1); }
-              `}} />
             </div>
 
             <div className="flex items-center gap-2 justify-between">
@@ -526,7 +523,16 @@ export default function SettingsPage() {
                 </Button>
                 <Button type="button" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5" onClick={() => {
                   if (sigRef.current && !sigRef.current.isEmpty()) {
-                    setSignatureUrl(sigRef.current.toDataURL('image/png'))
+                    const dataUrl = sigRef.current.toDataURL('image/png')
+                    const sizeKB = Math.round((dataUrl.length * 3) / 4 / 1024)
+                    if (sizeKB > 500) {
+                      alert('Firma muy grande (>500KB). Simplifique el trazo.')
+                      return
+                    }
+                    if (sizeKB > 200) {
+                      if (!confirm(`Advertencia: firma grande (${sizeKB}KB). ¿Continuar?`)) return
+                    }
+                    setSignatureUrl(dataUrl)
                   }
                   setShowSig(false)
                 }}>
