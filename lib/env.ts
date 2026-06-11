@@ -127,6 +127,13 @@ function getEnv(): EnvConfig {
   const parsed = envSchema.safeParse(process.env)
 
   if (!parsed.success) {
+    const isBuild = process.env.npm_lifecycle_event === 'build' || process.env.SKIP_ENV_VALIDATION === 'true'
+    if (isBuild) {
+      console.warn('⚠️ Skipped environment validation during build.')
+      cachedEnv = process.env as unknown as EnvConfig
+      return cachedEnv
+    }
+    
     console.error('❌ Invalid environment variables:')
     console.error(parsed.error.flatten().fieldErrors)
     const error = new Error('Invalid environment variables')
