@@ -172,15 +172,13 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   async function uploadPhoto(file: File): Promise<string> {
-    const formData = new FormData()
-    formData.append('file', file)
-    const res = await fetch('/api/blob', {
-      method: 'POST',
-      body: formData,
+    const { upload } = await import('@vercel/blob/client')
+    const uploadUrl = `${window.location.origin}/api/blob`
+    const newBlob = await upload(`units/${id}/${file.name}`, file, {
+      access: 'public',
+      handleUploadUrl: uploadUrl,
     })
-    if (!res.ok) throw new Error('Error subiendo imagen')
-    const data = await res.json()
-    return data.url
+    return newBlob.url
   }
 
   async function handlePhotoUpload(files: FileList) {
