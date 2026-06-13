@@ -18,10 +18,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
-      {
+      ...(process.env.NODE_ENV === 'development' ? [{
         protocol: 'http',
         hostname: 'localhost',
-      },
+      }] : []),
     ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
@@ -51,7 +51,7 @@ const nextConfig = {
         // CORS explícito para todas las rutas de API
         source: '/api/(.*)',
         headers: [
-          { key: 'Access-Control-Allow-Origin', value: process.env.NEXTAUTH_URL || 'https://localhost:3000' },
+          { key: 'Access-Control-Allow-Origin', value: process.env.NEXTAUTH_URL || 'http://localhost:3000' },
           { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PUT,DELETE,OPTIONS' },
           { key: 'Access-Control-Allow-Headers', value: 'Content-Type,Authorization,X-Requested-With' },
           { key: 'Access-Control-Max-Age', value: '86400' },

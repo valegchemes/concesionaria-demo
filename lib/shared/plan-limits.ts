@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { hasDeveloperInCompany, getDeveloperEmails } from '@/lib/shared/developer-bypass'
 
 export interface PlanLimits {
   planName: string
@@ -31,12 +32,10 @@ const FREE_LIMITS: PlanLimits = {
  * This is the single source of truth for enforcement in API routes.
  */
 export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
+
   // 1. Developer Bypass (Superadmin): Siempre tiene Plan Pro Activo sin importar suscripción.
-  const devUserCount = await prisma.user.count({
-    where: { companyId, email: 'valegchemes@gmail.com' }
-  })
-  
-  const isDeveloper = devUserCount > 0
+  // El cliente extendido de Prisma es compatible con el tipo simplificado que espera hasDeveloperInCompany
+  const isDeveloper = await hasDeveloperInCompany(prisma as any, companyId)
 
   if (isDeveloper) {
     const proPlan = await prisma.saasPlan.findFirst({

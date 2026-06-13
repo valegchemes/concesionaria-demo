@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withLock, LockAcquisitionError } from '@/lib/shared/distributed-lock-fs'
 import { createLogger } from '@/lib/shared/logger'
+import { getDeveloperEmails } from '@/lib/shared/developer-bypass'
 
 const log = createLogger('CronDeactivateCompanies')
 const CRON_SECRET = process.env.CRON_SECRET
@@ -17,10 +18,10 @@ export async function GET(req: NextRequest) {
   const startTime = Date.now()
   
   try {
-    // 1. Validar autenticación
+    // 1. Validar autenticación — FAIL-CLOSED: si falta CRON_SECRET, rechazar siempre
     const authHeader = req.headers.get('authorization')
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      log.warn({ authHeader }, 'Unauthorized cron attempt')
+    if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+      log.warn({ authHeader: authHeader?.slice(0, 20), hasSecret: !!CRON_SECRET }, 'Unauthorized cron attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -102,10 +103,10 @@ async function processDeactivations() {
           createdAt: { lt: thresholdDate }
         }
       ],
-      // Permanent Exemption: Exclude any company where the developer user exists
+      // Permanent Exemption: Exclude any company where a developer user exists
       users: {
         none: {
-          email: 'valegchemes@gmail.com'
+          email: { in: Array.from(getDeveloperEmails()) }
         }
       }
     },

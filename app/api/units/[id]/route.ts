@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser, requirePermission } from '@/lib/shared/auth-helpers'
-import { UpdateUnitSchema } from '@/lib/shared/validation'
+import { UpdateUnitSchema, type UpdateUnitInput } from '@/lib/shared/validation'
 import { unitService } from '@/lib/domains/units/service'
 import { createLogger } from '@/lib/shared/logger'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
@@ -35,11 +35,11 @@ export const PUT = withTenantHandler(withErrorHandling(
     const { id } = await params
 
     const json = await request.json()
-    const data = UpdateUnitSchema.parse(json)
+    const data = UpdateUnitSchema.parse(json) as any
 
     log.info({ unitId: id, changes: Object.keys(data) }, 'Updating unit')
 
-    const unit = await unitService.update(id, user.companyId, data as any)
+    const unit = await unitService.update(id, user.companyId, data)
 
     return successResponse(unit)
   }

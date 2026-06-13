@@ -158,7 +158,6 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   // Headers de seguridad tradicionales
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
   response.headers.set('Pragma', 'no-cache')
@@ -255,6 +254,6 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
 
 export const config = {
   matcher: [
-    '/((?!api/auth|api/webhooks|api/diag|api/health|_next/static|_next/image|favicon.ico|public|sw.js|icon-|vercel|next|globe|file|window).*)',
+    '/((?!api/auth|api/webhooks|api/health|_next/static|_next/image|favicon.ico|public|sw.js|icon-|vercel|next|globe|file|window).*)',
   ],
 }

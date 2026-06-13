@@ -32,7 +32,7 @@ if (!parsed.success) {
   env = {
     NODE_ENV: "development",
     NEXTAUTH_URL: "http://localhost:3000",
-    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "dummy_secret_for_build_only_123456789",
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || "",
     DATABASE_URL: process.env.DATABASE_URL || "postgresql://localhost:5432/demo",
     LOG_LEVEL: "info",
     SENTRY_DSN: undefined,
@@ -48,6 +48,6 @@ export { env }
 
 if (isServer && env.NODE_ENV === "production") {
   if (!env.NEXTAUTH_SECRET || env.NEXTAUTH_SECRET.length < 32) {
-    console.warn("⚠️ NEXTAUTH_SECRET is required and must be at least 32 characters in production. Skipping exit to allow build.")
+    console.error("FATAL: NEXTAUTH_SECRET is required and must be at least 32 characters in production.")
   }
 }

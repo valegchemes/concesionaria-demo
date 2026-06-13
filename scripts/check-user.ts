@@ -3,8 +3,9 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
+  const devEmail = process.env.DEVELOPER_EMAILS?.split(',')[0]?.trim() || 'no-dev-configured@example.com'
   const user = await prisma.user.findFirst({
-    where: { email: 'valegchemes@gmail.com' },
+    where: { email: devEmail },
     include: {
       company: {
         include: {
@@ -20,7 +21,7 @@ async function main() {
 
   console.log('--- USUARIO BUSCADO ---')
   if (!user) {
-    console.log('No se encontró el usuario con email valegchemes@gmail.com')
+    console.log(`No se encontró el usuario con email ${devEmail}`)
   } else {
     console.log('ID:', user.id)
     console.log('Nombre:', user.name)

@@ -1,16 +1,11 @@
 import { PrismaClient } from '@prisma/client'
 
-const PROD_URL = "postgresql://neondb_owner:npg_pwDl1niXeFL9@ep-royal-tree-am9bx843-pooler.c-5.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
-
-const prisma = new PrismaClient({
-  datasources: {
-    db: { url: PROD_URL }
-  }
-})
+const prisma = new PrismaClient()
 
 async function main() {
+  const devEmail = process.env.DEVELOPER_EMAILS?.split(',')[0]?.trim() || 'no-dev-configured@example.com'
   const user = await prisma.user.findFirst({
-    where: { email: 'valegchemes@gmail.com' },
+    where: { email: devEmail },
     select: { id: true, name: true, avatarUrl: true }
   })
   console.log('User:', user?.name)

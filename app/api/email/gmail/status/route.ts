@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/prisma'
 import { createLogger } from '@/lib/shared/logger'
+import { decryptEmailField } from '@/lib/shared/email-crypto'
 
 const log = createLogger('API:GmailStatus')
 
@@ -20,10 +21,17 @@ export async function GET(req: NextRequest) {
       take: 20
     })
 
+    // Decrypt fields for the response
+    const decryptedInteractions = interactions.map(interaction => ({
+      ...interaction,
+      messageBody: decryptEmailField(interaction.messageBodyEnc),
+      replyBody: decryptEmailField(interaction.replyBodyEnc),
+    }))
+
     return NextResponse.json({ 
       connected: !!connection,
       emailAddress: connection?.emailAddress || null,
-      interactions 
+      interactions: decryptedInteractions 
     })
   } catch (error) {
     log.error({ err: String(error) }, 'Error fetching Gmail status')

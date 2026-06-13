@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { google } from 'googleapis'
 import nodemailer from 'nodemailer'
 import { prisma } from '@/lib/prisma'
@@ -27,19 +28,67 @@ export function getOAuth2Client() {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri)
 }
 
+/**
+ * Genera un state firmado con HMAC para prevenir OAuth CSRF attacks.
+ * El state contiene: companyId + timestamp + HMAC.
+ */
+function signOAuthState(companyId: string): string {
+  const secret = process.env.GMAIL_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET || ''
+  if (!secret) {
+    throw new Error('Se requiere GMAIL_ENCRYPTION_KEY o NEXTAUTH_SECRET para firmar OAuth state')
+  }
+  const timestamp = Date.now().toString(36)
+  const payload = `${companyId}:${timestamp}`
+  // Usar HMAC con solo la primera mitad de la key para mantener el state corto
+  const signingKey = secret.length >= 16 ? secret.slice(0, 16) : secret
+  const hmac = crypto.createHmac('sha256', signingKey).update(payload).digest('hex').slice(0, 16)
+  return `${payload}:${hmac}`
+}
+
+/**
+ * Verifica y extrae el companyId de un state firmado.
+ * Retorna null si el state es inválido o manipulado.
+ */
+export function verifyOAuthState(state: string): string | null {
+  try {
+    const parts = state.split(':')
+    if (parts.length < 3) return null
+    const hmac = parts.pop()!
+    const payload = parts.join(':')
+    const secret = process.env.GMAIL_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET || ''
+    if (!secret) return null
+    const signingKey = secret.length >= 16 ? secret.slice(0, 16) : secret
+    const expected = crypto.createHmac('sha256', signingKey).update(payload).digest('hex').slice(0, 16)
+    
+    // Timing-safe comparison
+    if (hmac.length !== expected.length) return null
+    let result = 0
+    for (let i = 0; i < hmac.length; i++) {
+      result |= hmac.charCodeAt(i) ^ expected.charCodeAt(i)
+    }
+    if (result !== 0) return null
+    
+    // Extraer companyId (primer parte antes del primer ':')
+    return parts[0]
+  } catch {
+    return null
+  }
+}
+
 export function generateAuthUrl(companyId: string) {
   const oAuth2Client = getOAuth2Client()
+  const signedState = signOAuthState(companyId)
   return oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: SCOPES,
-    state: companyId // We pass the companyId in state so we know who the user is on callback
+    state: signedState // State firmado con HMAC para prevenir CSRF en OAuth callback
   })
 }
 
 /**
- * Gets a fresh OAuth client for a specific company, refreshing the token if needed
- * Supports dual read: new encrypted fields (preferred) + legacy plaintext fields (fallback for migration)
+ * Gets a fresh OAuth client for a specific company, refreshing the token if needed.
+ * Tokens are read from encrypted fields only (accessTokenEnc / refreshTokenEnc).
  */
 export async function getCompanyGmailClient(companyId: string) {
   const connection = await prisma.gmailConnection.findUnique({
@@ -52,29 +101,19 @@ export async function getCompanyGmailClient(companyId: string) {
   let refreshToken: string | undefined
   let expiryDate: number | undefined
 
-  // 1. Try NEW encrypted fields first
   if (connection.accessTokenEnc && connection.refreshTokenEnc) {
     try {
       accessToken = decrypt(connection.accessTokenEnc)
       refreshToken = decrypt(connection.refreshTokenEnc)
       expiryDate = connection.tokenExpiry?.getTime()
     } catch (e) {
-      log.error({ err: String(e) }, '[Gmail] Failed to decrypt tokens, falling back to legacy')
-      accessToken = undefined
-      refreshToken = undefined
+      log.error({ err: String(e) }, '[Gmail] Failed to decrypt tokens')
+      return null
     }
   }
 
-  // 2. FALLBACK: Legacy plaintext fields (for migration period)
-  if (!accessToken && connection.accessToken && connection.refreshToken) {
-    log.warn({ companyId }, '[Gmail] Using LEGACY plaintext tokens - run migration script')
-    accessToken = connection.accessToken
-    refreshToken = connection.refreshToken
-    expiryDate = connection.tokenExpiry?.getTime()
-  }
-
   if (!accessToken || !refreshToken) {
-    log.error({ companyId }, '[Gmail] No valid tokens found for company')
+    log.error({ companyId }, '[Gmail] No valid encrypted tokens found for company')
     return null
   }
 
@@ -99,9 +138,6 @@ export async function getCompanyGmailClient(companyId: string) {
       if (tokens.expiry_date) {
         updateData.tokenExpiry = new Date(tokens.expiry_date)
       }
-      // Clear legacy fields after successful encryption
-      updateData.accessToken = null
-      updateData.refreshToken = null
       
       await prisma.gmailConnection.update({
         where: { companyId },

@@ -16,12 +16,13 @@ export async function POST(req: NextRequest) {
     })
 
     if (connection) {
-      // Try to revoke on Google's side (use legacy refreshToken if available)
-      const legacyRefreshToken = connection.refreshToken
-      if (legacyRefreshToken) {
+      // Try to revoke on Google's side (use encrypted refreshTokenEnc)
+      if (connection.refreshTokenEnc) {
         try {
+          const { decrypt } = await import('@/lib/shared/crypto')
+          const refreshToken = decrypt(connection.refreshTokenEnc)
           const oAuth2Client = getOAuth2Client()
-          await oAuth2Client.revokeToken(legacyRefreshToken)
+          await oAuth2Client.revokeToken(refreshToken)
         } catch (revokeErr) {
           log.warn({ err: String(revokeErr) }, 'Failed to revoke token on Google, proceeding with local deletion')
         }

@@ -388,7 +388,7 @@ model PublicClickEvent {
   type      ClickType
   unitId    String?
   metadata  String?
-  ipAddress String?
+  ipHash    String?   // HMAC-SHA256 de la IP (anonymized para GDPR)
   userAgent String?
   createdAt DateTime  @default(now())
   companyId String
@@ -644,8 +644,6 @@ model GmailConnection {
   id           String   @id @default(cuid())
   companyId    String   @unique
   emailAddress String
-  accessToken     String?
-  refreshToken    String?
   accessTokenEnc  String?
   refreshTokenEnc String?
   tokenExpiry  DateTime
@@ -658,15 +656,15 @@ model GmailConnection {
 }
 
 model EmailInteraction {
-  id          String   @id @default(cuid())
-  companyId   String
-  fromEmail   String
-  toEmail     String
-  subject     String
-  messageBody String
-  replyBody   String
-  createdAt   DateTime @default(now())
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  companyId    String
+  fromEmail    String
+  toEmail      String
+  subject      String
+  messageBodyEnc  String?  // AES-256-GCM encrypted
+  replyBodyEnc    String?  // AES-256-GCM encrypted
+  createdAt    DateTime @default(now())
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@map("EmailInteraction")

@@ -361,7 +361,9 @@ export async function withRetry<T>(
 /**
  * Ejecuta operaciones en transacción con manejo de errores.
  * Usa prismaBypass para evitar conflictos de tipos con la extensión de tenant.
- * El aislamiento de tenant sigue activo a través de AsyncLocalStorage.
+ * La tenant isolation se aplica por el cliente extendido (prisma.xxx) fuera de la transacción;
+ * dentro del callback, usa `prisma.xxx` (import global con extensión) en lugar de
+ * `tx.xxx` (sin extensión) para obtener tenant isolation automática.
  *
  * @param operations - Función que recibe el cliente de transacción
  * @param options.isolationLevel - Nivel de aislamiento (default: ReadCommitted).

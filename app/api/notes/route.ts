@@ -1,22 +1,31 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import type { InstallmentStatus } from '@prisma/client'
+
+const AllowedInstallmentStatus = z.enum(['PENDING', 'PAID', 'OVERDUE'])
 
 export const GET = withTenantHandler(withErrorHandling(async (request: NextRequest) => {
   const user = await getCurrentUser()
   const { searchParams } = new URL(request.url)
-  const status = searchParams.get('status')
+  const statusParam = searchParams.get('status')
+  
+  // Validar status con Zod en lugar de castear a any
+  const validatedStatus = statusParam 
+    ? AllowedInstallmentStatus.safeParse(statusParam).data ?? undefined
+    : undefined
 
   const notes = await prisma.promissoryNote.findMany({
     where: {
       companyId: user.companyId,
       isActive: true,
-      ...(status ? {
+      ...(validatedStatus ? {
         installments: {
-          some: { status: status as any }
+          some: { status: validatedStatus }
         }
       } : {})
     },

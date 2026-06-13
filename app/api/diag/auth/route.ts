@@ -13,7 +13,11 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const secret = searchParams.get('secret')
-  const expectedSecret = process.env.NEXTAUTH_SECRET?.slice(0, 8)
+  const expectedSecret = process.env.DIAG_SECRET_TOKEN
+
+  if (!expectedSecret || expectedSecret.length < 32) {
+    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  }
 
   if (!secret || secret !== expectedSecret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

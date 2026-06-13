@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 import './globals.css'
+import { validateEnvironmentAtStartup } from '@/lib/security/validate-env'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -25,6 +26,13 @@ export const viewport: Viewport = {
   themeColor: '#3b82f6',
   width: 'device-width',
   initialScale: 1,
+}
+
+// Validate environment at startup (server-side only)
+// Nota: No se ejecuta durante el build de Vercel (process.env.VERCEL_ENV) para evitar
+// fallos por variables de entorno no disponibles en tiempo de compilación.
+if (typeof window === 'undefined' && !process.env.VERCEL_ENV) {
+  validateEnvironmentAtStartup()
 }
 
 export default function RootLayout({
@@ -54,19 +62,8 @@ export default function RootLayout({
           richColors
           closeButton
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
-                    console.warn('Service Worker registration failed:', err);
-                  });
-                });
-              }
-            `,
-          }}
-        />
+        {/* Service Worker registration - archivo externo para compatibilidad con CSP */}
+        <script src="/sw-register.js" />
       </body>
     </html>
   )

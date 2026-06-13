@@ -1,0 +1,325 @@
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { getRequestIdentifier, requireRateLimit, requireStrictRateLimit, RATE_LIMITS, STRICT_RATE_LIMITS } from '@/lib/shared/rate-limit-memory'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('SecurityMiddleware')
+
+// ============================================================================
+// SECURITY CONFIGURATION
+// ============================================================================
+
+interface SecurityConfig {
+  // Rate limiting
+  rateLimit?: {
+    strict?: boolean
+    custom?: { limit: number; windowSeconds: number; prefix: string }
+  }
+  // CSRF protection
+  csrf?: boolean
+  // Content Security Policy
+  csp?: boolean
+  // Additional headers
+  headers?: Record<string, string>
+}
+
+// ============================================================================
+// RATE LIMITING HELPER
+// ============================================================================
+
+async function applyRateLimiting(
+  request: NextRequest,
+  config: SecurityConfig
+): Promise<NextResponse | null> {
+  const identifier = getRequestIdentifier(request)
+  const path = new URL(request.url).pathname
+
+  try {
+    // Determine rate limit config
+    let rateLimitConfig = RATE_LIMITS.AUTHENTICATED_API
+
+    if (config.rateLimit?.strict) {
+      // Strict rate limiting for sensitive endpoints
+      if (config.rateLimit.custom) {
+        await requireStrictRateLimit(getRequestIdentifier(request), config.rateLimit.custom)
+      } else if (request.nextUrl.pathname.startsWith('/api/auth')) {
+        await requireStrictRateLimit(getRequestIdentifier(request), STRICT_RATE_LIMITS.AUTH)
+      } else if (path.startsWith('/api/billing') || path.startsWith('/api/payments')) {
+        await requireStrictRateLimit(getRequestIdentifier(request), STRICT_RATE_LIMITS.BILLING)
+      } else if (path.startsWith('/api/webhooks')) {
+        await requireStrictRateLimit(getRequestIdentifier(request), STRICT_RATE_LIMITS.WEBHOOK_INTERNAL)
+      } else {
+        await requireStrictRateLimit(getRequestIdentifier(request), STRICT_RATE_LIMITS.AUTH)
+      }
+    } else if (config.rateLimit?.custom) {
+      await requireRateLimit(getRequestIdentifier(request), config.rateLimit.custom)
+    } else if (path.startsWith('/api/auth')) {
+      await requireRateLimit(getRequestIdentifier(request), RATE_LIMITS.LOGIN)
+    } else if (path.startsWith('/api/auth/register')) {
+      await requireRateLimit(getRequestIdentifier(request), RATE_LIMITS.REGISTER)
+    } else if (path.startsWith('/api/upload') || path.startsWith('/api/blob')) {
+      await requireRateLimit(getRequestIdentifier(request), RATE_LIMITS.UPLOAD)
+    } else if (path.startsWith('/api/search')) {
+      await requireRateLimit(getRequestIdentifier(request), RATE_LIMITS.SEARCH)
+    } else if (path.startsWith('/api/webhooks')) {
+      await requireRateLimit(getRequestIdentifier(request), RATE_LIMITS.WEBHOOK)
+    } else {
+      await requireRateLimit(getRequestIdentifier(request), RATE_LIMITS.AUTHENTICATED_API)
+    }
+
+    return null // No rate limit exceeded
+  } catch (error) {
+    if (error instanceof Response) {
+      return error // Return the 429 response
+    }
+    throw error
+  }
+}
+
+// ============================================================================
+// CSRF PROTECTION
+// ============================================================================
+
+const CSRF_HEADER_NAME = 'x-csrf-token'
+const CSRF_COOKIE_NAME = 'csrf-token'
+
+export function generateCsrfToken(): string {
+  const array = new Uint8Array(32)
+  crypto.getRandomValues(array)
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+export function validateCsrfToken(request: NextRequest): boolean {
+  const headerToken = request.headers.get(CSRF_HEADER_NAME)
+  const cookieToken = request.cookies.get(CSRF_COOKIE_NAME)?.value
+
+  if (!headerToken || !cookieToken) {
+    return false
+  }
+
+  // Timing-safe comparison
+  if (headerToken.length !== cookieToken.length) {
+    return false
+  }
+
+  let result = 0
+  for (let i = 0; i < headerToken.length; i++) {
+    result |= headerToken.charCodeAt(i) ^ cookieToken.charCodeAt(i)
+  }
+  return result === 0
+}
+
+export function addCsrfToken(response: NextResponse): NextResponse {
+  const token = generateCsrfToken()
+  response.cookies.set('csrf-token', token, {
+    httpOnly: true,
+    sameSite: 'strict',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 60 * 60 * 24, // 24 hours
+  })
+  response.headers.set(CSRF_HEADER_NAME, token)
+  return response
+}
+
+export function validateCsrfMiddleware(request: NextRequest): NextResponse | null {
+  // Skip CSRF for GET, HEAD, OPTIONS
+  if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) {
+    return null
+  }
+
+  // Skip for webhooks (they have their own auth)
+  const pathname = new URL(request.url).pathname
+  if (pathname.startsWith('/api/webhooks')) {
+    return null
+  }
+
+  if (!validateCsrfToken) {
+    log.warn({ path: new URL(request.url).pathname }, 'CSRF token validation failed')
+    return NextResponse.json(
+      { error: 'Invalid CSRF token', code: 'CSRF_INVALID' },
+      { status: 403 }
+    )
+  }
+
+  return null
+}
+
+// ============================================================================
+// SECURITY HEADERS
+// ============================================================================
+
+export function addSecurityHeaders(response: NextResponse): NextResponse {
+  const nonce = generateNonce()
+
+  // Header for Next.js to use nonce in scripts
+  response.headers.set('x-csp-nonce', nonce)
+
+  // Strict CSP without unsafe-inline
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https: wss:",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "report-uri /api/csp-report",
+  ].join('; ')
+
+  response.headers.set('Content-Security-Policy', csp)
+
+  // Report-Only for monitoring
+  const cspRO = csp.replace("script-src 'self' ", "script-src 'self' 'report-sample' ")
+  response.headers.set('Content-Security-Policy-Report-Only', cspRO)
+
+  // Standard security headers
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-XSS-Protection', '1; mode=block')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  response.headers.set('Pragma', 'no-cache')
+  response.headers.set('Expires', '0')
+  response.headers.set('Surrogate-Control', 'no-store')
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  response.headers.set('X-DNS-Prefetch-Control', 'off')
+  response.headers.set('X-Download-Options', 'noopen')
+  response.headers.set('X-Permitted-Cross-Domain-Policies', 'none')
+
+  if (process.env.NODE_ENV === 'production') {
+    response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+  }
+
+  return response
+}
+
+function generateNonce(): string {
+  const array = new Uint8Array(16)
+  crypto.getRandomValues(array)
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+// ============================================================================
+// REQUEST IDENTIFIER
+// ============================================================================
+
+export function getRequestIdentifier(request: NextRequest): string {
+  // 1. Authenticated user (best identifier)
+  const userId = request.headers.get('x-user-id')
+  if (userId) return `user:${userId}`
+
+  // 2. IP address
+  const ip = 
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-real-ip') ||
+    'unknown'
+
+  // 3. Combine IP + user-agent hash for better granularity
+  const userAgent = request.headers.get('user-agent') || ''
+  const uaHash = simpleHash(userAgent)
+
+  return `ip:${ip}:${uaHash}`
+}
+
+function simpleHash(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = (hash << 5) - hash + char
+    hash = hash & hash
+  }
+  return Math.abs(hash).toString(36).substring(0, 8)
+}
+
+// ============================================================================
+// SECURITY LOGGING
+// ============================================================================
+
+import { createLogger } from '@/lib/shared/logger'
+
+const securityLog = createLogger('SecurityEvent')
+
+export function logSecurityEvent(event: {
+  type: 'auth_failed' | 'rate_limit_exceeded' | 'csrf_invalid' | 'validation_failed' | 'suspicious_input'
+  ip: string
+  path: string
+  method: string
+  userAgent: string
+  userId?: string
+  details?: Record<string, unknown>
+}): void {
+  securityLog.warn(
+    {
+      eventType: event.type,
+      ip: event.ip,
+      path: event.path,
+      method: event.method,
+      userAgent: event.userAgent,
+      userId: event.userId,
+      ...event.details,
+    },
+    `Security event: ${event.type}`
+  )
+}
+
+// Specific logging helpers
+export function logAuthFailure(request: NextRequest, reason: string, userId?: string): void {
+  logSecurityEvent({
+    type: 'auth_failed',
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+    path: new URL(request.url).pathname,
+    method: request.method,
+    userAgent: request.headers.get('user-agent') || 'unknown',
+    userId,
+    details: { reason },
+  })
+}
+
+export function logRateLimitExceeded(request: NextRequest, identifier: string): void {
+  logSecurityEvent({
+    type: 'rate_limit_exceeded',
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+    path: new URL(request.url).pathname,
+    method: request.method,
+    userAgent: request.headers.get('user-agent') || 'unknown',
+    details: { identifier },
+  })
+}
+
+export function logCsrfInvalid(request: NextRequest): void {
+  logSecurityEvent({
+    type: 'csrf_invalid',
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+    path: new URL(request.url).pathname,
+    method: request.method,
+    userAgent: request.headers.get('user-agent') || 'unknown',
+    details: {
+      hasHeader: !!request.headers.get('x-csrf-token'),
+      hasCookie: !!request.cookies.get('csrf-token'),
+    },
+  })
+}
+
+export function logValidationFailure(request: NextRequest, field: string, value: unknown): void {
+  logSecurityEvent({
+    type: 'validation_failed',
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+    path: new URL(request.url).pathname,
+    method: request.method,
+    userAgent: request.headers.get('user-agent') || 'unknown',
+    details: { field, value: String(value).slice(0, 100) },
+  })
+}
+
+export function logSuspiciousInput(request: NextRequest, field: string, value: string): void {
+  logSecurityEvent({
+    type: 'suspicious_input',
+    ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown',
+    path: new URL(request.url).pathname,
+    method: request.method,
+    userAgent: request.headers.get('user-agent') || 'unknown',
+    details: { field, value: value.slice(0, 200) },
+  })
+}

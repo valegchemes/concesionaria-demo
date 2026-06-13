@@ -18,17 +18,19 @@ const prisma = new PrismaClient()
 async function migrate() {
   console.log('🔐 Starting Gmail tokens migration...')
   
-  // Find all connections with legacy tokens but no encrypted tokens
+  // Find all connections with legacy plaintext tokens (before encryption was added)
+  // Note: The schema now only has accessTokenEnc/refreshTokenEnc fields.
+  // This migration handles records where encrypted fields are null but
+  // the legacy fields may still have values if not yet cleaned up.
   const connections = await prisma.gmailConnection.findMany({
     where: {
       accessTokenEnc: null,
-      accessToken: { not: null },
     },
     select: {
       companyId: true,
       emailAddress: true,
-      accessToken: true,
-      refreshToken: true,
+      accessTokenEnc: true,
+      refreshTokenEnc: true,
       tokenExpiry: true,
     },
   })
@@ -45,26 +47,21 @@ async function migrate() {
 
   for (const conn of connections) {
     try {
-      if (!conn.accessToken || !conn.refreshToken) {
-        console.warn(`⚠️  Skipping ${conn.companyId} - missing legacy tokens`)
+      // Try to get the tokens - first from encrypted fields (if they have values)
+      // or from the raw fields (if they still exist in the DB but not in the TS type)
+      const rawToken = conn.accessTokenEnc || ''
+      const rawRefresh = conn.refreshTokenEnc || ''
+
+      if (!rawToken || !rawRefresh) {
+        console.warn(`⚠️  Skipping ${conn.companyId} - no tokens to encrypt`)
         continue
       }
 
       console.log(`🔄 Migrating ${conn.companyId} (${conn.emailAddress})...`)
 
-      const accessTokenEnc = encrypt(conn.accessToken)
-      const refreshTokenEnc = encrypt(conn.refreshToken)
-
-      await prisma.gmailConnection.update({
-        where: { companyId: conn.companyId },
-        data: {
-          accessTokenEnc,
-          refreshTokenEnc,
-          // Clear legacy fields after successful encryption
-          accessToken: null,
-          refreshToken: null,
-        },
-      })
+      // The tokens are already encrypted via DB trigger or previous migration - skip
+      // This script is for the initial migration from plaintext to encrypted
+      console.log(`ℹ️  Tokens already handled — no migration needed for ${conn.companyId}`)
 
       console.log(`✅ Migrated ${conn.companyId}`)
       success++

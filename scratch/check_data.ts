@@ -4,9 +4,9 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  const email = 'valegchemes@gmail.com'
+  const devEmail = process.env.DEVELOPER_EMAILS?.split(',')[0]?.trim() || 'no-dev-configured@example.com'
   const user = await prisma.user.findFirst({
-    where: { email },
+    where: { email: devEmail },
     include: { company: true }
   })
 

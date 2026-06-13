@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { createLogger } from '@/lib/shared/logger'
 import { getPlanLimits } from '@/lib/shared/plan-limits'
 import { listUnreadEmails, sendReply, markAsRead } from '@/lib/email/gmail'
+import { encryptEmailField, decryptEmailField } from '@/lib/shared/email-crypto'
 import { sanitizeForStorage } from '@/lib/shared/sanitize-html'
 
 const log = createLogger('API:EmailResponderCron')
@@ -157,7 +158,7 @@ Devolvé únicamente el texto redactado de la propuesta de correo de respuesta (
           // 4. Mark the email as read in Gmail
           await markAsRead(company.id, email.id)
 
-          // 5. Save the interaction in our database (sanitize AI output for XSS prevention)
+          // 5. Save the interaction in our database (encrypt for privacy, sanitize for XSS)
           const sanitizedReplyBody = sanitizeForStorage(htmlBody)
           await prisma.emailInteraction.create({
             data: {
@@ -165,8 +166,8 @@ Devolvé únicamente el texto redactado de la propuesta de correo de respuesta (
               fromEmail: email.from,
               toEmail: connection.emailAddress,
               subject: email.subject,
-              messageBody: email.body,
-              replyBody: sanitizedReplyBody
+              messageBodyEnc: encryptEmailField(email.body),
+              replyBodyEnc: encryptEmailField(sanitizedReplyBody)
             }
           })
 

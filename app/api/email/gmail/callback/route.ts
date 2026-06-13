@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { getOAuth2Client } from '@/lib/email/gmail'
+import { getOAuth2Client, verifyOAuthState } from '@/lib/email/gmail'
 import { prisma } from '@/lib/prisma'
 import { google } from 'googleapis'
 import { encrypt } from '@/lib/shared/crypto'
@@ -12,10 +12,17 @@ export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams
     const code = searchParams.get('code')
-    const companyId = searchParams.get('state')
+    const state = searchParams.get('state')
 
-    if (!code || !companyId) {
+    if (!code || !state) {
       return NextResponse.json({ error: 'Missing code or state parameter' }, { status: 400 })
+    }
+
+    // Verify signed OAuth state to prevent CSRF and token injection attacks
+    const companyId = verifyOAuthState(state)
+    if (!companyId) {
+      log.warn({ state: state.slice(0, 20) }, 'Invalid OAuth state signature - possible CSRF attack')
+      return NextResponse.json({ error: 'Invalid state parameter' }, { status: 403 })
     }
 
     const oAuth2Client = getOAuth2Client()

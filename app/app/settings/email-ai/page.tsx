@@ -17,8 +17,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
 import { sanitizeForRender } from '@/lib/shared/sanitize-html'
+import { usePlanLimits } from '@/lib/hooks/use-plan-limits'
+import { SafeHtml } from '@/components/safe-html'
 
 type EmailInteraction = {
   id: string
@@ -306,9 +307,9 @@ export default function EmailAIPage() {
                             <Bot className="h-3.5 w-3.5" />
                             Respuesta Enviada por IA:
                           </p>
-                          <div 
+                          <SafeHtml
                             className="text-xs text-slate-300 prose prose-invert max-w-none prose-p:my-1"
-                            dangerouslySetInnerHTML={{ __html: sanitizeForRender(interaction.replyBody) }}
+                            html={sanitizeForRender(interaction.replyBody)}
                           />
                         </div>
                       </motion.div>

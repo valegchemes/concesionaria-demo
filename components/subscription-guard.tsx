@@ -18,8 +18,9 @@ export function SubscriptionGuard({
   const mountedRef = useRef(true)
 
   useEffect(() => {
-    const inactiveStatuses = ['PAST_DUE', 'CANCELED', 'UNPAID', 'PAUSED']
-    const isInactive = status && inactiveStatuses.includes(status)
+    const inactiveStatuses = ['PAST_DUE', 'CANCELED', 'UNPAID', 'PAUSED', 'INCOMPLETE']
+    // Tratar null como inactivo (no hay suscripción) — si no hay status, no hay acceso
+    const isInactive = !status || inactiveStatuses.includes(status)
     const isBillingPage = pathname?.startsWith('/app/settings/billing')
 
     if (mountedRef.current) {

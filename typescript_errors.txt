@@ -1,0 +1,51 @@
+app/api/units/[id]/route.ts(42,63): error TS2345: Argument of type '{ status?: "AVAILABLE" | "IN_PREP" | "RESERVED" | "SOLD" | undefined; type?: "CAR" | "MOTORCYCLE" | "BOAT" | undefined; title?: string | undefined; description?: string | null | undefined; ... 16 more ...; attributes?: { ...; }[] | undefined; }' is not assignable to parameter of type 'UpdateUnitCommand'.
+  Types of property 'priceArs' are incompatible.
+    Type 'number | null | undefined' is not assignable to type 'number | undefined'.
+      Type 'null' is not assignable to type 'number | undefined'.
+lib/security/validate-env.ts(133,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/security/validate-env.ts(134,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/security/validate-env.ts(138,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/security/validate-env.ts(143,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/security/validate-env.ts(146,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/security/validate-env.ts(149,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/security/validate-env.ts(152,3): error TS1117: An object literal cannot have multiple properties with the same name.
+lib/security/validate-env.ts(170,17): error TS2323: Cannot redeclare exported variable 'validateEnvironment'.
+lib/security/validate-env.ts(196,17): error TS2323: Cannot redeclare exported variable 'validateEnvironmentAtStartup'.
+lib/security/validate-env.ts(234,10): error TS2323: Cannot redeclare exported variable 'validateEnvironment'.
+lib/security/validate-env.ts(234,10): error TS2484: Export declaration conflicts with exported declaration of 'validateEnvironment'.
+lib/security/validate-env.ts(234,31): error TS2323: Cannot redeclare exported variable 'validateEnvironmentAtStartup'.
+lib/security/validate-env.ts(234,31): error TS2484: Export declaration conflicts with exported declaration of 'validateEnvironmentAtStartup'.
+lib/security/validate-env.ts(235,15): error TS2484: Export declaration conflicts with exported declaration of 'ValidatedEnv'.
+lib/security/validation.ts(47,23): error TS2323: Cannot redeclare exported variable 'validateRequest'.
+lib/security/validation.ts(47,23): error TS2393: Duplicate function implementation.
+lib/security/validation.ts(78,26): error TS7053: Element implicitly has an 'any' type because expression of type '0' can't be used to index type '{}'.
+  Property '0' does not exist on type '{}'.
+lib/security/validation.ts(119,17): error TS2323: Cannot redeclare exported variable 'sanitizeForLog'.
+lib/security/validation.ts(119,17): error TS2393: Duplicate function implementation.
+lib/security/validation.ts(127,17): error TS2323: Cannot redeclare exported variable 'detectSuspiciousInput'.
+lib/security/validation.ts(127,17): error TS2393: Duplicate function implementation.
+lib/security/validation.ts(150,17): error TS2323: Cannot redeclare exported variable 'sanitizeForLog'.
+lib/security/validation.ts(150,17): error TS2393: Duplicate function implementation.
+lib/security/validation.ts(158,17): error TS2323: Cannot redeclare exported variable 'detectSuspiciousInput'.
+lib/security/validation.ts(158,17): error TS2393: Duplicate function implementation.
+lib/security/validation.ts(181,17): error TS2323: Cannot redeclare exported variable 'sanitizeForLog'.
+lib/security/validation.ts(181,17): error TS2393: Duplicate function implementation.
+lib/security/validation.ts(204,23): error TS2323: Cannot redeclare exported variable 'validateRequest'.
+lib/security/validation.ts(204,23): error TS2393: Duplicate function implementation.
+lib/security/wrapper.ts(102,30): error TS2739: Type 'Response' is missing the following properties from type 'NextResponse<unknown>': cookies, [INTERNALS]
+lib/security/wrapper.ts(212,70): error TS2322: Type '{ limit: number; windowSeconds: number; prefix?: string | undefined; }' is not assignable to type '{ limit: number; windowSeconds: number; prefix: string; }'.
+  Types of property 'prefix' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+lib/shared/plan-limits.ts(37,51): error TS2345: Argument of type 'DynamicClientExtensionThis<TypeMap<InternalArgs & { result: {}; model: {}; query: {}; client: {}; }, PrismaClientOptions>, TypeMapCb, { result: {}; model: {}; query: {}; client: {}; }, {}>' is not assignable to parameter of type '{ user: { count: (args: unknown) => Promise<number>; }; }'.
+  The types of 'user.count' are incompatible between these types.
+    Type '<A extends UserCountArgs<InternalArgs & { result: {}; model: {}; query: {}; client: {}; }>>(args?: Exact<A, UserCountArgs<InternalArgs & { result: {}; model: {}; query: {}; client: {}; }>> | undefined) => PrismaPromise<...>' is not assignable to type '(args: unknown) => Promise<number>'.
+      Types of parameters 'args' and 'args' are incompatible.
+        Type 'unknown' is not assignable to type '{ where?: Exact<UserWhereInput | undefined, UserWhereInput | undefined>; orderBy?: Exact<UserOrderByWithRelationInput | UserOrderByWithRelationInput[] | undefined, UserOrderByWithRelationInput | ... 1 more ... | undefined>; cursor?: Exact<...>; take?: Exact<...>; skip?: Exact<...>; select?: Exact<...>; } | undefined'.
+scripts/migrate-gmail-tokens.ts(25,7): error TS2561: Object literal may only specify known properties, but 'accessToken' does not exist in type 'GmailConnectionWhereInput'. Did you mean to write 'accessTokenEnc'?
+scripts/migrate-gmail-tokens.ts(30,7): error TS2561: Object literal may only specify known properties, but 'accessToken' does not exist in type 'GmailConnectionSelect<DefaultArgs>'. Did you mean to write 'accessTokenEnc'?
+scripts/migrate-gmail-tokens.ts(48,17): error TS2551: Property 'accessToken' does not exist on type '{ companyId: string; id: string; createdAt: Date; updatedAt: Date; emailAddress: string; accessTokenEnc: string | null; refreshTokenEnc: string | null; tokenExpiry: Date; }'. Did you mean 'accessTokenEnc'?
+scripts/migrate-gmail-tokens.ts(48,38): error TS2551: Property 'refreshToken' does not exist on type '{ companyId: string; id: string; createdAt: Date; updatedAt: Date; emailAddress: string; accessTokenEnc: string | null; refreshTokenEnc: string | null; tokenExpiry: Date; }'. Did you mean 'refreshTokenEnc'?
+scripts/migrate-gmail-tokens.ts(55,43): error TS2551: Property 'accessToken' does not exist on type '{ companyId: string; id: string; createdAt: Date; updatedAt: Date; emailAddress: string; accessTokenEnc: string | null; refreshTokenEnc: string | null; tokenExpiry: Date; }'. Did you mean 'accessTokenEnc'?
+scripts/migrate-gmail-tokens.ts(56,44): error TS2551: Property 'refreshToken' does not exist on type '{ companyId: string; id: string; createdAt: Date; updatedAt: Date; emailAddress: string; accessTokenEnc: string | null; refreshTokenEnc: string | null; tokenExpiry: Date; }'. Did you mean 'refreshTokenEnc'?
+scripts/migrate-gmail-tokens.ts(64,11): error TS2561: Object literal may only specify known properties, but 'accessToken' does not exist in type '(Without<GmailConnectionUpdateInput, GmailConnectionUncheckedUpdateInput> & GmailConnectionUncheckedUpdateInput) | (Without<...> & GmailConnectionUpdateInput)'. Did you mean to write 'accessTokenEnc'?

@@ -7,10 +7,22 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createLogger } from '@/lib/shared/logger'
+
+const log = createLogger('API:ClearAuth')
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  // 1. Protección con Bearer token — requiere DIAG_SECRET_TOKEN
+  const authHeader = request.headers.get('authorization')
+  const diagToken = process.env.DIAG_SECRET_TOKEN
+
+  if (!diagToken || authHeader !== `Bearer ${diagToken}`) {
+    log.warn({ authHeader: authHeader?.slice(0, 20) }, 'Intento no autorizado a clear-auth')
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const response = NextResponse.json({
     message: 'Cleared all next-auth cookies',
     timestamp: new Date().toISOString(),

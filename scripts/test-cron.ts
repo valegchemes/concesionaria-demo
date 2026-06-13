@@ -24,7 +24,7 @@ async function main() {
       ],
       users: {
         none: {
-          email: 'valegchemes@gmail.com'
+          email: { in: Array.from((process.env.DEVELOPER_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean)) }
         }
       }
     },
