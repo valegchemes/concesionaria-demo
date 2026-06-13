@@ -38,23 +38,16 @@ export async function getPlanLimits(companyId: string): Promise<PlanLimits> {
   const isDeveloper = await hasDeveloperInCompany(prisma as any, companyId)
 
   if (isDeveloper) {
-    const proPlan = await prisma.saasPlan.findFirst({
-      where: { name: { contains: 'Pro' } },
-      orderBy: { price: 'desc' }
-    })
-    
-    if (proPlan) {
-      return {
-        planName: 'Plan Pro (Developer)',
-        maxUsers: proPlan.maxUsers,
-        maxUnits: proPlan.maxUnits,
-        analyticsEnabled: proPlan.analyticsEnabled,
-        whatsappEnabled: proPlan.whatsappEnabled,
-        documentsEnabled: proPlan.documentsEnabled,
-        auditEnabled: proPlan.auditEnabled,
-        aiEnabled: true,
-        isActive: true,
-      }
+    return {
+      planName: 'Plan Pro (Developer)',
+      maxUsers: 999,
+      maxUnits: 9999,
+      analyticsEnabled: true,
+      whatsappEnabled: true,
+      documentsEnabled: true,
+      auditEnabled: true,
+      aiEnabled: true,
+      isActive: true,
     }
   }
 

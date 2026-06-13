@@ -8,6 +8,7 @@ import { GlobalBackground } from '@/components/global-background'
 import { ThemeProvider } from '@/components/theme-provider'
 import { SubscriptionGuard } from '@/components/subscription-guard'
 import { prisma } from '@/lib/shared/prisma'
+import { isDeveloperEmail } from '@/lib/shared/developer-bypass'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +57,9 @@ export default async function AppLayout({
     logoUrl: dbUser?.company?.logoUrl ?? undefined,
   }
 
+  const isDev = isDeveloperEmail(user.email)
+  const subscriptionStatus = isDev ? 'ACTIVE' : (dbUser?.company?.subscription?.status || null)
+
   return (
     <ThemeProvider>
       <GlobalBackground avatarUrl={user.avatarUrl || user.logoUrl} />
@@ -63,7 +67,7 @@ export default async function AppLayout({
         <AppSidebar user={user} />
         <div className="flex-1 flex flex-col bg-transparent min-w-0">
           <AppHeader user={user} />
-          <SubscriptionGuard status={dbUser?.company?.subscription?.status || null}>
+          <SubscriptionGuard status={subscriptionStatus}>
             <main className="flex-1 overflow-auto bg-transparent">
               <div className="max-w-[1600px] mx-auto px-6 py-6">
                 {children}
