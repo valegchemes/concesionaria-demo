@@ -12,27 +12,30 @@ import { createLogger } from './logger'
 
 const log = createLogger('DeveloperBypass')
 
-const DEVELOPER_EMAILS = (process.env.DEVELOPER_EMAILS || '')
-  .split(',')
-  .map(e => e.trim().toLowerCase())
-  .filter(Boolean)
+function getDeveloperEmailsList(): string[] {
+  return (process.env.DEVELOPER_EMAILS || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+}
 
 export function isDeveloperEmail(email: string): boolean {
   if (!email) return false
-  return DEVELOPER_EMAILS.includes(email.trim().toLowerCase())
+  return getDeveloperEmailsList().includes(email.trim().toLowerCase())
 }
 
 export async function hasDeveloperInCompany(
   prisma: { user: { count: (args: unknown) => Promise<number> } },
   companyId: string
 ): Promise<boolean> {
-  if (DEVELOPER_EMAILS.length === 0) return false
+  const emails = getDeveloperEmailsList()
+  if (emails.length === 0) return false
 
   try {
     const count = await prisma.user.count({
       where: {
         companyId,
-        email: { in: DEVELOPER_EMAILS },
+        email: { in: emails },
       },
     })
     return count > 0
@@ -43,5 +46,5 @@ export async function hasDeveloperInCompany(
 }
 
 export function getDeveloperEmails(): readonly string[] {
-  return Object.freeze([...DEVELOPER_EMAILS])
+  return Object.freeze([...getDeveloperEmailsList()])
 }
