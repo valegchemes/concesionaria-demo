@@ -259,6 +259,29 @@ export class UnitService {
     }
 
     if (command.photos !== undefined) {
+      // Collect current photos to detect which ones are being removed
+      const existingPhotos = await prisma.unitPhoto.findMany({
+        where: { unitId: id },
+        select: { url: true },
+      })
+
+      const newUrls = new Set(command.photos.map(p => p.url))
+      const removedBlobUrls = existingPhotos
+        .map(p => p.url)
+        .filter(url => !newUrls.has(url) && isVercelBlobUrl(url))
+
+      // Delete orphaned files from Blob Storage before removing DB rows
+      if (removedBlobUrls.length > 0) {
+        log.info({ unitId: id, count: removedBlobUrls.length }, 'Deleting removed photos from Blob Storage')
+        const result = await deleteFiles(removedBlobUrls, { retries: 2 })
+        if (result.failed.length > 0) {
+          log.warn(
+            { unitId: id, failedUrls: result.failed },
+            'Some removed photos could not be deleted from Blob Storage'
+          )
+        }
+      }
+
       await prisma.unitPhoto.deleteMany({ where: { unitId: id } })
       if (command.photos.length > 0) {
         await prisma.unitPhoto.createMany({
