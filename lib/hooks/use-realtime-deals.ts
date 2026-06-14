@@ -178,7 +178,7 @@ export function useRealtimeDeals({
   }, [companyId]) // Solo re-suscribir si cambia la empresa
 
   // Re-bindear callbacks cuando cambian (sin reconectar)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => {
     const channel = channelRef.current
     if (!channel) return

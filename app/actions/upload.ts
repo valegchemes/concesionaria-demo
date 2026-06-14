@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { createLogger } from '@/lib/shared/logger'
 import crypto from 'crypto'
+import sharp from 'sharp'
 
 const log = createLogger('UploadAction')
 
@@ -50,14 +51,44 @@ async function detectMimeType(file: File): Promise<string | null> {
   return null
 }
 
-/** Mapea MIME type a extensión segura */
-function mimeToExt(mime: string): string {
-  const map: Record<string, string> = {
-    'image/jpeg': 'jpg',
-    'image/png': 'png',
-    'image/webp': 'webp',
+async function compressImage(buffer: Buffer, mimeType: string): Promise<{ buffer: Buffer; mimeType: string }> {
+  const MAX_SIZE = 800 * 1024
+  if (buffer.length <= MAX_SIZE) {
+    return { buffer, mimeType }
   }
-  return map[mime] ?? 'bin'
+
+  try {
+    let quality = 80
+    let outputBuffer: Buffer
+
+    let pipeline = sharp(buffer)
+    const metadata = await pipeline.metadata()
+
+    if (metadata.width && metadata.height && (metadata.width > 1920 || metadata.height > 1920)) {
+      pipeline = pipeline.resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
+    }
+
+    if (mimeType === 'image/png') {
+      outputBuffer = await pipeline.png().webp({ quality }).toBuffer()
+    } else {
+      outputBuffer = await pipeline.webp({ quality }).toBuffer()
+    }
+
+    while (outputBuffer.length > MAX_SIZE && quality > 30) {
+      quality -= 10
+      let retryPipeline = sharp(buffer)
+      if (metadata.width && metadata.height && (metadata.width > 1920 || metadata.height > 1920)) {
+        retryPipeline = retryPipeline.resize(1920, 1920, { fit: 'inside', withoutEnlargement: true })
+      }
+      outputBuffer = await retryPipeline.webp({ quality }).toBuffer()
+    }
+
+    log.info({ originalSize: buffer.length, compressedSize: outputBuffer.length }, 'Image compressed with sharp')
+    return { buffer: outputBuffer, mimeType: 'image/webp' }
+  } catch (error) {
+    log.warn({ error: error instanceof Error ? error.message : String(error) }, 'Sharp compression failed, using original')
+    return { buffer, mimeType }
+  }
 }
 
 export async function uploadImageServerAction(formData: FormData): Promise<string> {
@@ -71,31 +102,31 @@ export async function uploadImageServerAction(formData: FormData): Promise<strin
     throw new Error('No file provided')
   }
 
-  // Validar tamaño (5 MB máximo)
   if (file.size > 5 * 1024 * 1024) {
     throw new Error('File too large (max 5MB)')
   }
 
-  // Validar MIME type REAL por magic bytes — no confiar en file.type
   const realMime = await detectMimeType(file)
   if (!realMime || !(ALLOWED_MIME_TYPES as readonly string[]).includes(realMime)) {
     log.warn({ filename: file.name, reportedType: file.type, detectedType: realMime }, 'Upload rechazado: tipo de archivo no permitido')
     throw new Error('Tipo de archivo no permitido. Solo se aceptan imágenes JPEG, PNG o WebP.')
   }
 
-  // Generar nombre único para evitar colisiones y sobrescrituras
-  const ext = mimeToExt(realMime)
-  const uniqueFilename = `${crypto.randomUUID()}.${ext}`
+  const uniqueFilename = `${crypto.randomUUID()}.webp`
 
   try {
-    // addRandomSuffix: false porque ya usamos UUID como nombre
-    const blob = await put(uniqueFilename, file, {
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    const { buffer: compressedBuffer, mimeType } = await compressImage(buffer, realMime)
+
+    const blob = await put(uniqueFilename, compressedBuffer, {
       access: 'public',
       addRandomSuffix: false,
-      contentType: realMime, // Usar el MIME verificado, no el declarado por el cliente
+      contentType: mimeType,
     })
 
-    log.info({ filename: uniqueFilename, size: file.size, mime: realMime }, 'Imagen subida exitosamente')
+    log.info({ filename: uniqueFilename, originalSize: file.size, compressedSize: compressedBuffer.length, mime: mimeType }, 'Imagen comprimida y subida exitosamente')
     return blob.url
   } catch (error) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Vercel Blob put error')

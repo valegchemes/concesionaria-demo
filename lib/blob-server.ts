@@ -346,25 +346,48 @@ export async function deleteFile(url: string): Promise<void> {
 }
 
 /**
- * Elimina múltiples archivos de Vercel Blob
+ * Elimina múltiples archivos de Vercel Blob con reintentos
  */
-export async function deleteFiles(urls: string[]): Promise<void> {
-  const results = await Promise.allSettled(urls.map(url => deleteFile(url)))
-  
-  const failures = results
-    .map((result, index) => ({ result, index }))
-    .filter(({ result }) => result.status === 'rejected')
-  
-  if (failures.length > 0) {
-    log.error(
-      { 
-        failedCount: failures.length,
-        totalCount: urls.length,
-        failedUrls: failures.map(({ index }) => urls[index])
-      },
-      'Algunos archivos no pudieron ser eliminados'
-    )
+export async function deleteFiles(
+  urls: string[],
+  options: { retries?: number; throwOnError?: boolean } = {}
+): Promise<{ deleted: string[]; failed: string[] }> {
+  const { retries = 2, throwOnError = false } = options
+  const failedUrls: string[] = []
+  let urlsToProcess = [...urls]
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (urlsToProcess.length === 0) break
+
+    if (attempt > 0) {
+      log.info({ attempt, remaining: urlsToProcess.length }, 'Retry deleting blob files')
+      await new Promise(resolve => setTimeout(resolve, 500 * attempt))
+    }
+
+    const results = await Promise.allSettled(urlsToProcess.map(url => deleteFile(url)))
+
+    urlsToProcess = urlsToProcess
+      .map((url, index) => ({ url, status: results[index].status }))
+      .filter(item => item.status === 'rejected')
+      .map(item => item.url)
   }
+
+  failedUrls.push(...urlsToProcess)
+  const deleted = urls.filter(url => !failedUrls.includes(url))
+
+  if (failedUrls.length > 0) {
+    log.error(
+      { failedUrls, deletedCount: deleted.length, totalCount: urls.length },
+      'Some blob files could not be deleted after all retries'
+    )
+    if (throwOnError) {
+      throw new Error(`Failed to delete ${failedUrls.length} blob files`)
+    }
+  } else {
+    log.info({ count: deleted.length }, 'All blob files deleted successfully')
+  }
+
+  return { deleted, failed: failedUrls }
 }
 
 // ============================================================================

@@ -350,13 +350,17 @@ export class UnitService {
       }
     }
 
-    // Delete physical files from Blob Storage
+    // Delete physical files from Blob Storage (with retries)
     if (urlsToDelete.length > 0) {
-      try {
-        await deleteFiles(urlsToDelete)
-        log.info({ unitId: id, count: urlsToDelete.length }, 'Deleted physical files from Blob storage during manual delete')
-      } catch (err) {
-        log.error({ error: err instanceof Error ? err.message : String(err), unitId: id }, 'Error deleting physical files from blob storage during manual delete')
+      log.info({ unitId: id, blobUrlsCount: urlsToDelete.length }, 'Starting blob file deletion')
+      const result = await deleteFiles(urlsToDelete, { retries: 2 })
+      if (result.failed.length > 0) {
+        log.warn(
+          { unitId: id, deletedCount: result.deleted.length, failedCount: result.failed.length, failedUrls: result.failed },
+          'Some blob files could not be deleted - they may be orphaned'
+        )
+      } else {
+        log.info({ unitId: id, deletedCount: result.deleted.length }, 'All blob files deleted successfully')
       }
     }
 
@@ -438,14 +442,17 @@ export class UnitService {
       }
     }
 
-    // 3. Delete physical files from Blob Storage
+    // 3. Delete physical files from Blob Storage (with retries)
     if (urlsToDelete.length > 0) {
-      try {
-        await deleteFiles(urlsToDelete)
-        log.info({ unitId: id, count: urlsToDelete.length }, 'Deleted physical files from Blob storage')
-      } catch (err) {
-        log.error({ error: err instanceof Error ? err.message : String(err), unitId: id }, 'Error deleting physical files from blob storage during archiving')
-        // We continue with DB cleanup even if some blob deletes fail
+      log.info({ unitId: id, blobUrlsCount: urlsToDelete.length }, 'Starting blob file deletion during archive')
+      const result = await deleteFiles(urlsToDelete, { retries: 2 })
+      if (result.failed.length > 0) {
+        log.warn(
+          { unitId: id, deletedCount: result.deleted.length, failedCount: result.failed.length, failedUrls: result.failed },
+          'Some blob files could not be deleted during archive - they may be orphaned'
+        )
+      } else {
+        log.info({ unitId: id, deletedCount: result.deleted.length }, 'All blob files deleted during archive')
       }
     }
 

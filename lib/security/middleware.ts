@@ -35,7 +35,7 @@ export async function applyRateLimiting(
 
   try {
     // Determine rate limit config
-    let rateLimitConfig = RATE_LIMITS.AUTHENTICATED_API
+    const rateLimitConfig = RATE_LIMITS.AUTHENTICATED_API
 
     if (config.rateLimit?.strict) {
       // Strict rate limiting for sensitive endpoints
