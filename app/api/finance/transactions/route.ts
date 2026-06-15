@@ -33,16 +33,20 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
       return NextResponse.json({ success: false, error: 'El concepto del movimiento es requerido.' }, { status: 400 })
     }
 
+    const VALID_CURRENCIES = ['ARS', 'USD']
+
     if (type !== 'INFLOW' && type !== 'OUTFLOW') {
       return NextResponse.json({ success: false, error: 'El tipo de movimiento debe ser INFLOW (Ingreso) o OUTFLOW (Egreso).' }, { status: 400 })
     }
+
+    const validatedCurrency = VALID_CURRENCIES.includes(currency) ? currency : 'ARS'
 
     const transaction = await prisma.cashTransaction.create({
       data: {
         companyId,
         sessionId: activeSession.id,
         amount: Number(amount),
-        currency: currency || 'ARS',
+        currency: validatedCurrency,
         type,
         concept: concept.trim(),
         referenceType: 'MANUAL'

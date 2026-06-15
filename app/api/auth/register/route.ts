@@ -6,6 +6,7 @@ import { RegisterCompanySchema } from '@/lib/shared/validation'
 import { applyRateLimit } from '@/lib/rate-limit-kv'
 import { createLogger } from '@/lib/shared/logger'
 import { createAuditLog } from '@/lib/shared/audit-log'
+import { Prisma } from '@prisma/client'
 
 const log = createLogger('AuthRegisterRoute')
 
@@ -13,55 +14,53 @@ export async function POST(request: NextRequest) {
   try {
     const blocked = await applyRateLimit(request, { strict: true, path: '/api/auth/register' })
     if (blocked) return blocked
-    
+
     const body = await request.json()
-    
+
     const validation = RegisterCompanySchema.safeParse(body)
-    
+
     if (!validation.success) {
       const firstError = validation.error.errors[0]
       return NextResponse.json({ error: firstError?.message || 'Datos inválidos' }, { status: 400 })
     }
 
-    const { 
+    const {
       companyName, slug, companyPhone, companyEmail,
-      adminName, adminEmail, password 
+      adminName, adminEmail, password
     } = validation.data
-
-    // Comprobar si el slug o el correo del admin ya existen (slug debe ser único, adminEmail puede ser repetido en diferentes empresas pero simplificaremos aquí o mejor solo buscar si existe el slug)
-    const existingSlug = await prisma.company.findUnique({
-      where: { slug }
-    })
-
-    if (existingSlug) {
-      return NextResponse.json(
-        { error: `El slug "${slug}" ya está en uso. Por favor elige otro.` },
-        { status: 409 }
-      )
-    }
 
     const hashedPassword = await hashPassword(password)
 
-    // Crear la compañia y su admin en una transacción (pero usaremos un create anidado para mayor simplicidad)
-    const company = await prisma.company.create({
-      data: {
-        name: companyName,
-        slug: slug,
-        phone: companyPhone || '',
-        email: companyEmail || '',
-        users: {
-          create: {
-            name: adminName,
-            email: adminEmail,
-            password: hashedPassword,
-            role: 'ADMIN',
+    let company: Awaited<ReturnType<typeof prisma.company.create>>
+    try {
+      company = await prisma.company.create({
+        data: {
+          name: companyName,
+          slug: slug,
+          phone: companyPhone || '',
+          email: companyEmail || '',
+          users: {
+            create: {
+              name: adminName,
+              email: adminEmail,
+              password: hashedPassword,
+              role: 'ADMIN',
+            },
           },
         },
-      },
-      include: {
-        users: true,
-      },
-    })
+        include: {
+          users: true,
+        },
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return NextResponse.json(
+          { error: `El slug "${slug}" ya está en uso. Por favor elige otro.` },
+          { status: 409 }
+        )
+      }
+      throw error
+    }
 
     const admin = company.users[0]
 

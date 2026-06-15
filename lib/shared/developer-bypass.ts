@@ -28,6 +28,11 @@ export async function hasDeveloperInCompany(
   prisma: { user: { count: (args: unknown) => Promise<number> } },
   companyId: string
 ): Promise<boolean> {
+  // Deshabilitar bypass en producción para seguridad
+  if (process.env.NODE_ENV === 'production') {
+    return false
+  }
+
   const emails = getDeveloperEmailsList()
   if (emails.length === 0) return false
 

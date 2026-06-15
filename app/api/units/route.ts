@@ -10,6 +10,7 @@
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
+import { revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodError } from 'zod'
 import { prisma } from '@/lib/shared/prisma'
@@ -378,6 +379,7 @@ export const POST = withTenantHandler(async (request: NextRequest): Promise<Next
       'POST /api/units - unidad creada'
     )
 
+    revalidateTag('units')
     return successResponse(unit, 201)
 
   } catch (error) {

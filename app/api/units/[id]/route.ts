@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+import { revalidateTag } from 'next/cache'
 import { NextRequest } from 'next/server'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser, requirePermission } from '@/lib/shared/auth-helpers'
@@ -41,6 +42,7 @@ export const PUT = withTenantHandler(withErrorHandling(
 
     const unit = await unitService.update(id, user.companyId, data)
 
+    revalidateTag('units')
     return successResponse(unit)
   }
 ))
@@ -57,6 +59,7 @@ export const DELETE = withTenantHandler(withErrorHandling(
 
     await unitService.delete(id, user.companyId)
 
+    revalidateTag('units')
     return successResponse({ deleted: true })
   }
 ))

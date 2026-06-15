@@ -92,13 +92,13 @@ export async function checkRateLimit(
       reset: reset * 1000,
     }
   } catch (error) {
-    // Fail-open con logging para monitoreo
-    log.warn({ error: error instanceof Error ? error.message : String(error), key }, 'Rate limit KV error — fail-open')
+    // Fail-closed para evitar DoS cuando KV está caído
+    log.error({ error: error instanceof Error ? error.message : String(error), key }, 'Rate limit KV error — fail-closed')
     return {
-      success: true,
+      success: false,
       limit: MAX_REQUESTS,
-      remaining: 1,
-      reset: reset * 1000,
+      remaining: 0,
+      reset: Date.now() + WINDOW_SECONDS * 1000,
     }
   }
 }
@@ -141,6 +141,44 @@ export async function checkStrictRateLimit(
       limit: STRICT_MAX,
       remaining: 0,
       reset: Date.now() + 10000,
+    }
+  }
+}
+
+// ============================================================================
+// Rate limit para login (brute force protection)
+// 3 requests por 15 segundos por IP. Si KV falla, usa contador in-memory.
+// ============================================================================
+export async function checkLoginRateLimit(
+  identifier: string
+): Promise<RateLimitResult> {
+  const key = `ratelimit:login:${identifier}`
+
+  const LOGIN_WINDOW = 15  // 15 segundos
+  const LOGIN_MAX = 3     // 3 intentos por ventana
+  const now = Math.floor(Date.now() / 1000)
+  const windowStart = Math.floor(now / LOGIN_WINDOW) * LOGIN_WINDOW
+  const reset = windowStart + LOGIN_WINDOW
+
+  try {
+    const current = await withKVTimeout(kv.incr(key))
+    if (current === 1) {
+      withKVTimeout(kv.expire(key, LOGIN_WINDOW)).catch(() => {})
+    }
+    return {
+      success: current <= LOGIN_MAX,
+      limit: LOGIN_MAX,
+      remaining: Math.max(0, LOGIN_MAX - current),
+      reset: reset * 1000,
+    }
+  } catch (error) {
+    // Fail-closed para auth
+    log.error({ error: error instanceof Error ? error.message : String(error), key }, 'KV DOWN - BLOQUEANDO LOGIN (fail-closed)')
+    return {
+      success: false,
+      limit: LOGIN_MAX,
+      remaining: 0,
+      reset: Date.now() + LOGIN_WINDOW * 1000,
     }
   }
 }

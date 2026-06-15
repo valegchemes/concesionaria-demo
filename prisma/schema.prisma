@@ -74,6 +74,8 @@ model User {
 
   @@unique([email, companyId])
   @@index([companyId])
+  @@index([companyId, isActive])
+  @@index([companyId, role])
   @@map("User")
 }
 
@@ -109,6 +111,9 @@ model Lead {
   @@index([companyId, assignedToId])
   @@index([companyId, status, assignedToId])
   @@index([companyId, createdAt(sort: Desc)])
+  @@index([companyId, isActive])
+  @@index([phone])
+  @@index([email])
   @@map("Lead")
 }
 
@@ -193,6 +198,7 @@ model Unit {
   @@index([companyId, status, type])
   @@index([companyId, priceArs])
   @@index([companyId, createdAt(sort: Desc)])
+  @@index([companyId, isActive])
   @@map("Unit")
 }
 
@@ -323,6 +329,8 @@ model Deal {
   @@index([sellerId])
   @@index([companyId, status, sellerId])
   @@index([companyId, createdAt(sort: Desc)])
+  @@index([leadId])
+  @@index([unitId])
   @@map("Deal")
 }
 

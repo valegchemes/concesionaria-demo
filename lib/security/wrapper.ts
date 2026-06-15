@@ -150,27 +150,27 @@ export function createSecureRoute<T = unknown>(
 
       // Log successful request
       const reqPath = new URL(request.url).pathname
-      const duration = Date.now() - Date.now()
+      const duration = Date.now() - startTime
       logSecurityEvent({
-        type: 'auth_failed',
-        ip: 'unknown',
+        type: 'request_completed',
+        ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown',
         path: reqPath,
         method: request.method,
         userAgent: request.headers.get('user-agent') || 'unknown',
-        details: { eventType: 'request_completed', duration: Date.now() - startTime },
+        details: { eventType: 'request_completed', duration },
       })
 
       return securedResponse
     } catch (error) {
       const reqPath = new URL(request.url).pathname
-      const duration = Date.now() - Date.now()
+      const duration = Date.now() - startTime
       logSecurityEvent({
-        type: 'auth_failed',
-        ip: 'unknown',
+        type: 'request_error',
+        ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown',
         path: reqPath,
         method: request.method,
-        userAgent: 'unknown',
-        details: { eventType: 'error', duration: Date.now() - startTime },
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        details: { eventType: 'error', duration, error: error instanceof Error ? error.message : String(error) },
       })
 
       console.error('[API Error]', { path: new URL(request.url).pathname, error })

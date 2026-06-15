@@ -1,9 +1,12 @@
 'use client'
 
 import { toast } from 'sonner'
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useCallback } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useCurrentUser } from '@/lib/hooks/use-current-user'
+import { useStagedPhotos } from '@/lib/hooks/use-staged-photos'
+import imageCompression from 'browser-image-compression'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -81,6 +84,9 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   const [attributesForm, setAttributesForm] = useState<{key: string, value: string}[]>([])
   const [activePhotoIdx, setActivePhotoIdx] = useState(0)
   const [photosForm, setPhotosForm] = useState<{ id: string; url: string; order: number }[]>([])
+  const [newPhotoFiles, setNewPhotoFiles] = useState<{ id: string; file: File; localUrl: string }[]>([])
+  const objectUrlsRef = useRef<Set<string>>(new Set())
+
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
 
   // Cost form
@@ -136,7 +142,16 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
     }
   }
 
-  useEffect(() => { fetchUnit() }, [id])
+  useEffect(() => {
+    fetchUnit()
+
+    return () => {
+      objectUrlsRef.current.forEach((url) => {
+        URL.revokeObjectURL(url)
+      })
+      objectUrlsRef.current.clear()
+    }
+  }, [id])
 
   async function fetchUnit() {
     try {
@@ -185,30 +200,96 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
   async function handlePhotoUpload(files: FileList) {
     setUploadingPhotos(true)
     try {
-      const urls = await Promise.all(
-        Array.from(files).map(async (file) => {
-          const url = await uploadPhoto(file)
-          return { id: crypto.randomUUID(), url, order: photosForm.length }
-        })
-      )
-      setPhotosForm(prev => [...prev, ...urls])
-      toast.success(`${urls.length} foto(s) subida(s)`)
+      const newFiles = Array.from(files).map((file) => {
+        const localUrl = URL.createObjectURL(file)
+        objectUrlsRef.current.add(localUrl)
+        return {
+          id: crypto.randomUUID(),
+          file,
+          localUrl,
+          order: photosForm.length + newPhotoFiles.length,
+        }
+      })
+      setNewPhotoFiles((prev) => [...prev, ...newFiles])
+      toast.success(`${newFiles.length} foto(s) agregada(s) para subir al guardar`)
     } catch (e) {
       console.error(e)
-      toast.error('Error subiendo fotos')
+      toast.error('Error selecting photos')
     } finally {
       setUploadingPhotos(false)
     }
   }
 
   function removePhoto(photoId: string) {
-    setPhotosForm(prev => prev.filter(p => p.id !== photoId))
+    setNewPhotoFiles((prev) => {
+      const photo = prev.find((p) => p.id === photoId)
+      if (photo) {
+        URL.revokeObjectURL(photo.localUrl)
+        objectUrlsRef.current.delete(photo.localUrl)
+      }
+      return prev.filter((p) => p.id !== photoId)
+    })
+    setPhotosForm((prev) => prev.filter((p) => p.id !== photoId))
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
+      let allPhotos: { url: string; order: number }[] = photosForm.map((p, idx) => ({
+        url: p.url,
+        order: p.order ?? idx,
+      }))
+
+      if (newPhotoFiles.length > 0) {
+        const { upload } = await import('@vercel/blob/client')
+        const uploadUrl = `${window.location.origin}/api/blob`
+        const compressionOptions = {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        }
+
+        const compressedFiles: File[] = []
+        for (const newPhoto of newPhotoFiles) {
+          try {
+            const compressed = await imageCompression(newPhoto.file, compressionOptions)
+            compressedFiles.push(compressed)
+          } catch {
+            compressedFiles.push(newPhoto.file)
+          }
+        }
+
+        const uploadPromises = compressedFiles.map(async (file, idx) => {
+          const newBlob = await upload(`units/${id}/${file.name}`, file, {
+            access: 'public',
+            handleUploadUrl: uploadUrl,
+          })
+          return { url: newBlob.url, order: photosForm.length + idx }
+        })
+
+        let newPhotoUrls: { url: string; order: number }[] = []
+        
+        try {
+          newPhotoUrls = await Promise.all(uploadPromises)
+          
+          newPhotoFiles.forEach((p) => {
+            URL.revokeObjectURL(p.localUrl)
+            objectUrlsRef.current.delete(p.localUrl)
+          })
+          setNewPhotoFiles([])
+        } catch (uploadError) {
+          newPhotoFiles.forEach((p) => {
+            URL.revokeObjectURL(p.localUrl)
+            objectUrlsRef.current.delete(p.localUrl)
+          })
+          setNewPhotoFiles([])
+          throw uploadError
+        }
+        
+        allPhotos = [...allPhotos, ...newPhotoUrls]
+      }
+
       const res = await fetch(`/api/units/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -220,7 +301,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           acquisitionCostUsd: parseFormatted(formData.acquisitionCostUsd as unknown as string),
           year: formData.year ? Number(formData.year) : null,
           attributes: attributesForm.filter(a => a.key.trim() !== '' && a.value.trim() !== ''),
-          photos: photosForm.map((p, idx) => ({ url: p.url, order: p.order ?? idx })),
+          photos: allPhotos,
         }),
       })
       if (res.ok) {
@@ -372,10 +453,13 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
           <Card className="overflow-hidden">
             <div className="aspect-video bg-muted relative">
               {unit.photos && unit.photos.length > 0 ? (
-                <img
+                <Image
                   src={unit.photos[activePhotoIdx]?.url ?? unit.photos[0].url}
                   alt={unit.title}
-                  className="w-full h-full object-cover"
+                  width={800}
+                  height={450}
+                  priority
+                  className="object-cover"
                 />
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">Sin foto</div>
@@ -398,7 +482,7 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                         : 'border-transparent opacity-55 hover:opacity-90'
                     }`}
                   >
-                    <img src={photo.url} alt={`foto ${idx + 1}`} className="w-full h-full object-cover" />
+                    <Image src={photo.url} alt={`foto ${idx + 1}`} width={56} height={40} className="object-cover" />
                   </button>
                 ))}
               </div>
@@ -473,7 +557,14 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                   <CardTitle>Editar Unidad</CardTitle>
                   <div className="flex gap-2">
                     <Button type="submit" disabled={saving}>{saving ? 'Guardando...' : 'Guardar'}</Button>
-                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                    <Button type="button" variant="outline" onClick={() => {
+                        newPhotoFiles.forEach((p) => {
+                          URL.revokeObjectURL(p.localUrl)
+                          objectUrlsRef.current.delete(p.localUrl)
+                        })
+                        setNewPhotoFiles([])
+                        setIsEditing(false)
+                      }}>Cancelar</Button>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -618,17 +709,21 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                         </p>
                       </label>
                     </div>
-                    {photosForm.length > 0 && (
+                    {photosForm.length > 0 || newPhotoFiles.length > 0 ? (
                       <div className="space-y-3">
-                        <p className="text-sm font-medium text-foreground">Fotos actuales ({photosForm.length})</p>
+                        <p className="text-sm font-medium text-foreground">
+                          Fotos ({photosForm.length} existente{photosForm.length !== 1 ? 's' : ''}{newPhotoFiles.length > 0 ? `, ${newPhotoFiles.length} pendiente${newPhotoFiles.length !== 1 ? 's' : ''} por subir` : ''})
+                        </p>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                           {photosForm.map((photo, idx) => (
                             <div key={photo.id} className="relative group">
                               <div className="aspect-square rounded-lg overflow-hidden border border-border bg-muted">
-                                <img
+                                <Image
                                   src={photo.url}
                                   alt={`Foto ${idx + 1}`}
-                                  className="w-full h-full object-cover"
+                                  width={400}
+                                  height={400}
+                                  className="object-cover"
                                 />
                               </div>
                               <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -647,9 +742,39 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
                               </div>
                             </div>
                           ))}
+                          {newPhotoFiles.map((photo, idx) => (
+                            <div key={photo.id} className="relative group">
+                              <div className="aspect-square rounded-lg overflow-hidden border border-2 border-dashed border-primary/50 bg-muted/50">
+                                <img
+                                  src={photo.localUrl}
+                                  alt={`Nueva foto ${photosForm.length + idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 bg-destructive/90 text-destructive-foreground rounded-full shadow-md hover:bg-destructive"
+                                  onClick={() => removePhoto(photo.id)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              <div className="absolute bottom-1 left-1 right-1 bg-primary/80 text-primary-foreground text-xs text-center px-1 rounded-b">
+                                #{photosForm.length + idx + 1} (pendiente)
+                              </div>
+                            </div>
+                          ))}
                         </div>
+                        {newPhotoFiles.length > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Las fotos pendientes se subirán al guardar la unidad.
+                          </p>
+                        )}
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>

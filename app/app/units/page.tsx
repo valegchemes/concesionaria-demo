@@ -62,6 +62,9 @@ export default function UnitsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [typeFilter, setTypeFilter] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalUnits, setTotalUnits] = useState(0)
+  const LIMIT = 20
 
   // Estados para Toma de Usados
   const [tradeIns, setTradeIns] = useState<any[]>([])
@@ -98,6 +101,12 @@ export default function UnitsPage() {
       fetchTradeIns()
     }
   }, [statusFilter])
+
+  useEffect(() => {
+    if (statusFilter !== 'TRADE_IN') {
+      fetchUnits(1)
+    }
+  }, [statusFilter, typeFilter, search])
 
   async function fetchTradeIns() {
     try {
@@ -174,19 +183,29 @@ export default function UnitsPage() {
     setIsTradeInModalOpen(true)
   }
 
-  async function fetchUnits() {
+async function fetchUnits(page: number = 1) {
     try {
       setLoading(true)
       setError(null)
-      const res = await fetch('/api/units', { cache: 'no-store' })
+      const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', String(LIMIT))
+      if (statusFilter !== 'ALL') params.set('status', statusFilter)
+      if (typeFilter !== 'ALL') params.set('type', typeFilter)
+      if (search) params.set('query', search)
+
+      const res = await fetch(`/api/units?${params.toString()}`, { next: { revalidate: 60 } })
       if (!res.ok) throw new Error(`Error ${res.status}`)
       const data = await res.json()
       setUnits(Array.isArray(data?.data) ? data.data : [])
+      setTotalUnits(data?.total || 0)
+      setCurrentPage(page)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar las unidades')
     } finally {
       setLoading(false)
     }
+  }
   }
 
   async function deleteUnit(id: string) {
@@ -203,14 +222,6 @@ export default function UnitsPage() {
       toast.error('Error de conexión al intentar eliminar')
     }
   }
-
-  const filteredUnits = units.filter(u => {
-    const q = search.toLowerCase()
-    const matchSearch = u.title.toLowerCase().includes(q) || (u.location?.toLowerCase().includes(q) ?? false)
-    const matchStatus = statusFilter === 'ALL' || u.status === statusFilter
-    const matchType = typeFilter === 'ALL' || u.type === typeFilter
-    return matchSearch && matchStatus && matchType
-  })
 
   const [exporting, setExporting] = useState(false)
 
@@ -418,7 +429,7 @@ export default function UnitsPage() {
         </div>
       )}
 
-      {statusFilter !== 'TRADE_IN' && !loading && !error && filteredUnits.length === 0 && (
+      {statusFilter !== 'TRADE_IN' && !loading && !error && units.length === 0 && (
         <Card className="surface-secondary">
           <CardContent className="py-16 text-center">
             <Car className="h-12 w-12 mx-auto mb-3 text-adaptive-secondary opacity-50" />
@@ -434,9 +445,9 @@ export default function UnitsPage() {
         </Card>
       )}
 
-      {statusFilter !== 'TRADE_IN' && !loading && !error && filteredUnits.length > 0 && (
+      {statusFilter !== 'TRADE_IN' && !loading && !error && units.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredUnits.map((unit) => {
+          {units.map((unit) => {
             const TypeIcon = typeIcons[unit.type] ?? Car
             const photo = unit.photos?.[0]?.url ?? null
             const status = statusConfig[unit.status] ?? { label: unit.status, classes: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' }
@@ -561,6 +572,30 @@ export default function UnitsPage() {
             )
           })}
         </div>
+
+        {statusFilter !== 'TRADE_IN' && units.length > 0 && !loading && !error && totalUnits > LIMIT && (
+          <div className="flex items-center justify-center gap-4 py-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchUnits(currentPage - 1)}
+              disabled={currentPage <= 1}
+            >
+              Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Página {currentPage} de {Math.ceil(totalUnits / LIMIT)}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchUnits(currentPage + 1)}
+              disabled={currentPage >= Math.ceil(totalUnits / LIMIT)}
+            >
+              Siguiente
+            </Button>
+          </div>
+        )}
       )}
 
       {/* MODAL: Conversión de TradeIn a Unidad de Stock */}
