@@ -13,7 +13,7 @@
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-import { streamText } from 'ai'
+import { streamText, convertToModelMessages } from 'ai'
 import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   const result = streamText({
     model,
     system: SYSTEM_PROMPT,
-    messages: messages as any,
+    messages: convertToModelMessages(messages as any),
     tools: tools as any,
     maxSteps: 5,
     temperature: 0.3,
