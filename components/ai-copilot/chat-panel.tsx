@@ -31,14 +31,22 @@ const QUICK_SUGGESTIONS = [
 ]
 
 // ─── Renderer de un mensaje ───────────────────────────────────────────────────
-function MessageBubble({ msg }: { msg: UIMessage }) {
-  // En el SDK v6, UIMessage usa `parts` y separa los roles en user, assistant y tool.
-  const textParts = msg.parts?.filter((p: any) => p.type === 'text') ?? []
-  const toolCallParts = msg.parts?.filter((p: any) => p.type === 'tool-call') ?? []
+function MessageBubble({ msg }: { msg: any }) {
+  // Soporte universal para múltiples versiones del SDK de Vercel AI
+  // Texto: puede venir en content o en parts
+  let text = msg.content || ''
+  if (!text && msg.parts) {
+    text = msg.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('')
+  }
+
+  // Herramientas: pueden venir en toolInvocations (SDK clásico)
+  const toolInvocations = msg.toolInvocations ?? []
+
+  // O en parts (SDK nuevo UIMessage)
+  const toolCallParts = msg.parts?.filter((p: any) => p.type === 'tool-call' || p.type === 'tool-invocation') ?? []
   const toolResultParts = msg.parts?.filter((p: any) => p.type === 'tool-result') ?? []
 
   if (msg.role === 'user') {
-    const text = textParts.map((p: any) => p.text).join('')
     if (!text) return null
     return (
       <div className="flex items-start gap-2.5 justify-end">
@@ -52,23 +60,42 @@ function MessageBubble({ msg }: { msg: UIMessage }) {
     )
   }
 
-  if (msg.role === 'assistant') {
+  if (msg.role === 'assistant' || msg.role === 'tool') {
+    // Si no hay nada que mostrar (ni texto ni herramientas), no renderizar
+    if (!text && toolInvocations.length === 0 && toolCallParts.length === 0 && toolResultParts.length === 0) {
+      return null
+    }
+
     return (
       <div className="flex items-start gap-2.5">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-blue-600 mt-0.5">
-          <Bot className="h-3.5 w-3.5 text-white" />
+        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${msg.role === 'assistant' ? 'bg-gradient-to-br from-violet-500 to-blue-600' : 'opacity-0'} mt-0.5`}>
+          {msg.role === 'assistant' && <Bot className="h-3.5 w-3.5 text-white" />}
         </div>
         <div className="max-w-[82%] space-y-2">
           {/* Texto de la IA */}
-          {textParts.map((part: any, i: number) => (
-            part.text && (
-              <div key={i} className="rounded-2xl rounded-tl-sm bg-slate-800/80 border border-white/5 px-3.5 py-2.5">
-                <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{part.text}</p>
-              </div>
-            )
+          {text && (
+            <div className="rounded-2xl rounded-tl-sm bg-slate-800/80 border border-white/5 px-3.5 py-2.5">
+              <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{text}</p>
+            </div>
+          )}
+
+          {/* Herramientas (Legacy: toolInvocations) */}
+          {toolInvocations.map((inv: any, i: number) => (
+            <div key={`inv-${i}`}>
+              {inv.state === 'call' && (
+                <div className="flex items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs text-violet-300">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Wrench className="h-3 w-3" />
+                  Consultando base de datos...
+                </div>
+              )}
+              {inv.state === 'result' && (
+                <ToolResultCard toolName={inv.toolName} result={inv.result} />
+              )}
+            </div>
           ))}
 
-          {/* Partes de llamadas a herramientas (loading) */}
+          {/* Herramientas (Nuevo SDK: parts) */}
           {toolCallParts.map((part: any, i: number) => (
             <div key={`call-${i}`} className="flex items-center gap-2 rounded-xl border border-violet-500/20 bg-violet-500/10 px-3 py-2 text-xs text-violet-300">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -76,17 +103,6 @@ function MessageBubble({ msg }: { msg: UIMessage }) {
               Consultando base de datos ({part.toolName})...
             </div>
           ))}
-        </div>
-      </div>
-    )
-  }
-
-  if ((msg.role as string) === 'tool') {
-    return (
-      <div className="flex items-start gap-2.5">
-        {/* Placeholder invisible para alinear con el avatar del assistant */}
-        <div className="flex h-7 w-7 shrink-0 opacity-0" />
-        <div className="max-w-[82%] space-y-2">
           {toolResultParts.map((part: any, i: number) => (
             <div key={`result-${i}`}>
               <ToolResultCard toolName={part.toolName} result={part.result} />
