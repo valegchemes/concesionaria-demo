@@ -4,8 +4,11 @@
  * Leé DEVELOPER_EMAILS desde variables de entorno (lista separada por comas).
  * Nunca hardcodear emails en código fuente.
  *
- * Configuración en .env:
+ * Configuración en .env / Vercel Environment Variables:
  *   DEVELOPER_EMAILS=valegchemes@gmail.com,otro.dev@example.com
+ *
+ * Para activar el bypass en producción, también debe estar definido DEVELOPER_EMAILS.
+ * El bypass solo se desactiva si DEVELOPER_EMAILS está vacío o no definido.
  */
 
 import { createLogger } from './logger'
@@ -28,11 +31,6 @@ export async function hasDeveloperInCompany(
   prisma: { user: { count: (args: unknown) => Promise<number> } },
   companyId: string
 ): Promise<boolean> {
-  // Deshabilitar bypass en producción para seguridad
-  if (process.env.NODE_ENV === 'production') {
-    return false
-  }
-
   const emails = getDeveloperEmailsList()
   if (emails.length === 0) return false
 
@@ -43,6 +41,11 @@ export async function hasDeveloperInCompany(
         email: { in: emails },
       },
     })
+
+    if (count > 0) {
+      log.info({ companyId }, 'Developer bypass activo para esta empresa')
+    }
+
     return count > 0
   } catch (error) {
     log.error({ error: String(error), companyId }, 'Error checking developer bypass')
