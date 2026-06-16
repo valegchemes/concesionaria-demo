@@ -82,11 +82,5 @@ export async function POST(req: NextRequest) {
   })
 
   // v6: toUIMessageStreamResponse reemplaza toDataStreamResponse
-  return result.toUIMessageStreamResponse({
-    getErrorMessage: (err) => {
-      // Propagamos el mensaje real en lugar del genérico para poder debuggear
-      if (err instanceof Error) return err.message
-      return String(err)
-    }
-  })
+  return result.toUIMessageStreamResponse()
 }
