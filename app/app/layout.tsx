@@ -9,14 +9,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { SubscriptionGuard } from '@/components/subscription-guard'
 import { prisma } from '@/lib/shared/prisma'
 import { isDeveloperEmail } from '@/lib/shared/developer-bypass'
-import dynamicImport from 'next/dynamic'
-
-// CopilotButton es un componente cliente con estado — se carga dinámicamente
-// para evitar errores de hidratación y mejorar el time-to-interactive.
-const CopilotButton = dynamicImport(
-  () => import('@/components/ai-copilot/copilot-button').then((m) => m.CopilotButton),
-  { ssr: false }
-)
+import { CopilotButton } from '@/components/ai-copilot/copilot-button'
 
 export const dynamic = 'force-dynamic'
 
