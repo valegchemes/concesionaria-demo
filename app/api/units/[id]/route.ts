@@ -42,7 +42,7 @@ export const PUT = withTenantHandler(withErrorHandling(
 
     const unit = await unitService.update(id, user.companyId, data)
 
-    revalidateTag('units')
+    revalidateTag('units', 'default')
     return successResponse(unit)
   }
 ))
@@ -59,7 +59,7 @@ export const DELETE = withTenantHandler(withErrorHandling(
 
     await unitService.delete(id, user.companyId)
 
-    revalidateTag('units')
+    revalidateTag('units', 'default')
     return successResponse({ deleted: true })
   }
 ))
