@@ -26,6 +26,9 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.84",
+    "@ai-sdk/openai": "^3.0.71",
+    "@ai-sdk/react": "^3.0.208",
     "@hello-pangea/dnd": "^18.0.1",
     "@neondatabase/serverless": "^0.9.0",
     "@prisma/adapter-neon": "^5.0.0",
@@ -40,6 +43,7 @@
     "@types/pdfkit": "^0.17.6",
     "@vercel/blob": "^2.3.3",
     "@vercel/kv": "^3.0.0",
+    "ai": "^6.0.206",
     "bcryptjs": "^2.4.3",
     "browser-image-compression": "^2.0.2",
     "class-variance-authority": "^0.7.1",
