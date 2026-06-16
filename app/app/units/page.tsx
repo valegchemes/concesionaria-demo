@@ -446,156 +446,156 @@ async function fetchUnits(page: number = 1) {
 
       {statusFilter !== 'TRADE_IN' && !loading && !error && units.length > 0 && (
         <>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {units.map((unit) => {
-            const TypeIcon = typeIcons[unit.type] ?? Car
-            const photo = unit.photos?.[0]?.url ?? null
-            const status = statusConfig[unit.status] ?? { label: unit.status, classes: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' }
-            const arsPrice = formatPriceSimple(unit.priceArs, 'ARS')
-            const usdPrice = formatPriceSimple(unit.priceUsd, 'USD')
-            const gradient = typeGradients[unit.type] ?? 'from-slate-700 to-slate-900'
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {units.map((unit) => {
+              const TypeIcon = typeIcons[unit.type] ?? Car
+              const photo = unit.photos?.[0]?.url ?? null
+              const status = statusConfig[unit.status] ?? { label: unit.status, classes: 'bg-slate-100 text-slate-600', dot: 'bg-slate-400' }
+              const arsPrice = formatPriceSimple(unit.priceArs, 'ARS')
+              const usdPrice = formatPriceSimple(unit.priceUsd, 'USD')
+              const gradient = typeGradients[unit.type] ?? 'from-slate-700 to-slate-900'
 
-            return (
-              <Card key={unit.id} className="overflow-hidden surface-primary hover:-translate-y-1 transition-transform duration-300 group border border-white/5">
-                {/* Imagen / Placeholder Premium */}
-                <Link href={`/app/units/${unit.id}`}>
-                  <div className="aspect-video bg-muted relative overflow-hidden cursor-pointer">
-                    {photo ? (
-                      <img
-                        src={photo}
-                        alt={unit.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
-                      />
-                    ) : (
-                      <div className={cn(
-                        'w-full h-full flex flex-col items-center justify-center bg-gradient-to-br text-white/60 gap-2',
-                        gradient
-                      )}>
-                        <TypeIcon className="h-12 w-12 opacity-40" />
-                        <p className="text-xs font-medium opacity-50 tracking-wide uppercase">Sin fotografía</p>
+              return (
+                <Card key={unit.id} className="overflow-hidden surface-primary hover:-translate-y-1 transition-transform duration-300 group border border-white/5">
+                  {/* Imagen / Placeholder Premium */}
+                  <Link href={`/app/units/${unit.id}`}>
+                    <div className="aspect-video bg-muted relative overflow-hidden cursor-pointer">
+                      {photo ? (
+                        <img
+                          src={photo}
+                          alt={unit.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
+                        />
+                      ) : (
+                        <div className={cn(
+                          'w-full h-full flex flex-col items-center justify-center bg-gradient-to-br text-white/60 gap-2',
+                          gradient
+                        )}>
+                          <TypeIcon className="h-12 w-12 opacity-40" />
+                          <p className="text-xs font-medium opacity-50 tracking-wide uppercase">Sin fotografía</p>
+                        </div>
+                      )}
+
+                      {/* Badge de estado */}
+                      <div className="absolute top-2.5 left-2.5">
+                        <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md bg-white/80 dark:bg-black/60 shadow-sm', status.classes)}>
+                          <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
+                          {status.label}
+                        </span>
+                      </div>
+
+                      {/* Overlay en hover con acción de ver */}
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                        <span className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-800 shadow-lg">
+                          <Eye className="h-4 w-4" />
+                          Ver Detalle
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* Contenido */}
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link href={`/app/units/${unit.id}`} className="min-w-0 flex-1">
+                        <h3 className="font-bold text-sm text-foreground truncate leading-snug hover:text-primary transition-colors">
+                          {unit.title}
+                        </h3>
+                      </Link>
+                      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Link href={`/app/units/${unit.id}`}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <Edit className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                          onClick={() => deleteUnit(unit.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {unit.location && (
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <MapPin className="h-3 w-3" />{unit.location}
+                      </p>
+                    )}
+
+                    {/* Precios */}
+                    <div className="mt-3 flex items-baseline gap-2">
+                      {arsPrice && (
+                        <span className="text-base font-bold text-adaptive-primary tabular-nums">{arsPrice}</span>
+                      )}
+                      {usdPrice && (
+                        <span className={cn(
+                          'text-sm tabular-nums font-semibold',
+                          arsPrice ? 'text-adaptive-secondary' : 'text-base font-bold text-adaptive-primary'
+                        )}>
+                          {usdPrice}
+                        </span>
+                      )}
+                      {!arsPrice && !usdPrice && (
+                        <span className="text-sm text-muted-foreground italic">Sin precio</span>
+                      )}
+                    </div>
+                    
+                    {/* Creador de la unidad */}
+                    {unit.createdBy && (
+                      <div className="mt-1 flex items-center gap-1 text-[11px] text-adaptive-secondary">
+                        <Users className="h-3 w-3" />
+                        Cargado por <span className="font-medium text-adaptive-primary">{unit.createdBy}</span>
                       </div>
                     )}
 
-                    {/* Badge de estado */}
-                    <div className="absolute top-2.5 left-2.5">
-                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur-md bg-white/80 dark:bg-black/60 shadow-sm', status.classes)}>
-                        <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} />
-                        {status.label}
-                      </span>
-                    </div>
-
-                    {/* Overlay en hover con acción de ver */}
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                      <span className="flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-slate-800 shadow-lg">
-                        <Eye className="h-4 w-4" />
-                        Ver Detalle
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Contenido */}
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <Link href={`/app/units/${unit.id}`} className="min-w-0 flex-1">
-                      <h3 className="font-bold text-sm text-foreground truncate leading-snug hover:text-primary transition-colors">
-                        {unit.title}
-                      </h3>
-                    </Link>
-                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link href={`/app/units/${unit.id}`}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <Edit className="h-3.5 w-3.5" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        onClick={() => deleteUnit(unit.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {unit.location && (
-                    <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                      <MapPin className="h-3 w-3" />{unit.location}
-                    </p>
-                  )}
-
-                  {/* Precios */}
-                  <div className="mt-3 flex items-baseline gap-2">
-                    {arsPrice && (
-                      <span className="text-base font-bold text-adaptive-primary tabular-nums">{arsPrice}</span>
-                    )}
-                    {usdPrice && (
-                      <span className={cn(
-                        'text-sm tabular-nums font-semibold',
-                        arsPrice ? 'text-adaptive-secondary' : 'text-base font-bold text-adaptive-primary'
-                      )}>
-                        {usdPrice}
-                      </span>
-                    )}
-                    {!arsPrice && !usdPrice && (
-                      <span className="text-sm text-muted-foreground italic">Sin precio</span>
-                    )}
-                  </div>
-                  
-                  {/* Creador de la unidad */}
-                  {unit.createdBy && (
-                    <div className="mt-1 flex items-center gap-1 text-[11px] text-adaptive-secondary">
-                      <Users className="h-3 w-3" />
-                      Cargado por <span className="font-medium text-adaptive-primary">{unit.createdBy}</span>
-                    </div>
-                  )}
-
-                  {/* Footer: Tags + interesados */}
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <div className="flex flex-wrap gap-1 min-w-0">
-                      {(unit.tags ?? []).slice(0, 3).map(tag => (
-                        <span key={tag} className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-muted-foreground text-[10px] rounded-md font-medium">
-                          {tag}
+                    {/* Footer: Tags + interesados */}
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <div className="flex flex-wrap gap-1 min-w-0">
+                        {(unit.tags ?? []).slice(0, 3).map(tag => (
+                          <span key={tag} className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-muted-foreground text-[10px] rounded-md font-medium">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      {(unit._count?.interestedLeads ?? 0) > 0 && (
+                        <span className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 shrink-0 font-semibold">
+                          <Users className="h-3 w-3" />
+                          {unit._count!.interestedLeads} interesados
                         </span>
-                      ))}
+                      )}
                     </div>
-                    {(unit._count?.interestedLeads ?? 0) > 0 && (
-                      <span className="flex items-center gap-1 text-[11px] text-blue-600 dark:text-blue-400 shrink-0 font-semibold">
-                        <Users className="h-3 w-3" />
-                        {unit._count!.interestedLeads} interesados
-                      </span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })
-        </div>
-
-        {statusFilter !== 'TRADE_IN' && units.length > 0 && !loading && !error && totalUnits > LIMIT && (
-          <div className="flex items-center justify-center gap-4 py-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchUnits(currentPage - 1)}
-              disabled={currentPage <= 1}
-            >
-              Anterior
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Página {currentPage} de {Math.ceil(totalUnits / LIMIT)}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fetchUnits(currentPage + 1)}
-              disabled={currentPage >= Math.ceil(totalUnits / LIMIT)}
-            >
-              Siguiente
-            </Button>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
-        )}
+
+          {totalUnits > LIMIT && (
+            <div className="flex items-center justify-center gap-4 py-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchUnits(currentPage - 1)}
+                disabled={currentPage <= 1}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Página {currentPage} de {Math.ceil(totalUnits / LIMIT)}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchUnits(currentPage + 1)}
+                disabled={currentPage >= Math.ceil(totalUnits / LIMIT)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          )}
         </>
       )}
 
