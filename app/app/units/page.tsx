@@ -365,7 +365,8 @@ async function fetchUnits(page: number = 1) {
       {!loading && error && (
         <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
           <CardContent className="p-8 text-center">
-            <p className="text-red-500 font-medium text-sm">{error}</p>              <Button variant="outline" size="sm" className="mt-4" onClick={() => fetchUnits()}>
+            <p className="text-red-500 font-medium text-sm">{error}</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => fetchUnits()}>
               Reintentar
             </Button>
           </CardContent>
@@ -569,7 +570,7 @@ async function fetchUnits(page: number = 1) {
                 </CardContent>
               </Card>
             )
-          }          )}
+          })
         </div>
 
         {statusFilter !== 'TRADE_IN' && units.length > 0 && !loading && !error && totalUnits > LIMIT && (

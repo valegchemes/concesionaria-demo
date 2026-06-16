@@ -8,16 +8,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatPrice, formatDate } from '@/lib/utils'
-import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign, FileDown, Wifi, WifiOff } from 'lucide-react'
+import { Handshake, Plus, Search, Loader2, Trash2, TrendingUp, Clock, CheckCircle, XCircle, DollarSign, FileDown, Wifi, WifiOff, LayoutList, Columns3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { exportToExcel } from '@/lib/utils/export'
 import dynamic from 'next/dynamic'
-import { LayoutList, Columns3 } from 'lucide-react'
-
-const KanbanBoard = dynamic(() => import('./KanbanBoard').then(m => m.KanbanBoard), { ssr: false })
 import { useRealtimeDeals } from '@/lib/hooks/use-realtime-deals'
 import type { DealRealtimePayload } from '@/lib/hooks/use-realtime-deals'
 import { useCurrentUser } from '@/lib/hooks/use-current-user'
+
+const KanbanBoard = dynamic(() => import('./KanbanBoard').then(m => m.KanbanBoard), { ssr: false })
 
 interface Deal {
   id: string
