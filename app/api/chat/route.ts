@@ -13,7 +13,7 @@
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-import { streamText, stepCountIs } from 'ai'
+import { streamText } from 'ai'
 import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
@@ -73,8 +73,7 @@ export async function POST(req: NextRequest) {
     system: SYSTEM_PROMPT,
     messages: messages as any,
     tools: tools as any,
-    // v6: stopWhen reemplaza maxSteps
-    stopWhen: stepCountIs(5),
+    maxSteps: 5,
     temperature: 0.3,
     onError: ({ error }) => {
       console.error('[AI Copilot] Stream error:', error)
