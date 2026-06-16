@@ -104,7 +104,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputText, setInputText] = React.useState('')
 
-  const { messages, sendMessage, setMessages, status } = useChat()
+  const { messages, setMessages, status, error, reload } = useChat()
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -248,6 +248,26 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
                       <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:150ms]" />
                       <span className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:300ms]" />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error state */}
+              {error && (
+                <div className="flex items-start gap-2.5">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-500/20 mt-0.5">
+                    <X className="h-3.5 w-3.5 text-red-400" />
+                  </div>
+                  <div className="rounded-2xl rounded-tl-sm bg-red-500/10 border border-red-500/20 px-3.5 py-2.5 flex flex-col gap-2">
+                    <p className="text-sm text-red-300">
+                      Ocurrió un error al intentar conectarse con el servidor de inteligencia artificial.
+                    </p>
+                    <p className="text-xs text-red-400 font-mono bg-black/20 p-2 rounded break-all">
+                      {error.message}
+                    </p>
+                    <button onClick={() => reload()} className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-200 px-3 py-1.5 rounded-lg w-fit transition-colors">
+                      Reintentar
+                    </button>
                   </div>
                 </div>
               )}
