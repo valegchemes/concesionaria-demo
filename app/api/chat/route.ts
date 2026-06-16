@@ -71,9 +71,8 @@ export async function POST(req: NextRequest) {
   const result = streamText({
     model,
     system: SYSTEM_PROMPT,
-    messages: convertToModelMessages(messages as any),
+    messages: await convertToModelMessages(messages as any),
     tools: tools as any,
-    maxSteps: 5,
     temperature: 0.3,
     onError: ({ error }) => {
       console.error('[AI Copilot] Stream error:', error)
