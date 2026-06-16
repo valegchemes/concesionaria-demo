@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
       throw error
     }
 
-    const admin = company.users[0]
+    const users = (company as unknown as { users: Array<{ id: string; name: string; email: string }> }).users
+    const admin = users[0]
 
     await createAuditLog({
       action: 'create',

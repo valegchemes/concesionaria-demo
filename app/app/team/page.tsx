@@ -1,7 +1,7 @@
 'use client'
 import { toast } from 'sonner'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -64,6 +64,9 @@ export default function TeamPage() {
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editError, setEditError] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null)
+  const [pendingAvatarPreview, setPendingAvatarPreview] = useState<string>('')
+  const pendingAvatarUrlRef = useRef<string>('')
 
   useEffect(() => { void fetchInitialData() }, [])
 
@@ -131,12 +134,38 @@ export default function TeamPage() {
     setEditSubmitting(true)
     setEditError('')
     try {
+      let finalAvatarUrl = editFormData.avatarUrl
+      
+      if (pendingAvatarFile) {
+        setUploadingImage(true)
+        try {
+          const { upload } = await import('@vercel/blob/client')
+          const blob = await upload(`avatars/${pendingAvatarFile.name}`, pendingAvatarFile, {
+            access: 'public',
+            handleUploadUrl: '/api/blob',
+          })
+          finalAvatarUrl = blob.url
+        } catch (err) {
+          console.error('Error uploading avatar', err)
+          setEditError('Error al subir la imagen')
+          return
+        } finally {
+          setUploadingImage(false)
+        }
+      }
+      
       const res = await fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editingMember.id, ...editFormData }),
+        body: JSON.stringify({ id: editingMember.id, ...editFormData, avatarUrl: finalAvatarUrl }),
       })
       if (res.ok) {
+        if (pendingAvatarUrlRef.current) {
+          URL.revokeObjectURL(pendingAvatarUrlRef.current)
+          pendingAvatarUrlRef.current = ''
+        }
+        setPendingAvatarFile(null)
+        setPendingAvatarPreview('')
         setEditingMember(null)
         await fetchInitialData()
         router.refresh()
@@ -159,20 +188,16 @@ export default function TeamPage() {
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files || e.target.files.length === 0) return
     const file = e.target.files[0]
-    try {
-      setUploadingImage(true)
-      const { upload } = await import('@vercel/blob/client')
-      const blob = await upload(`avatars/${file.name}`, file, {
-        access: 'public',
-        handleUploadUrl: '/api/blob',
-      })
-      setEditFormData({ ...editFormData, avatarUrl: blob.url })
-    } catch (err) {
-      console.error('Error uploading image', err)
-      setEditError('Error al subir la imagen')
-    } finally {
-      setUploadingImage(false)
+    
+    if (pendingAvatarUrlRef.current) {
+      URL.revokeObjectURL(pendingAvatarUrlRef.current)
+      pendingAvatarUrlRef.current = ''
     }
+    
+    const previewUrl = URL.createObjectURL(file)
+    pendingAvatarUrlRef.current = previewUrl
+    setPendingAvatarFile(file)
+    setPendingAvatarPreview(previewUrl)
   }
 
   if (loading) {
@@ -354,6 +379,12 @@ export default function TeamPage() {
                       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         <button
                           onClick={() => {
+                            if (pendingAvatarUrlRef.current) {
+                              URL.revokeObjectURL(pendingAvatarUrlRef.current)
+                              pendingAvatarUrlRef.current = ''
+                            }
+                            setPendingAvatarFile(null)
+                            setPendingAvatarPreview('')
                             setEditingMember(member)
                             setEditFormData({
                               name: member.name,
@@ -420,7 +451,15 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-xl bg-white dark:bg-slate-900 p-6 shadow-xl border border-slate-200 dark:border-slate-800 relative max-h-[90vh] overflow-y-auto">
             <button
-              onClick={() => setEditingMember(null)}
+              onClick={() => {
+                if (pendingAvatarUrlRef.current) {
+                  URL.revokeObjectURL(pendingAvatarUrlRef.current)
+                  pendingAvatarUrlRef.current = ''
+                }
+                setPendingAvatarFile(null)
+                setPendingAvatarPreview('')
+                setEditingMember(null)
+              }}
               className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             >
               <X className="h-5 w-5" />
@@ -438,10 +477,21 @@ export default function TeamPage() {
               <div className="flex flex-col items-center gap-4 py-2">
                 <div className="relative group">
                   <div className="h-20 w-20 overflow-hidden rounded-full border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center">
-                    {editFormData.avatarUrl ? (
-                      <Image src={editFormData.avatarUrl} alt="Avatar" width={80} height={80} className="h-full w-full object-cover" />
+                    {(pendingAvatarPreview || editFormData.avatarUrl) ? (
+                      <Image 
+                        src={pendingAvatarPreview || editFormData.avatarUrl} 
+                        alt="Avatar" 
+                        width={80} 
+                        height={80} 
+                        className="h-full w-full object-cover" 
+                      />
                     ) : (
                       <Users className="h-8 w-8 text-slate-400" />
+                    )}
+                    {pendingAvatarPreview && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+                        <span className="text-white text-[10px] font-medium">Preview</span>
+                      </div>
                     )}
                   </div>
                   <label className="absolute inset-0 flex cursor-pointer flex-col items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
@@ -449,7 +499,9 @@ export default function TeamPage() {
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
                   </label>
                 </div>
-                <p className="text-xs text-muted-foreground">Click para subir foto</p>
+                <p className="text-xs text-muted-foreground">
+                  {pendingAvatarPreview ? 'Nueva foto - se subirá al guardar' : 'Click para subir foto'}
+                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
@@ -488,7 +540,15 @@ export default function TeamPage() {
                 )}
               </div>
               <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setEditingMember(null)}>Cancelar</Button>
+                <Button type="button" variant="outline" onClick={() => {
+                  if (pendingAvatarUrlRef.current) {
+                    URL.revokeObjectURL(pendingAvatarUrlRef.current)
+                    pendingAvatarUrlRef.current = ''
+                  }
+                  setPendingAvatarFile(null)
+                  setPendingAvatarPreview('')
+                  setEditingMember(null)
+                }}>Cancelar</Button>
                 <Button type="submit" disabled={editSubmitting || uploadingImage}>
                   {editSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Guardar Cambios

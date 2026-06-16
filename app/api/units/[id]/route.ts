@@ -15,9 +15,9 @@ export const maxDuration = 30
  * GET /api/units/[id] - Get single unit with all relations
  */
 export const GET = withTenantHandler(withErrorHandling(
-  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     const user = await getCurrentUser()
-    const { id } = await params
+    const { id } = await context.params
 
     log.debug({ unitId: id }, 'Fetching unit detail')
 
@@ -31,9 +31,9 @@ export const GET = withTenantHandler(withErrorHandling(
  * PUT /api/units/[id] - Update unit
  */
 export const PUT = withTenantHandler(withErrorHandling(
-  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     const user = await requirePermission('units', 'manage_all')
-    const { id } = await params
+    const { id } = await context.params
 
     const json = await request.json()
     const data = UpdateUnitSchema.parse(json) as any
@@ -42,7 +42,7 @@ export const PUT = withTenantHandler(withErrorHandling(
 
     const unit = await unitService.update(id, user.companyId, data)
 
-    revalidateTag('units')
+    revalidateTag('units', 'default')
     return successResponse(unit)
   }
 ))
@@ -51,15 +51,15 @@ export const PUT = withTenantHandler(withErrorHandling(
  * DELETE /api/units/[id] - Delete unit (soft delete)
  */
 export const DELETE = withTenantHandler(withErrorHandling(
-  async (request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
+  async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     const user = await requirePermission('units', 'manage_all')
-    const { id } = await params
+    const { id } = await context.params
 
     log.info({ unitId: id }, 'Deleting unit')
 
     await unitService.delete(id, user.companyId)
 
-    revalidateTag('units')
+    revalidateTag('units', 'default')
     return successResponse({ deleted: true })
   }
 ))

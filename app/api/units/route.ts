@@ -379,7 +379,7 @@ export const POST = withTenantHandler(async (request: NextRequest): Promise<Next
       'POST /api/units - unidad creada'
     )
 
-    revalidateTag('units')
+    revalidateTag('units', 'default')
     return successResponse(unit, 201)
 
   } catch (error) {

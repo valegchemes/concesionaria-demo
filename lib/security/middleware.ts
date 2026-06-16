@@ -236,8 +236,10 @@ function simpleHash(str: string): string {
 // Nota: createLogger ya está importado al inicio del archivo.
 const securityLog = createLogger('SecurityEvent')
 
+export type SecurityEventType = 'auth_failed' | 'rate_limit_exceeded' | 'csrf_invalid' | 'validation_failed' | 'suspicious_input' | 'request_completed' | 'request_error'
+
 export function logSecurityEvent(event: {
-  type: 'auth_failed' | 'rate_limit_exceeded' | 'csrf_invalid' | 'validation_failed' | 'suspicious_input'
+  type: SecurityEventType
   ip: string
   path: string
   method: string

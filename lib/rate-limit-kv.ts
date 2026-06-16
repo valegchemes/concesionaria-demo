@@ -92,12 +92,13 @@ export async function checkRateLimit(
       reset: reset * 1000,
     }
   } catch (error) {
-    // Fail-closed para evitar DoS cuando KV está caído
-    log.error({ error: error instanceof Error ? error.message : String(error), key }, 'Rate limit KV error — fail-closed')
+    // Fail-open: Si KV está caído, permitir la request para no bloquear tráfico legítimo.
+    // Los endpoints críticos (auth, pagos) usan checkStrictRateLimit que SÍ es fail-closed.
+    log.warn({ error: error instanceof Error ? error.message : String(error), key }, 'Rate limit KV error — fail-open, allowing request')
     return {
-      success: false,
+      success: true,
       limit: MAX_REQUESTS,
-      remaining: 0,
+      remaining: MAX_REQUESTS,
       reset: Date.now() + WINDOW_SECONDS * 1000,
     }
   }

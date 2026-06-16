@@ -1,7 +1,7 @@
 // lib/domains/units/service.ts
 /**
  * Unit Service - Business logic for inventory management
- * 
+ *
  * Handles:
  * - Creating, reading, updating, deleting units (vehicles, motorcycles, boats)
  * - Unit availability and status management
@@ -126,7 +126,7 @@ export class UnitService {
             assignedTo: { select: { name: true } },
           },
         },
-        deals: { orderBy: { createdAt: 'desc' }, take: 5 },
+        deals: { select: { id: true, status: true, finalPrice: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 5 },
         createdBy: { select: { name: true } },
       },
     })
@@ -215,8 +215,8 @@ export class UnitService {
       pagination: {
         page: pageNum,
         limit: limitNum,
-        total,
-        totalPages,
+        total: total,
+        totalPages: totalPages,
         hasMore: pageNum < totalPages,
       },
     }
@@ -241,61 +241,60 @@ export class UnitService {
     }
 
     // Validate prices
-    if (command.priceArs && command.priceArs <= 0) {
-      throw new ValidationError('Price ARS must be greater than 0')
+    if (command.priceArs && command.priceArs < 0) {
+      throw new ValidationError('Price ARS cannot be negative')
     }
 
+    if (command.priceUsd && command.priceUsd < 0) {
+      throw new ValidationError('Price USD cannot be negative')
+    }
+
+    // Prepare attributes operations
+    let attributesDeletePromise = null;
+    let attributesCreatePromise = null;
     if (command.attributes !== undefined) {
-      await prisma.unitAttribute.deleteMany({ where: { unitId: id } })
+      attributesDeletePromise = prisma.unitAttribute.deleteMany({ where: { unitId: id } });
       if (command.attributes.length > 0) {
-        await prisma.unitAttribute.createMany({
+        attributesCreatePromise = prisma.unitAttribute.createMany({
           data: command.attributes.map(a => ({
             unitId: id,
             key: a.key,
             value: a.value,
           }))
-        })
+        });
       }
     }
 
+    // Prepare photos operations
+    let photosDeletePromise = null;
+    let photosCreatePromise = null;
+    let removedBlobUrls: string[] = [];
     if (command.photos !== undefined) {
       // Collect current photos to detect which ones are being removed
       const existingPhotos = await prisma.unitPhoto.findMany({
         where: { unitId: id },
         select: { url: true },
-      })
+      });
 
-      const newUrls = new Set(command.photos.map(p => p.url))
-      const removedBlobUrls = existingPhotos
+      const newUrls = new Set(command.photos.map(p => p.url));
+      removedBlobUrls = existingPhotos
         .map(p => p.url)
-        .filter(url => !newUrls.has(url) && isVercelBlobUrl(url))
+        .filter(url => !newUrls.has(url) && isVercelBlobUrl(url));
 
-      // Delete orphaned files from Blob Storage before removing DB rows
-      if (removedBlobUrls.length > 0) {
-        log.info({ unitId: id, count: removedBlobUrls.length }, 'Deleting removed photos from Blob Storage')
-        const result = await deleteFiles(removedBlobUrls, { retries: 2 })
-        if (result.failed.length > 0) {
-          log.warn(
-            { unitId: id, failedUrls: result.failed },
-            'Some removed photos could not be deleted from Blob Storage'
-          )
-        }
-      }
-
-      await prisma.unitPhoto.deleteMany({ where: { unitId: id } })
+      photosDeletePromise = prisma.unitPhoto.deleteMany({ where: { unitId: id } });
       if (command.photos.length > 0) {
-        await prisma.unitPhoto.createMany({
+        photosCreatePromise = prisma.unitPhoto.createMany({
           data: command.photos.map((p, index) => ({
             unitId: id,
             url: p.url,
             order: p.order ?? index,
           }))
-        })
+        });
       }
     }
 
-    // Update unit
-    const updated = await prisma.unit.update({
+    // Prepare unit update
+    const unitUpdatePromise = prisma.unit.update({
       where: { id },
       data: {
         ...(command.title && { title: command.title.trim() }),
@@ -316,8 +315,32 @@ export class UnitService {
       include: {
         photos: true,
         attributes: true,
-      },
-    })
+      }
+    });
+
+    // Execute all database operations in a transaction
+    await prisma.$transaction([
+      attributesDeletePromise,
+      attributesCreatePromise,
+      photosDeletePromise,
+      photosCreatePromise,
+      unitUpdatePromise
+    ].filter(promise => promise !== null));
+
+    // Delete orphaned Blob Storage files after successful DB transaction
+    if (removedBlobUrls.length > 0) {
+      log.info({ unitId: id, count: removedBlobUrls.length }, 'Deleting removed photos from Blob Storage')
+      const result = await deleteFiles(removedBlobUrls, { retries: 2 });
+      if (result.failed.length > 0) {
+        log.warn(
+          { unitId: id, failedUrls: result.failed },
+          'Some removed photos could not be deleted from Blob Storage'
+        );
+      }
+    }
+
+    // Fetch and return the updated unit (to avoid potential stale data from transaction)
+    const updated = await this.getById(id, companyId);
 
     log.info({ unitId: id, newStatus: command.status }, 'Unit updated')
 
@@ -361,11 +384,11 @@ export class UnitService {
 
     // Collect URLs to delete from Blob Storage
     const urlsToDelete: string[] = []
-    
+
     for (const photo of unitExists.photos) {
       if (isVercelBlobUrl(photo.url)) urlsToDelete.push(photo.url)
     }
-    
+
     for (const doc of unitExists.digitalDocuments) {
       const meta = doc.metadata as { url?: string } | null;
       if (meta?.url && typeof meta.url === 'string' && isVercelBlobUrl(meta.url)) {
@@ -394,11 +417,11 @@ export class UnitService {
       prisma.unitAttribute.deleteMany({ where: { unitId: id } }),
       prisma.unit.update({
         where: { id },
-        data: { 
+        data: {
           isActive: false,
           description: null,
           location: null,
-          tags: [], 
+          tags: [],
         },
       })
     ])
@@ -453,11 +476,11 @@ export class UnitService {
 
     // 2. Collect URLs to delete from Blob Storage
     const urlsToDelete: string[] = []
-    
+
     for (const photo of unit.photos) {
       if (isVercelBlobUrl(photo.url)) urlsToDelete.push(photo.url)
     }
-    
+
     for (const doc of unit.digitalDocuments) {
       const meta = doc.metadata as { url?: string } | null;
       if (meta?.url && typeof meta.url === 'string' && isVercelBlobUrl(meta.url)) {
@@ -627,6 +650,7 @@ export class UnitService {
       ),
     }
   }
+
   /**
    * Get cost items for a unit
    */

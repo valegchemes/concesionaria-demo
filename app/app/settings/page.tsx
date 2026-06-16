@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCurrentUser } from '@/lib/hooks/use-current-user'
+import { useObjectUrl } from '@/lib/hooks/use-object-url'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Building2, User, Globe, Loader2, Save, PenLine, CheckCircle, RotateCcw, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,9 @@ export default function SettingsPage() {
   const sigRef = useRef<SignaturePadHandle | null>(null)
   const [showSig, setShowSig] = useState(false)
   const [signatureUrl, setSignatureUrl] = useState('')
+
+  const { url: logoPreviewUrl, setNewUrl: setLogoPreviewUrl, clearUrl: clearLogoPreviewUrl } = useObjectUrl()
+  const { url: avatarPreviewUrl, setNewUrl: setAvatarPreviewUrl, clearUrl: clearAvatarPreviewUrl } = useObjectUrl()
 
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
@@ -121,6 +125,7 @@ export default function SettingsPage() {
 
       if (res.ok) {
         setLogoUrl(finalLogoUrl)
+        clearLogoPreviewUrl()
         toast.success('Configuracion de empresa guardada con exito')
         router.refresh()
       } else {
@@ -188,6 +193,7 @@ export default function SettingsPage() {
         setPassword('')
         setCurrentPassword('')
         setAvatarUrl(finalAvatarUrl)
+        clearAvatarPreviewUrl()
         mutateMe()
         toast.success('Perfil guardado con exito')
         router.refresh()
@@ -234,8 +240,8 @@ export default function SettingsPage() {
                 <Label>Logo de la Empresa</Label>
                 <div className="flex items-center gap-4">
                   <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md border bg-slate-100">
-                    {logoUrl ? (
-                      <img src={logoUrl} alt="Logo" className="h-full w-full object-contain" />
+                    {(logoPreviewUrl || logoUrl) ? (
+                      <img src={logoPreviewUrl || logoUrl} alt="Logo" className="h-full w-full object-contain" />
                     ) : (
                       <Building2 className="h-8 w-8 text-slate-300" />
                     )}
@@ -247,7 +253,7 @@ export default function SettingsPage() {
                       if (e.target.files && e.target.files[0]) {
                         const file = e.target.files[0]
                         setLogoFile(file)
-                        setLogoUrl(URL.createObjectURL(file))
+                        setLogoPreviewUrl(file)
                       }
                     }}
                     className="flex-1"
@@ -383,8 +389,8 @@ export default function SettingsPage() {
                   <Label>Tu Foto de Perfil</Label>
                   <div className="flex items-center gap-4">
                     <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border bg-slate-100">
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                      {(avatarPreviewUrl || avatarUrl) ? (
+                        <img src={avatarPreviewUrl || avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
                       ) : (
                         <User className="h-8 w-8 text-slate-300" />
                       )}
@@ -396,7 +402,7 @@ export default function SettingsPage() {
                         if (e.target.files && e.target.files[0]) {
                           const file = e.target.files[0]
                           setAvatarFile(file)
-                          setAvatarUrl(URL.createObjectURL(file))
+                          setAvatarPreviewUrl(file)
                         }
                       }}
                       className="flex-1"

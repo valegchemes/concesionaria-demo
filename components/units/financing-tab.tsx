@@ -10,8 +10,6 @@ import {
   Sparkles, DollarSign, Calculator, Send, Download, 
   Calendar, Percent, TrendingUp, Info 
 } from 'lucide-react'
-import { jsPDF } from 'jspdf'
-
 interface FinancingTabProps {
   unit: {
     id: string

@@ -17,8 +17,7 @@ import {
   ArrowLeft, ExternalLink, Users, Plus, Trash2, TrendingUp,
   ShoppingCart, Wrench, DollarSign, AlertCircle, FileText, Loader2, Lock, ShieldAlert, Upload
 } from 'lucide-react'
-import { jsPDF } from 'jspdf'
-import html2canvas from 'html2canvas'
+// jspdf y html2canvas se importan dinámicamente solo al generar PDF
 import { useRef } from 'react'
 import { UnitPdfTemplate } from '@/components/units/unit-pdf-template'
 import { PromissoryNotesTab } from '@/components/units/promissory-notes-tab'
@@ -367,13 +366,19 @@ export default function UnitDetailPage({ params }: { params: Promise<{ id: strin
     if (!pdfRef.current || !unit) return
     setIsGeneratingPdf(true)
     try {
-      const canvas = await html2canvas(pdfRef.current, {
+      const [jsPDFModule, html2canvasModule] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas'),
+      ])
+      const JsPDF = jsPDFModule.jsPDF
+      const html2canvasFn = html2canvasModule.default || html2canvasModule
+      const canvas = await html2canvasFn(pdfRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
       })
       const imgData = canvas.toDataURL('image/jpeg', 1.0)
-      const pdf = new jsPDF({
+      const pdf = new JsPDF({
         orientation: 'portrait',
         unit: 'px',
         format: [794, 1123],

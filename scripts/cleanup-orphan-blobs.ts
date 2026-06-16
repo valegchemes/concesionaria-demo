@@ -19,11 +19,11 @@
  * - Los archivos se borran permanentemente - no hay undo
  */
 
-import { Prisma } from '@prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { del, list } from '@vercel/blob'
 
 // Prisma bypass client para este script
-const prisma = new Prisma({
+const prisma = new PrismaClient({
   datasources: {
     db: {
       url: process.env.DATABASE_URL,
@@ -55,7 +55,8 @@ async function getAllBlobUrlsFromDatabase(): Promise<Set<string>> {
   // DigitalDocuments metadata
   const docs = await prisma.digitalDocument.findMany({ 
     select: { metadata: true },
-    where: { metadata: { not: null } }
+    // Nota: No filtramos por metadata != null porque Prisma no lo soporta
+    // directamente en campos Json. Filtramos en código después.
   })
   for (const doc of docs) {
     const metadata = doc.metadata as { url?: string } | null
@@ -118,32 +119,31 @@ async function cleanupOrphanBlobs(options: {
     console.log(`\n📁 Procesando prefijo: ${scanPrefix}`)
     
     try {
-      for await (const { blobs } of list({ prefix: scanPrefix })) {
-        for (const blob of blobs) {
-          result.totalBlobsScanned++
-          
-          // Normalizar URL (remover trailing slashes, etc)
-          const normalizedUrl = blob.url.replace(/\/$/, '')
-          
-          if (!dbUrls.has(normalizedUrl) && !dbUrls.has(blob.url)) {
-            result.orphanBlobsFound++
-            console.log(`   🗑️  Huérfano encontrado: ${blob.url}`)
-            console.log(`      Tamaño: ${formatBytes(blob.size)}`)
-            
-            if (!dryRun) {
-              try {
-                await del(blob.url)
-                result.orphanBlobsDeleted++
-                console.log(`      ✅ Eliminado`)
-              } catch (deleteError) {
-                result.orphanBlobsFailed++
-                const errorMsg = deleteError instanceof Error ? deleteError.message : String(deleteError)
-                result.errors.push(`Error deleting ${blob.url}: ${errorMsg}`)
-                console.log(`      ❌ Error al eliminar: ${errorMsg}`)
-              }
-            } else {
-              console.log(`      (dry-run: no eliminado)`)
+      const { blobs } = await list({ prefix: scanPrefix })
+      for (const blob of blobs) {
+        result.totalBlobsScanned++
+
+        // Normalizar URL (remover trailing slashes, etc)
+        const normalizedUrl = blob.url.replace(/\/$/, '')
+
+        if (!dbUrls.has(normalizedUrl) && !dbUrls.has(blob.url)) {
+          result.orphanBlobsFound++
+          console.log(`   🗑️  Huérfano encontrado: ${blob.url}`)
+          console.log(`      Tamaño: ${formatBytes(blob.size)}`)
+
+          if (!dryRun) {
+            try {
+              await del(blob.url)
+              result.orphanBlobsDeleted++
+              console.log(`      ✅ Eliminado`)
+            } catch (deleteError) {
+              result.orphanBlobsFailed++
+              const errorMsg = deleteError instanceof Error ? deleteError.message : String(deleteError)
+              result.errors.push(`Error deleting ${blob.url}: ${errorMsg}`)
+              console.log(`      ❌ Error al eliminar: ${errorMsg}`)
             }
+          } else {
+            console.log(`      (dry-run: no eliminado)`)
           }
         }
       }

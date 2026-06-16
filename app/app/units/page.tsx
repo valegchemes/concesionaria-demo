@@ -206,7 +206,6 @@ async function fetchUnits(page: number = 1) {
       setLoading(false)
     }
   }
-  }
 
   async function deleteUnit(id: string) {
     if (!confirm('¿Estás seguro de eliminar esta unidad?')) return
@@ -366,8 +365,7 @@ async function fetchUnits(page: number = 1) {
       {!loading && error && (
         <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
           <CardContent className="p-8 text-center">
-            <p className="text-red-500 font-medium text-sm">{error}</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={fetchUnits}>
+            <p className="text-red-500 font-medium text-sm">{error}</p>              <Button variant="outline" size="sm" className="mt-4" onClick={() => fetchUnits()}>
               Reintentar
             </Button>
           </CardContent>
@@ -446,6 +444,7 @@ async function fetchUnits(page: number = 1) {
       )}
 
       {statusFilter !== 'TRADE_IN' && !loading && !error && units.length > 0 && (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {units.map((unit) => {
             const TypeIcon = typeIcons[unit.type] ?? Car
@@ -570,7 +569,7 @@ async function fetchUnits(page: number = 1) {
                 </CardContent>
               </Card>
             )
-          })}
+          }          )}
         </div>
 
         {statusFilter !== 'TRADE_IN' && units.length > 0 && !loading && !error && totalUnits > LIMIT && (
@@ -596,6 +595,7 @@ async function fetchUnits(page: number = 1) {
             </Button>
           </div>
         )}
+        </>
       )}
 
       {/* MODAL: Conversión de TradeIn a Unidad de Stock */}

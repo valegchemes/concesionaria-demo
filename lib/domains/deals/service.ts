@@ -219,8 +219,8 @@ export class DealService {
           }
         },
         unit: { select: { id: true, title: true, type: true } },
-        payments: { orderBy: { createdAt: 'desc' } },
-        closingCosts: { orderBy: { id: 'asc' } },
+        payments: { select: { id: true, amount: true, method: true, notes: true, receivedAt: true, createdAt: true }, orderBy: { receivedAt: 'desc' } },
+        closingCosts: { select: { id: true, concept: true, amountArs: true, amountUsd: true }, orderBy: { id: 'asc' } },
         tradeIn: true,
         seller: { select: { id: true, name: true, email: true, whatsappNumber: true, commissionRate: true } },
       },

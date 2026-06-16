@@ -10,7 +10,9 @@ import { Plus, Trash2, Wallet, Calculator, TrendingDown } from 'lucide-react'
 import { formatCurrency } from '@/lib/domains/analytics/hooks'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import dynamic from 'next/dynamic'
+
+const ExpensesPieChart = dynamic(() => import('@/components/expenses/expenses-pie-chart').then(m => m.ExpensesPieChart), { ssr: false })
 
 function parseFormatted(formatted: string | number): number {
   if (typeof formatted === 'number') return formatted;
@@ -62,12 +64,7 @@ function getCategoryEmoji(category: string): string {
 }
 
 // Paleta de colores para el gráfico de torta
-const PIE_COLORS = [
-  '#6366f1', '#8b5cf6', '#a78bfa',
-  '#f59e0b', '#fb923c', '#f87171',
-  '#34d399', '#22d3ee', '#60a5fa',
-  '#e879f9', '#f472b6', '#a3e635',
-]
+
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -261,43 +258,8 @@ export default function ExpensesPage() {
                   )}
                 </div>
 
-                {/* Gráfico de Torta */}
-                {pieData.length > 0 && (
-                  <div className="flex-1 min-w-[200px] h-[160px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={45}
-                          outerRadius={70}
-                          paddingAngle={3}
-                          dataKey="value"
-                        >
-                          {pieData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number) => [formatCurrency(value, 'ARS'), '']}
-                          contentStyle={{
-                            background: 'rgba(255,255,255,0.9)',
-                            border: '1px solid rgba(0,0,0,0.1)',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                            backdropFilter: 'blur(8px)',
-                          }}
-                        />
-                        <Legend
-                          iconSize={8}
-                          iconType="circle"
-                          wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
+                {/* Gráfico de Torta (cargado dinámicamente) */}
+                {pieData.length > 0 && <ExpensesPieChart data={pieData} />}
               </div>
             </CardContent>
           </Card>

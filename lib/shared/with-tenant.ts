@@ -33,7 +33,7 @@ const log = createLogger('TenantHandler')
  * (contravarianza de parámetros de función en TypeScript).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RouteHandler = (request: NextRequest, context?: any) => Promise<Response>
+type RouteHandler = (request: NextRequest, context: any) => Promise<Response>
 
 /**
  * Higher-order function que envuelve un handler de ruta con:

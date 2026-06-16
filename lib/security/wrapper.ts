@@ -152,7 +152,7 @@ export function createSecureRoute<T = unknown>(
       const reqPath = new URL(request.url).pathname
       const duration = Date.now() - startTime
       logSecurityEvent({
-        type: 'request_completed',
+        type: 'request_completed' as const,
         ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown',
         path: reqPath,
         method: request.method,
@@ -165,7 +165,7 @@ export function createSecureRoute<T = unknown>(
       const reqPath = new URL(request.url).pathname
       const duration = Date.now() - startTime
       logSecurityEvent({
-        type: 'request_error',
+        type: 'request_error' as const,
         ip: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown',
         path: reqPath,
         method: request.method,
