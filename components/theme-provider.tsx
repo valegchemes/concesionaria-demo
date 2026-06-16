@@ -93,7 +93,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const applyThemeToDOM = useCallback((theme: BackgroundTheme) => {
     document.documentElement.dataset.backgroundTheme = theme
-    if (theme === 'light') {
+    if (theme === 'dark') {
       document.documentElement.classList.add('dark')
     } else {
       document.documentElement.classList.remove('dark')
@@ -115,7 +115,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setComputedTheme(calcTheme)
       applyThemeToDOM(calcTheme)
     }
-    return () => { mountedRef.current = false }
   }, [mode, brightness, applyThemeToDOM])
 
   const updateThemeImage = useCallback(async (imageUrl: string) => {

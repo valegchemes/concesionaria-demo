@@ -70,8 +70,14 @@ export async function GET(req: NextRequest) {
       data: { email: emailAddress }
     })
 
-    // Redirect back to settings page
-    return NextResponse.redirect(new URL('/app/settings/email-ai', req.url))
+    // Redirect back to settings page using the configured public base URL
+    // Using req.url can fail in some Vercel/edge environments where the internal
+    // request URL gets intercepted by the auth middleware before the session cookie is read.
+    const baseUrl =
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      `${req.nextUrl.protocol}//${req.nextUrl.host}`
+    return NextResponse.redirect(new URL('/app/settings/email-ai', baseUrl))
   } catch (error) {
     log.error({ err: String(error) }, 'Error in Google OAuth callback')
     return NextResponse.json({ error: 'Authentication failed' }, { status: 500 })

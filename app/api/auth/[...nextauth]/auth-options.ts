@@ -110,7 +110,11 @@ export const authOptions: NextAuthOptions = {
           : 'next-auth.session-token',
       options: {
         httpOnly: true,
-        sameSite: 'strict',
+        // 'lax' is required (not 'strict') so the session cookie survives
+        // cross-site top-level navigations such as returning from Google OAuth.
+        // With 'strict', the browser strips the cookie on the redirect-back from
+        // Google, causing getServerSession() to return null → blank /login screen.
+        sameSite: 'lax',
         path: '/',
         secure: env.NODE_ENV === 'production',
       },
@@ -134,7 +138,7 @@ export const authOptions: NextAuthOptions = {
           : 'next-auth.csrf-token',
       options: {
         httpOnly: false,
-        sameSite: 'strict',
+        sameSite: 'lax',
         path: '/',
         secure: env.NODE_ENV === 'production',
       },
