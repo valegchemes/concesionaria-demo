@@ -104,7 +104,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputText, setInputText] = React.useState('')
 
-  const { messages, setMessages, status, error, reload } = useChat()
+  const { messages, sendMessage, setMessages, status, error, regenerate } = useChat()
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -265,7 +265,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
                     <p className="text-xs text-red-400 font-mono bg-black/20 p-2 rounded break-all">
                       {error.message}
                     </p>
-                    <button onClick={() => reload()} className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-200 px-3 py-1.5 rounded-lg w-fit transition-colors">
+                    <button onClick={() => regenerate()} className="text-xs bg-red-500/20 hover:bg-red-500/30 text-red-200 px-3 py-1.5 rounded-lg w-fit transition-colors">
                       Reintentar
                     </button>
                   </div>
