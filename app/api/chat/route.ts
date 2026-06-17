@@ -13,7 +13,7 @@
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
-import { streamText, convertToModelMessages } from 'ai'
+import { streamText, convertToModelMessages, stepCountIs } from 'ai'
 import { NextRequest } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
@@ -88,6 +88,8 @@ export async function POST(req: NextRequest) {
     system: SYSTEM_PROMPT,
     messages: coreMessages as any,
     tools: tools as any,
+    // Permitir múltiples pasos para que el agente pueda usar herramientas y luego responder
+    stopWhen: stepCountIs(5),
     temperature: 0.3,
     onError: ({ error }) => {
       console.error('[AI Copilot] Stream error:', error)
