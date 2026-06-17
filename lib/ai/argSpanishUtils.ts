@@ -67,7 +67,7 @@ export class ArgSpanishUtils {
 
   /** Mapea términos de estado argentino a valores de Prisma */
   static mapStatusToPrismaStatus(input: string, type: 'unit' | 'lead'): string | null {
-    const unitMap: Record<string, 'AVAILABLE' | 'IN_PREP' | 'RESERVED' | 'SOLD'> = {
+    const unitMap: Record<string, 'AVAILABLE' | 'IN_PREP' | 'RESERVED' | 'SOLD' | string[]> = {
       disponible: 'AVAILABLE',
       'en preparación': 'IN_PREP',
       preparándose: 'IN_PREP',

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { streamText, tool } from 'ai'
 import { createProviderRegistry } from '@ai-sdk/provider-registry'
 import { createOpenAI } from '@ai-sdk/openai'
