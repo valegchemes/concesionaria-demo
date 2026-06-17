@@ -68,15 +68,24 @@ export class RuleBasedAgent {
     // Definición de patrones por intención (cobertura completa del CRM)
     const INTENT_PATTERNS = [
       // ==============================
-      // ESTADÍSTICAS Y VENTAS (getDashboardStats / getDeals)
+      // ESTADÍSTICAS Y VENTAS (getDashboardStats)
       // ==============================
       {
         patterns: [
-          /^(?:cuántas?\s+)?(?:ventas?|ganancias?|operaciones?|facturación?)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual|este\s+mes)/i,
+          // Con ^ anchor (frases directas)
+          /^(?:cuántas?\s+)?(?:ventas?|ganancias?|operaciones?|facturación?)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual)/i,
           /^(?:cuánto\s+|¿cuánto\s+)?hemos\s+(?:facturado|vendido|ganado)\s+(?:este\s+mes|mes\s+actual)/i,
           /^(?:estadísticas?|resumen|balance)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual)/i,
           /^(?:cuántas?\s+)?(?:ventas?|operaciones?)\s+(?:de\s+)?(?:hoy|ayer)/i,
-          /^(?:qué\s+|¿qué\s+)? pasó\s+(?:en\s+)?(?:nuestra\s+)?concesionaria\s+(?:este\s+mes|hoy)/i
+          /^(?:qué\s+|¿qué\s+)?(?:pasó|pasó)\s+(?:en\s+)?(?:nuestra\s+)?concesionaria\s+(?:este\s+mes|hoy)/i,
+          /^(?:dame|pasame|mostrame)\s+(?:el\s+)?(?:resumen|estadísticas?|balance)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual)/i,
+          /^(?:cómo\s+|¿cómo\s+)?(?:vamos|estamos)\s+(?:este\s+mes|hoy)/i,
+          /^(?:cómo\s+|¿cómo\s+)?(?:va|está\s+yendo)\s+(?:el\s+)?negocio/i,
+          // Sin ^ anchor (frases flexibles)
+          /(?:resumen|balance|estadísticas?)\s+(?:del\s+)?(?:mes|negocio)/i,
+          /(?:qué\s+)?(?:resultado|números?)\s+(?:tenemos|dio|dieron)\s+(?:este\s+mes)/i,
+          /(?:dame\s+)?las?\s+(?:estadísticas?|cifras?|números?)\s+(?:de|del)\s+(?:mes|negocio)/i,
+          /(?:cómo\s+)?(?:vamos|estamos|anda)\s+(?:de\s+)?(?:ventas?|facturación?)/i,
         ],
         action: 'getDashboardStats',
         paramsExtractor() {
@@ -85,9 +94,19 @@ export class RuleBasedAgent {
       },
       {
         patterns: [
+          // Con ^ anchor
           /^(?:mostrame?|muéstrame?|ver|mostrar)\s+(?:las?\s+)?(?:ventas?|operaciones?|facturas?)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual)/i,
           /^(?:lista|listado)\s+de\s+(?:ventas?|operaciones?)\s+(?:recientes?|del\s+)?(?:este\s+mes|mes\s+actual)/i,
-          /^(?:cuáles?\s+|¿cuáles?\s+)?fueron\s+(?:nuestras\s+)?(?:ventas?|ganancias?)\s+(?:este\s+mes|mes\s+actual)/i
+          /^(?:cuáles?\s+|¿cuáles?\s+)?fueron\s+(?:nuestras\s+)?(?:ventas?|ganancias?)\s+(?:este\s+mes|mes\s+actual)/i,
+          /^(?:cuánto\s+|¿cuánto\s+)?ganamos\s+(?:este\s+mes|mes\s+actual)/i,
+          /^(?:cuál\s+|¿cuál\s+)?fue\s+(?:nuestra\s+)?ganancia\s+(?:neta\s+)?(?:este\s+mes|mes\s+actual)/i,
+          /^(?:ingresos?|facturación?)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual)/i,
+          /^(?:cómo\s+|¿cómo\s+)?van\s+(?:las\s+)?(?:ventas?|operaciones?)/i,
+          /^(?:dame|pasame)\s+(?:el\s+)?(?:reporte|resumen)\s+de\s+(?:ventas?|operaciones?)/i,
+          // Sin ^ anchor
+          /(?:reporte|resumen|listado)\s+de\s+(?:ventas?|operaciones?)/i,
+          /(?:ventas?|operaciones?)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual|reciente)/i,
+          /(?:cuánto|cuántas?)\s+(?:vendimos|facturamos|ganamos)/i,
         ],
         action: 'getDeals',
         paramsExtractor() {
@@ -99,9 +118,13 @@ export class RuleBasedAgent {
       },
       {
         patterns: [
+          // Ganancia neta (con ^ anchor)
           /^(?:cuánto\s+|¿cuánto\s+)?ganamos\s+(?:este\s+mes|mes\s+actual)/i,
           /^(?:cuál\s+|¿cuál\s+)?fue\s+(?:nuestra\s+)?ganancia\s+(?:neta\s+)?(?:este\s+mes|mes\s+actual)/i,
-          /^(?:ingresos?|facturación?)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual)/i
+          /^(?:ingresos?|facturación?)\s+(?:del\s+)?(?:este\s+mes|mes\s+actual)/i,
+          // Sin ^ anchor
+          /(?:ganancia|ganancias?)\s+(?:neta\s+)?(?:del\s+)?(?:mes|este\s+mes)/i,
+          /(?:cuánto|cuánta)\s+(?:dinero|plata|guía)\s+(?:entró|ingresó|generamos)/i,
         ],
         action: 'getDeals',
         paramsExtractor() {
@@ -118,8 +141,9 @@ export class RuleBasedAgent {
       // ==============================
       {
         patterns: [
-          /^(?:cuántos?\s+|¿cuántos?\s+)?(?:autos?|vehículos?|movilidad?)\s+(?:disponibles?|en\s+stock|para\s+venta|0km)/i,
-          /^(?:qué\s+|¿qué\s+)?(?:autos?|vehículos?)\s+(?:tienes?|hay\s+disponibles?)/i,
+          // Con ^ anchor
+          /^(?:cuántos?\s+|¿cuántos?\s+)?(?:autos?|vehículos?|unidades?)\s+(?:disponibles?|en\s+stock|para\s+venta|0km)/i,
+          /^(?:qué\s+|¿qué\s+)?(?:autos?|vehículos?)\s+(?:tienes?|tenés|hay|hay\s+disponibles?)/i,
           /^(?:stock\s+de\s+|inventario\s+de\s+)?(?:autos?|vehículos?)/i,
           /^(?:buscar|mostrame?|muéstrame?)\s+(?:autos?|vehículos?)/i,
           /^(?:autos?|vehículos?)\s+(?:de\s+tipo\s+|tipo\s+de\s+)/i,
@@ -128,8 +152,18 @@ export class RuleBasedAgent {
           /^(?:autos?|vehículos?)\s+(?:con\s+precio\s+|precio\s+)?(?:hasta|menos\s+de|máximo\s+|max\s+)/i,
           /^(?:autos?|vehículos?)\s+(?:con\s+precio\s+|precio\s+)?(?:desde|más\s+de|mínimo\s+|min\s+)/i,
           /^(?:autos?|vehículos?)\s+(?:entre\s+)?\d+(?:\.\d+)?\s*(?:palo|luca)\s+y\s+\d+(?:\.\d+)?\s*(?:palo|luca)/i,
-          /^(?:0km\s+|nuevo\s+|usado\s+)?(?:autos?|vehículos?)/i,
-          /^(?:chevrolet|ford|toyota|volkswagen|honda|fiat|peugeot|renault|Citroen|nissan|kia|hyundai)\s+(?:autos?|vehículos?)/i
+          /^(?:0km\s+|nuevo\s+|usado\s+)?(?:autos?|vehículos?|unidades?)/i,
+          /^(?:chevrolet|ford|toyota|volkswagen|honda|fiat|peugeot|renault|Citroen|nissan|kia|hyundai)\s+(?:autos?|vehículos?)/i,
+          /^(?:quiero\s+)?(?:ver|conocer|saber)\s+(?:el\s+)?(?:stock|inventario|catálogo)/i,
+          /^(?:dame|pasame|mostrame)\s+(?:el\s+)?(?:listado|lista|stock|inventario)\s+(?:de\s+)?(?:autos?|vehículos?)/i,
+          // Sin ^ anchor
+          /(?:autos?|vehículos?)\s+(?:que\s+)?(?:hay|tiene|tenemos|disponibles?|en\s+stock)/i,
+          /(?:stock|inventario|cátalogo)\s+(?:de\s+)?(?:autos?|vehículos?|la\s+)?(?:concesionaria)?/i,
+          /(?:listado|lista)\s+(?:de\s+)?(?:autos?|vehículos?|unidades)/i,
+          /(?:qué\s+)?(?:autos?|vehículos?)\s+(?:hay|tenemos|tienen|existen)/i,
+          /(?:búscame?|buscar|encontrar)\s+(?:un\s+)?(?:auto|vehículo|0km|usado)/i,
+          /(?:modelo|marca)\s+(?:de\s+)?(?:auto|vehículo)/i,
+          /(?:toyota|ford|chevrolet|volkswagen|vw|honda|fiat|peugeot|renault|nissan|kia|hyundai|citroen|jeep|bmw|audi|mercedes|ram)/i,
         ],
         action: 'searchUnits',
         paramsExtractor: this.extractUnitSearchParams
@@ -140,29 +174,45 @@ export class RuleBasedAgent {
       // ==============================
       {
         patterns: [
-          /^(?:cuántos?\s+|¿cuántos?\s+)?(?:leads?|prospectos?|clientes?)\s+(?:activos?|nuevos?|pendientes?)/i,
-          /^(?:qué\s+|¿qué\s+)?(?:leads?|prospectos?|clientes?)\s+(?:tienes?|hay\s+disponibles?)/i,
+          // Con ^ anchor
+          /^(?:cuántos?\s+|¿cuántos?\s+)?(?:leads?|prospectos?|clientes?)\s+(?:activos?|nuevos?|pendientes?|sin\s+contactar)/i,
+          /^(?:qué\s+|¿qué\s+)?(?:leads?|prospectos?|clientes?)\s+(?:tienes?|hay|hay\s+disponibles?)/i,
           /^(?:buscar|mostrame?|muéstrame?)\s+(?:leads?|prospectos?|clientes?)/i,
           /^(?:leads?|prospectos?|clientes?)\s+(?:de\s+|de\s+origen\s+|de\s+fuente\s+)/i,
-          /^(?:llamados?|contactos?|prospectos?)\s+(?:de\s+)?(?:hoy|ayer|esta\s+semana)/i
+          /^(?:llamados?|contactos?|prospectos?)\s+(?:de\s+)?(?:hoy|ayer|esta\s+semana)/i,
+          /^(?:quiero\s+)?(?:ver|conocer|saber)\s+(?:los?\s+)?(?:leads?|clientes?|prospectos?)/i,
+          /^(?:dame|pasame|mostrame)\s+(?:los?\s+)?(?:leads?|clientes?|prospectos?|contactos?)/i,
+          // Sin ^ anchor
+          /(?:leads?|clientes?|prospectos?)\s+(?:nuevos?|activos?|pendientes?|sin\s+contactar)/i,
+          /(?:clientes?|prospectos?)\s+(?:que\s+)?(?:hay|tenemos|tienen|existen)/i,
+          /(?:listado|lista)\s+(?:de\s+)?(?:leads?|clientes?|prospectos?)/i,
+          /(?:qué\s+)?(?:leads?|clientes?|prospectos?)\s+(?:hay|tenemos)/i,
         ],
         action: 'searchLeads',
         paramsExtractor: this.extractLeadSearchParams
       },
       {
         patterns: [
-          /^(?:crear|agregar|dar\s+de\s+alta\s+)\s+(?:un\s+)?(?:nuevo\s+)?(?:lead|cliente|prospecto)/i,
+          // Con ^ anchor
+          /^(?:crear|agregar|dar\s+de\s+alta|registrar|cargar|ingresar)\s+(?:un\s+)?(?:nuevo\s+)?(?:lead|cliente|prospecto)/i,
           /^(?:nuevo\s+)?(?:lead|cliente|prospecto)\s+(?:llamado\s+|de\s+nombre\s+|se\s+llama\s+)/i,
-          /^(?:agregar\s+)?(?:cliente\s+|lead\s+)?[^,!?]+?\s+(?:con\s+teléfono\s+|teléfono\s+|con\s+email\s+|email\s+)/i
+          /^(?:agregar\s+)?(?:cliente\s+|lead\s+)?[^,!?]+?\s+(?:con\s+teléfono\s+|teléfono\s+|con\s+email\s+|email\s+)/i,
+          // Sin ^ anchor
+          /(?:necesito|quiero)\s+(?:crear|agregar|registrar|dar\s+de\s+alta)\s+(?:un\s+)?(?:cliente|lead|prospecto)/i,
+          /(?:crear|agregar|registrar)\s+(?:un\s+)?(?:nuevo\s+)?(?:contacto|cliente|lead)/i,
         ],
         action: 'createLead',
         paramsExtractor: this.extractCreateLeadParams
       },
       {
         patterns: [
-          /^(?:actualizar|cambiar|poner)\s+(?:el\s+)?(?:estado\s+de\s+|de\s+)?(?:lead|cliente|prospecto)/i,
+          // Con ^ anchor
+          /^(?:actualizar|cambiar|poner|mover)\s+(?:el\s+)?(?:estado\s+de\s+|de\s+)?(?:lead|cliente|prospecto)/i,
           /^(?:lead|cliente|prospecto)\s+[^,!?]+?\s+(?:pasa\s+a\s+|estado\s+a\s+|cambiar\s+a\s+)/i,
-          /^(?:ponerse\s+en\s+|pasar\s+a\s+)\s+(?:lead|cliente|prospecto)\s+(?:a\s+)?(?:nuevo\s+|contactado\s+|visita\s+agendada\s+|negociación\s+|reservado\s+|vendido\s+|perdido)/i
+          /^(?:ponerse\s+en\s+|pasar\s+a\s+)\s+(?:lead|cliente|prospecto)\s+(?:a\s+)?(?:nuevo\s+|contactado\s+|visita\s+agendada\s+|negociación\s+|reservado\s+|vendido\s+|perdido)/i,
+          // Sin ^ anchor
+          /(?:actualizar|cambiar|modificar)\s+(?:el\s+)?(?:estado|etapa)\s+(?:de\s+)?(?:un\s+)?(?:lead|cliente|prospecto)/i,
+          /(?:pasar|mover)\s+(?:a\s+)?(?:un\s+)?(?:lead|cliente|prospecto)\s+(?:a|de)\s+/i,
         ],
         action: 'updateLeadStatus',
         paramsExtractor: this.extractUpdateLeadStatusParams
@@ -173,10 +223,14 @@ export class RuleBasedAgent {
       // ==============================
       {
         patterns: [
-          /^(?:actualizar|cambiar|poner)\s+(?:el\s+)?(?:estado\s+de\s+|de\s+)?(?:vehículo|auto|unit)/i,
+          // Con ^ anchor
+          /^(?:actualizar|cambiar|poner|mover)\s+(?:el\s+)?(?:estado\s+de\s+|de\s+)?(?:vehículo|auto|unit)/i,
           /^(?:vehículo|auto|unit)\s+[^,!?]+?\s+(?:está\s+ahora\s+|pasa\s+a\s+|estado\s+a\s+|cambiar\s+a\s+)/i,
           /^(?:marcar\s+como\s+|poner\s+en\s+estado\s+)\s+(?:disponible|vendido|reservado|en\s+preparación)/i,
-          /^(?:0km\s+|nuevo\s+|usado\s+)?(?:vehículo|auto|unit)\s+[^,!?]+/i
+          /^(?:0km\s+|nuevo\s+|usado\s+)?(?:vehículo|auto|unit)\s+[^,!?]+/i,
+          // Sin ^ anchor
+          /(?:actualizar|cambiar|modificar)\s+(?:el\s+)?(?:estado|status)\s+(?:de\s+)?(?:un\s+)?(?:vehículo|auto|unit)/i,
+          /(?:marcar\s+como|poner\s+como)\s+(?:disponible|vendido|reservado|preparación)/i,
         ],
         action: 'updateUnitStatus',
         paramsExtractor: this.extractUpdateUnitStatusParams
@@ -191,7 +245,7 @@ export class RuleBasedAgent {
     for (const { patterns, action, paramsExtractor } of INTENT_PATTERNS) {
       for (const pattern of patterns) {
         if (pattern.test(searchText)) {
-          const params = paramsExtractor(text, original);
+          const params = paramsExtractor(original, original);
           return { action: action as any, params };
         }
       }
@@ -212,11 +266,19 @@ export class RuleBasedAgent {
     action: keyof ReturnType<typeof buildCopilotTools> | null;
     params: Record<string, any>
   } {
-    const normalized = text; // Ya viene normalizado
-
-    // Usamos `normalized` (ya sin acentos) para el matching de keywords
-    const nText = normalized;
+    const nText = text; // Ya viene normalizado (sin acentos)
     const oText = original;
+
+    // Keywords fuertes: si una SOLA de estas aparece, threshold baja de 2 a 1
+    const strongKeywords: Record<string, string[]> = {
+      getDashboardStats: ['estadistica', 'resumen', 'balance', 'kpi', 'indicador', 'reporte'],
+      searchUnits: ['stock', 'inventario', 'catalogo', 'disponible', '0km', 'listado'],
+      searchLeads: ['lead', 'prospecto', 'cliente'],
+      createLead: ['crear', 'agregar', 'registrar', 'alta', 'ingresar', 'cargar'],
+      getDeals: ['operacion', 'factura'],
+      updateLeadStatus: ['actualizar'],
+      updateUnitStatus: ['marcar', 'preparacion'],
+    };
 
     const actions: Array<{
       name: keyof ReturnType<typeof buildCopilotTools>;
@@ -226,23 +288,39 @@ export class RuleBasedAgent {
     }> = [
       {
         name: 'getDashboardStats',
-        keywords: ['estadistica', 'resumen', 'balance', 'venta', 'ganancia', 'facturacion', 'operacion', 'concesionaria', 'mes', 'indicador', 'kpi', 'reporte'],
+        keywords: [
+          'estadistica', 'resumen', 'balance', 'reporte', 'kpi', 'indicador',
+          'cifra', 'numero', 'venta', 'ganancia', 'facturacion', 'operacion',
+          'ingreso', 'concesionaria', 'negocio', 'mes', 'resultado',
+          'vamos', 'estamos', 'anda', 'paso', 'dio', 'dieron', 'tenemos',
+        ],
         weight: 0,
         paramsExtractor: () => ({})
       },
       {
         name: 'searchUnits',
-        keywords: ['auto', 'vehiculo', '0km', 'usado', 'stock', 'inventario', 'disponible', 'marca', 'modelo', 'precio', 'palo', 'luca', 'toyota', 'ford', 'chevrolet', 'honda', 'fiat', 'volkswagen', 'peugeot', 'renault', 'hilux', 'corolla', 'camioneta', 'sedan'],
+        keywords: [
+          'auto', 'vehiculo', 'unidad', '0km', 'usado', 'nuevo',
+          'stock', 'inventario', 'catalogo', 'disponible',
+          'marca', 'modelo', 'precio', 'palo', 'luca',
+          'toyota', 'ford', 'chevrolet', 'honda', 'fiat', 'volkswagen',
+          'peugeot', 'renault', 'nissan', 'kia', 'hyundai', 'citroen',
+          'jeep', 'bmw', 'audi', 'mercedes', 'ram',
+          'hilux', 'corolla', 'ranger', 'amarok', 'camioneta', 'sedan',
+          'ver', 'mostrar', 'mostrame', 'decime', 'dame', 'pasame',
+          'quiero', 'necesito', 'listado', 'lista',
+          'hay', 'tiene', 'tenemos', 'tienen', 'existen',
+        ],
         weight: 0,
-        paramsExtractor: (text: string, origText: string) => {
+        paramsExtractor: (t: string, orig: string) => {
           const params: any = { limit: 15 };
-          const n = ArgSpanishUtils.normalize(text);
+          const n = ArgSpanishUtils.normalize(t);
           if (n.includes('0km') || n.includes('nuevo') || n.includes('disponible')) {
-            const brandMatch = origText.match(/(?:marca\s+)?(toyota|ford|chevrolet|honda|fiat|volkswagen|peugeot|renault|nissan|kia|hyundai|citroen)/i);
+            const brandMatch = orig.match(/(?:marca\s+)?(toyota|ford|chevrolet|honda|fiat|volkswagen|peugeot|renault|nissan|kia|hyundai|citroen)/i);
             if (brandMatch) params.query = brandMatch[1];
           }
           if (n.includes('usado') && !n.includes('0km')) {
-            const brandMatch = origText.match(/(?:marca\s+)?(toyota|ford|chevrolet|honda|fiat|volkswagen|peugeot|renault|nissan|kia|hyundai|citroen)/i);
+            const brandMatch = orig.match(/(?:marca\s+)?(toyota|ford|chevrolet|honda|fiat|volkswagen|peugeot|renault|nissan|kia|hyundai|citroen)/i);
             if (brandMatch) params.query = brandMatch[1];
           }
           return params;
@@ -250,48 +328,90 @@ export class RuleBasedAgent {
       },
       {
         name: 'searchLeads',
-        keywords: ['lead', 'cliente', 'prospecto', 'contacto', 'llamado', 'persona', 'comprador', 'interesado'],
+        keywords: [
+          'lead', 'cliente', 'prospecto', 'contacto',
+          'llamado', 'persona', 'comprador', 'interesado',
+          'nuevo', 'nuevos', 'activos', 'pendiente', 'sin contactar',
+          'ver', 'mostrar', 'mostrame', 'decime', 'dame', 'pasame',
+          'quiero', 'necesito', 'listado', 'lista',
+          'hay', 'tenemos',
+        ],
         weight: 0,
-        paramsExtractor: () => ({ limit: 15 })
+        paramsExtractor: (t: string, orig: string) => {
+          const params: any = { limit: 15 };
+          const n = ArgSpanishUtils.normalize(t);
+          // Detectar estado implícito
+          if (n.includes('nuevo')) params.status = 'NEW';
+          if (n.includes('sin contactar')) params.status = 'NEW';
+          if (n.includes('pendiente')) params.status = 'NEW';
+          // Detectar fecha relativa
+          const dateRange = ArgSpanishUtils.parseRelativeDate(orig);
+          if (dateRange) params.dateRange = dateRange;
+          return params;
+        }
       },
       {
         name: 'createLead',
-        keywords: ['crear', 'agregar', 'nuevo', 'alta', 'registrar', 'cargar'],
+        keywords: [
+          'crear', 'agregar', 'nuevo', 'alta', 'registrar',
+          'cargar', 'ingresar', 'nuevos', 'dar de alta',
+          'cliente', 'lead', 'prospecto', 'contacto',
+        ],
         weight: 0,
-        paramsExtractor: (text: string, origText: string) => this.extractCreateLeadParams(text, origText)
+        paramsExtractor: (t: string, orig: string) => this.extractCreateLeadParams(t, orig)
       },
       {
         name: 'updateLeadStatus',
-        keywords: ['actualizar', 'cambiar', 'mover', 'pasar', 'estado', 'etapa'],
+        keywords: [
+          'actualizar', 'cambiar', 'modificar', 'mover',
+          'pasar', 'estado', 'etapa',
+          'lead', 'cliente', 'prospecto',
+        ],
         weight: 0,
-        paramsExtractor: (text: string, origText: string) => this.extractUpdateLeadStatusParams(text, origText)
+        paramsExtractor: (t: string, orig: string) => this.extractUpdateLeadStatusParams(t, orig)
       },
       {
         name: 'getDeals',
-        keywords: ['operacion', 'venta', 'negocio', 'cerrado', 'entregado', 'factura'],
+        keywords: [
+          'operacion', 'venta', 'ventas', 'negocio',
+          'cerrado', 'entregado', 'factura', 'ingreso',
+          'ganancia', 'facturacion', 'vendimos', 'entregamos',
+          'ver', 'mostrar', 'mostrame', 'dame', 'pasame', 'decime',
+          'reciente', 'listado',
+        ],
         weight: 0,
         paramsExtractor: () => ({ limit: 10 })
       },
       {
         name: 'updateUnitStatus',
-        keywords: ['marcar', 'estado', 'preparacion', 'preparación', 'reservar', 'disponible'],
+        keywords: [
+          'marcar', 'estado', 'preparacion', 'reservar',
+          'disponible', 'vendido', 'vehiculo', 'auto', 'unidad',
+        ],
         weight: 0,
-        paramsExtractor: (text: string, origText: string) => this.extractUpdateUnitStatusParams(text, origText)
+        paramsExtractor: (t: string, orig: string) => this.extractUpdateUnitStatusParams(t, orig)
       }
     ];
 
-    // Calcular score para cada acción basado en keywords
+    // Calcular score para cada accion basado en keywords
     for (const action of actions) {
       action.weight = action.keywords.filter(kw => nText.includes(kw)).length;
     }
 
-    // Tomar la acción con mayor score (mínimo 2 keywords para evitar falsos positivos)
+    // Ordenar por score descendente
     const sorted = [...actions].sort((a, b) => b.weight - a.weight);
     const best = sorted[0];
 
-    if (best && best.weight >= 2) {
-      const params = best.paramsExtractor(nText, oText);
-      return { action: best.name, params };
+    if (best && best.weight > 0) {
+      // Si tiene strong keywords -> threshold 1, sino threshold 2
+      const bestStrong = strongKeywords[best.name] || [];
+      const hasStrongMatch = bestStrong.some(kw => nText.includes(kw));
+      const threshold = hasStrongMatch ? 1 : 2;
+
+      if (best.weight >= threshold) {
+        const params = best.paramsExtractor(nText, oText);
+        return { action: best.name, params };
+      }
     }
 
     return { action: null, params: {} };
@@ -381,23 +501,31 @@ export class RuleBasedAgent {
 
   private extractCreateLeadParams(text: string, original: string): any {
     const params: any = {};
+    // Normalizar texto para que patrones funcionen con acentos y sin acentos
+    const t = ArgSpanishUtils.normalize(text);
 
     // Nombre (maneja "llamado", "nombre", "cliente se llama")
-    const nameMatch = text.match(/(?:llamado|nombre\s+|cliente\s+(?:se\s+)?llama\s+)\s+([^,.!?]+?)(?:\s+(?:con|teléfono|email|de|$))/i);
-    if (nameMatch) params.name = nameMatch[1].trim();
+    // Patrón sin acentos para que funcione con texto normalizado
+    const nameMatch = t.match(/(?:llamado|nombre\s+|cliente\s+(?:se\s+)?llama\s+)\s+([^,.!?]+?)(?:\s+(?:con|telefono|email|de|$)|$)/i);
+    if (nameMatch) {
+      // Preservar capitalización del texto original
+      const originalNameMatch = original.match(/(?:llamado|nombre\s+|cliente\s+(?:se\s+)?llama\s+)\s+([^,.!?]+?)(?:\s+(?:con|tel[eé]fono|email|de|$)|$)/i);
+      params.name = originalNameMatch ? originalNameMatch[1].trim() : nameMatch[1].trim();
+    }
 
     // Teléfono (formato argentino flexible)
-    const phoneMatch = text.match(/(?:teléfono|tel|celular|contacto)\s*:?\s*([\d\s\-]+)/i);
+    const phoneMatch = t.match(/(?:telefono|tel|celular|contacto)\s*:?\s*([\d\s\-]+)/i);
     if (phoneMatch) {
       const cleanPhone = phoneMatch[1].replace(/[\s\-]/g, '');
       if (/^\d{8,}$/.test(cleanPhone)) params.phone = cleanPhone;
     }
 
     // Email
-    const emailMatch = text.match(/(?:email|e-mail|correo)\s*:?\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i);
+    const emailMatch = t.match(/(?:email|e-mail|correo)\s*:?\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i);
     if (emailMatch) params.email = emailMatch[1];
 
     // Fuente (maneja jerga argentina)
+    // Usamos `original` (texto con acentos) para que keys como "entró caminando" funcionen
     const sourceMap: Record<string, string> = {
       instagram: 'INSTAGRAM',
       facebook: 'FACEBOOK_MARKETPLACE',
@@ -412,7 +540,9 @@ export class RuleBasedAgent {
       'wasap': 'WHATSAPP'
     };
     for (const [key, value] of Object.entries(sourceMap)) {
-      if (text.includes(key)) {
+      // Intentar con ambos: original (acentos) y normalizado (sin acentos)
+      const normalizedKey = ArgSpanishUtils.normalize(key);
+      if (original.includes(key) || t.includes(normalizedKey)) {
         params.source = value;
         break;
       }
@@ -448,11 +578,15 @@ export class RuleBasedAgent {
 
   private extractUpdateUnitStatusParams(text: string, original: string): any {
     const params: any = {};
+    // Normalizar texto para que patrones funcionen con acentos y sin acentos
+    const t = ArgSpanishUtils.normalize(text);
 
     // Extraer título del vehículo (maneja "vehículo Corolla", "auto Hilux")
-    const unitNameMatch = text.match(/(?:vehículo|auto|unit)\s+(?:llamado\s+|de\s+título\s+|modelo\s+)\s+([^,.!?]+?)(?:\s+(?:está\s+ahora\s+pasa\s+a\s+|estado\s+a\s+|actualiza\s+con\s+))/i);
+    const unitNameMatch = t.match(/(?:vehiculo|auto|unit)\s+(?:llamado|de\s+titulo|modelo)\s+([^,.!?]+?)(?:\s+(?:esta\s+ahora\s+pasa\s+a|estado\s+a|actualiza\s+con))/i);
     if (unitNameMatch) {
-      params.unitIdLookupTitle = unitNameMatch[1].trim();
+      // Preservar capitalización del original
+      const originalMatch = original.match(/(?:vehículo|auto|unit)\s+(?:llamado\s+|de\s+título\s+|modelo\s+)\s+([^,.!?]+?)(?:\s+(?:está|estado|pasa|actualiza))/i);
+      params.unitIdLookupTitle = originalMatch ? originalMatch[1].trim() : unitNameMatch[1].trim();
     }
 
     // Nuevo estado (maneja jerga argentina)

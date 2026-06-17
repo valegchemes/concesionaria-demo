@@ -2,10 +2,11 @@
 // API route para el agente interno basado en reglas.
 // 
 // AI SDK v6 espera SSE (Server-Sent Events) con este formato:
+//   data: {"type":"start-step"}\n\n
 //   data: {"type":"text-start","id":"..."}\n\n
 //   data: {"type":"text-delta","id":"...","delta":"..."}\n\n
 //   data: {"type":"text-end","id":"..."}\n\n
-//   data: {"type":"finish","finishReason":{...},"usage":{...}}\n\n
+//   data: {"type":"finish-step"}\n\n
 //   data: [DONE]\n\n
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
   const textId = `text_${Date.now()}`;
 
   const chunks = [
+    `data: ${JSON.stringify({ type: 'start-step' })}\n\n`,
     `data: ${JSON.stringify({ type: 'text-start', id: textId })}\n\n`,
     `data: ${JSON.stringify({
       type: 'text-delta',
@@ -64,11 +66,7 @@ export async function POST(req: NextRequest) {
       delta: responseText,
     })}\n\n`,
     `data: ${JSON.stringify({ type: 'text-end', id: textId })}\n\n`,
-    `data: ${JSON.stringify({
-      type: 'finish',
-      finishReason: { type: 'stop' },
-      usage: { promptTokens: 0, completionTokens: 0 },
-    })}\n\n`,
+    `data: ${JSON.stringify({ type: 'finish-step' })}\n\n`,
     'data: [DONE]\n\n',
   ];
 
