@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Usamos el nuevo agente basado en reglas (100% interno, sin APIs externas)
-  const response = await RuleBasedAgent.handleRequest(req, companyId, userId);
+  const response = await RuleBasedAgent.handleRequest(messages, companyId, userId);
 
   return response;
 }

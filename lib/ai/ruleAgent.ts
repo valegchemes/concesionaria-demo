@@ -492,10 +492,8 @@ export class RuleBasedAgent {
    * Método estático para usar en route.ts.
    * Reemplaza llamada a streamText() con este agente basado en reglas.
    */
-  static async handleRequest(req: NextRequest, companyId: string, userId: string): Promise<NextResponse> {
+  static async handleRequest(messages: any[], companyId: string, userId: string): Promise<NextResponse> {
     const agent = new RuleBasedAgent(companyId, userId);
-    const body = await req.json();
-    const { messages } = body;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return new NextResponse(JSON.stringify({ error: 'Formato de mensaje inválido' }), { status: 400 });
