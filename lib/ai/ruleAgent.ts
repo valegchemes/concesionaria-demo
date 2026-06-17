@@ -509,6 +509,6 @@ export class RuleBasedAgent {
     }
 
     const responseText = await agent.processMessage(lastUserMessage);
-    return new NextResponse(JSON.stringify({ response: responseText }), { status: 200 });
+    return new NextResponse(responseText, { status: 200 });
   }
 }

@@ -123,7 +123,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [inputText, setInputText] = React.useState('')
 
-  const { messages, sendMessage, setMessages, status, error, regenerate } = useChat()
+  const { messages, append, setMessages, status, error, reload: regenerate } = useChat()
 
   const isLoading = status === 'submitted' || status === 'streaming'
 
@@ -142,7 +142,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
   function handleSend() {
     const text = inputText.trim()
     if (!text || isLoading) return
-    sendMessage({ text })
+    append({ role: 'user', content: text })
     setInputText('')
     // Reset altura del textarea
     if (inputRef.current) {
@@ -158,7 +158,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
   }
 
   function sendSuggestion(text: string) {
-    sendMessage({ text })
+    append({ role: 'user', content: text })
   }
 
   return (
