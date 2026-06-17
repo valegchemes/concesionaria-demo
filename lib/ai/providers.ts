@@ -36,9 +36,9 @@ const anthropicProvider = createAnthropic({
 
 // ─── Mapa de modelos ─────────────────────────────────────────────────────────
 const MODEL_MAP = {
-  // Nota: Usamos 8b en lugar de 70b porque el modelo 70b en NVIDIA NIM tiene un bug 
-  // que impide el correcto streaming de tool-calls con el Vercel AI SDK.
-  nvidia: nvidiaProvider.chat('meta/llama-3.1-8b-instruct'),
+  // Nota: Cambiamos a 70b porque el modelo 8b tiene dificultades para entender las
+  // instrucciones complejas y usar las herramientas correctamente en este flujo.
+  nvidia: nvidiaProvider.chat('meta/llama-3.1-70b-instruct'),
   openai: openaiProvider.chat('gpt-4o'),
   anthropic: anthropicProvider('claude-3-5-sonnet-20241022'), // Anthropic doesn't have .chat property on its root, it is standard
 } as const
