@@ -128,6 +128,7 @@ export function buildCopilotTools(companyId: string, userId: string) {
       description: 'Estadísticas: autos disponibles, clientes activos, ventas del mes.',
       parameters: z.object({}),
       execute: async () => {
+        console.log('[TOOL EXECUTION] getDashboardStats called!')
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
         const [disponibles, vendidos, clientesActivos, nuevosSinContactar, ventasMes] = await Promise.all([
           prisma.unit.count({ where: { companyId, status: 'AVAILABLE', isActive: true } }),

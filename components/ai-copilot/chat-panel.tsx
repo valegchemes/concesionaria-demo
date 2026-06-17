@@ -32,6 +32,7 @@ const QUICK_SUGGESTIONS = [
 
 // ─── Renderer de un mensaje ───────────────────────────────────────────────────
 function MessageBubble({ msg }: { msg: any }) {
+  console.log('[MessageBubble]', msg)
   // Soporte universal para múltiples versiones del SDK de Vercel AI
   // Texto: puede venir en content o en parts
   let text = msg.content || ''
