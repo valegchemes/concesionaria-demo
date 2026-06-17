@@ -1,4 +1,6 @@
 // app/api/chat/route.ts
+// API route para el agente interno basado en reglas.
+// Devuelve la respuesta en el formato "data stream" que AI SDK v6 espera.
 import { NextRequest } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options';
@@ -26,8 +28,31 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: 'Cuerpo de la solicitud inválido' }), { status: 400 });
   }
 
-  // Usamos el nuevo agente basado en reglas (100% interno, sin APIs externas)
-  const response = await RuleBasedAgent.handleRequest(messages, companyId, userId);
+  // 3. Procesar el mensaje con el RuleBasedAgent
+  let responseText: string;
+  try {
+    responseText = await RuleBasedAgent.handleRequest(messages, companyId, userId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Error interno al procesar el mensaje';
+    return new Response(JSON.stringify({ error: message }), { status: 400 });
+  }
 
-  return response;
+  // 4. AI SDK v6 espera un stream en formato "data stream protocol".
+  // Para texto plano, el formato es: 0:"texto"\n
+  // Creamos un ReadableStream que emite el texto en el formato correcto.
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(`0:${JSON.stringify(responseText)}\n`));
+      controller.close();
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain',
+      'Connection': 'keep-alive',
+    },
+  });
 }

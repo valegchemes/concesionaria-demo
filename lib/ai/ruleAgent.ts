@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { buildCopilotTools } from '@/lib/ai/tools';
 import { ArgSpanishUtils } from './argSpanishUtils';
 import { ResponseTemplates } from './responseTemplates';
-import { NextRequest, NextResponse } from 'next/server';
+
 
 export class RuleBasedAgent {
   private companyId: string;
@@ -486,17 +486,18 @@ export class RuleBasedAgent {
   }
 
   // ==============================
-  // MÉTODO DE INTEGRACIÓN EN route.ts (UN SOLO CAMBIO)
+  // MÉTODO DE INTEGRACIÓN EN route.ts
   // ==============================
   /**
    * Método estático para usar en route.ts.
-   * Reemplaza llamada a streamText() con este agente basado en reglas.
+   * Procesa los mensajes y devuelve el texto de respuesta.
+   * El streaming/formateo del stream lo maneja route.ts.
    */
-  static async handleRequest(messages: any[], companyId: string, userId: string): Promise<NextResponse> {
+  static async handleRequest(messages: any[], companyId: string, userId: string): Promise<string> {
     const agent = new RuleBasedAgent(companyId, userId);
 
     if (!Array.isArray(messages) || messages.length === 0) {
-      return new NextResponse(JSON.stringify({ error: 'Formato de mensaje inválido' }), { status: 400 });
+      throw new Error('Formato de mensaje inválido');
     }
 
     // Tomamos el último mensaje del usuario, soportando múltiples formatos
@@ -509,15 +510,14 @@ export class RuleBasedAgent {
       lastUserMessage = lastUserMessageObj.content.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
     } else if (lastUserMessageObj?.parts) {
       lastUserMessage = lastUserMessageObj.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
-    } else if (lastUserMessageObj?.text) {
+    } else if (typeof lastUserMessageObj?.text === 'string') {
       lastUserMessage = lastUserMessageObj.text;
     }
 
     if (!lastUserMessage.trim()) {
-      return new NextResponse(JSON.stringify({ error: 'Mensaje vacío' }), { status: 400 });
+      throw new Error('Mensaje vacío');
     }
 
-    const responseText = await agent.processMessage(lastUserMessage);
-    return new NextResponse(responseText, { status: 200 });
+    return await agent.processMessage(lastUserMessage);
   }
 }

@@ -142,7 +142,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
   function handleSend() {
     const text = inputText.trim()
     if (!text || isLoading) return
-    sendMessage({ text })
+    sendMessage({ role: 'user', parts: [{ type: 'text' as const, text }] })
     setInputText('')
     // Reset altura del textarea
     if (inputRef.current) {
@@ -158,7 +158,7 @@ export function CopilotChatPanel({ isOpen, onClose }: CopilotChatPanelProps) {
   }
 
   function sendSuggestion(text: string) {
-    sendMessage({ text })
+    sendMessage({ role: 'user', parts: [{ type: 'text' as const, text }] })
   }
 
   return (
