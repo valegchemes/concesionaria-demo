@@ -8,11 +8,12 @@
 
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
+import { tool } from 'ai'
 
 // ─── Builder unificado ────────────────────────────────────────────────────────
 export function buildCopilotTools(companyId: string, userId: string) {
   return {
-    searchUnits: {
+    searchUnits: tool({
       description: 'Busca vehículos en el inventario. Filtra por tipo, estado, precio o texto.',
       parameters: z.object({
         query: z.string().optional().describe('Texto libre para buscar en el título del vehículo'),
@@ -49,9 +50,9 @@ export function buildCopilotTools(companyId: string, userId: string) {
           })),
         }
       },
-    },
+    }),
 
-    searchLeads: {
+    searchLeads: tool({
       description: 'Busca clientes/prospectos por nombre, teléfono, email o estado.',
       parameters: z.object({
         query: z.string().optional().describe('Nombre, teléfono o email'),
@@ -73,9 +74,9 @@ export function buildCopilotTools(companyId: string, userId: string) {
         if (!leads.length) return { found: 0, leads: [], message: 'No se encontraron clientes.' }
         return { found: leads.length, leads: leads.map((l) => ({ ...l, createdAt: l.createdAt.toISOString() })) }
       },
-    },
+    }),
 
-    createLead: {
+    createLead: tool({
       description: 'Crea un nuevo cliente/prospecto en el CRM.',
       parameters: z.object({
         name: z.string().min(2),
@@ -91,9 +92,9 @@ export function buildCopilotTools(companyId: string, userId: string) {
         })
         return { success: true, message: `✅ Cliente "${args.name}" creado.`, lead, link: `/app/leads/${lead.id}` }
       },
-    },
+    }),
 
-    updateLeadStatus: {
+    updateLeadStatus: tool({
       description: 'Actualiza el estado de un cliente existente.',
       parameters: z.object({
         leadId: z.string(),
@@ -107,9 +108,9 @@ export function buildCopilotTools(companyId: string, userId: string) {
         await prisma.lead.update({ where: { id: leadId }, data: { status, ...(notes ? { notes } : {}) } })
         return { success: true, message: `✅ Estado de "${existing.name}" actualizado a "${status}".`, link: `/app/leads/${leadId}` }
       },
-    },
+    }),
 
-    updateUnitStatus: {
+    updateUnitStatus: tool({
       description: 'Cambia el estado de un vehículo en el inventario.',
       parameters: z.object({
         unitId: z.string(),
@@ -122,9 +123,9 @@ export function buildCopilotTools(companyId: string, userId: string) {
         await prisma.unit.update({ where: { id: unitId }, data: { status } })
         return { success: true, message: `✅ Estado de "${existing.title}" actualizado a "${status}".`, link: `/app/units/${unitId}` }
       },
-    },
+    }),
 
-    getDashboardStats: {
+    getDashboardStats: tool({
       description: 'Estadísticas: autos disponibles, clientes activos, ventas del mes.',
       parameters: z.object({}),
       execute: async () => {
@@ -139,9 +140,9 @@ export function buildCopilotTools(companyId: string, userId: string) {
         ])
         return { inventario: { disponibles, vendidos }, clientes: { activos: clientesActivos, nuevos_sin_contactar: nuevosSinContactar }, operaciones: { este_mes: ventasMes } }
       },
-    },
+    }),
 
-    getDeals: {
+    getDeals: tool({
       description: 'Obtiene operaciones/ventas recientes con detalles de cliente y vehículo.',
       parameters: z.object({
         status: z.enum(['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT', 'DELIVERED', 'CANCELED']).optional(),
@@ -171,6 +172,6 @@ export function buildCopilotTools(companyId: string, userId: string) {
           })),
         }
       },
-    },
+    }),
   }
 }
