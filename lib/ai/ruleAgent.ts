@@ -499,10 +499,19 @@ export class RuleBasedAgent {
       return new NextResponse(JSON.stringify({ error: 'Formato de mensaje inválido' }), { status: 400 });
     }
 
-    // Tomamos el último mensaje del usuario (asumiendo formato de chat estándar)
-    const lastUserMessage = messages
-      .filter(m => m.role === 'user')
-      .pop()?.content ?? '';
+    // Tomamos el último mensaje del usuario, soportando múltiples formatos
+    const lastUserMessageObj = messages.filter(m => m.role === 'user' || !m.role).pop() || messages[messages.length - 1];
+    
+    let lastUserMessage = '';
+    if (typeof lastUserMessageObj?.content === 'string') {
+      lastUserMessage = lastUserMessageObj.content;
+    } else if (Array.isArray(lastUserMessageObj?.content)) {
+      lastUserMessage = lastUserMessageObj.content.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+    } else if (lastUserMessageObj?.parts) {
+      lastUserMessage = lastUserMessageObj.parts.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('');
+    } else if (lastUserMessageObj?.text) {
+      lastUserMessage = lastUserMessageObj.text;
+    }
 
     if (!lastUserMessage.trim()) {
       return new NextResponse(JSON.stringify({ error: 'Mensaje vacío' }), { status: 400 });
