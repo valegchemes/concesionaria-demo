@@ -23,7 +23,7 @@ export function buildCopilotTools(companyId: string, userId: string) {
         minPriceArs: z.number().optional(),
         limit: z.number().int().min(1).max(20).default(5),
       }),
-      execute: async (args: any) => {
+      execute: async (args) => {
         const { query, status, type, maxPriceArs, minPriceArs, limit } = args
         const units = await prisma.unit.findMany({
           where: {
@@ -59,7 +59,7 @@ export function buildCopilotTools(companyId: string, userId: string) {
         status: z.enum(['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER', 'RESERVED', 'SOLD', 'LOST']).optional(),
         limit: z.number().int().min(1).max(20).default(5),
       }),
-      execute: async (args: any) => {
+      execute: async (args) => {
         const { query, status, limit } = args
         const leads = await prisma.lead.findMany({
           where: {
@@ -85,7 +85,7 @@ export function buildCopilotTools(companyId: string, userId: string) {
         source: z.enum(['INSTAGRAM', 'FACEBOOK_MARKETPLACE', 'REFERRAL', 'WALK_IN', 'PHONE', 'WEBSITE', 'WHATSAPP', 'OTHER']).default('OTHER'),
         notes: z.string().optional(),
       }),
-      execute: async (args: any) => {
+      execute: async (args) => {
         const lead = await prisma.lead.create({
           data: { companyId, createdById: userId, ...args, status: 'NEW' },
           select: { id: true, name: true, phone: true, status: true },
@@ -101,7 +101,7 @@ export function buildCopilotTools(companyId: string, userId: string) {
         status: z.enum(['NEW', 'CONTACTED', 'VISIT_SCHEDULED', 'OFFER', 'RESERVED', 'SOLD', 'LOST']),
         notes: z.string().optional(),
       }),
-      execute: async (args: any) => {
+      execute: async (args) => {
         const { leadId, status, notes } = args
         const existing = await prisma.lead.findFirst({ where: { id: leadId, companyId }, select: { name: true } })
         if (!existing) return { success: false, message: 'Cliente no encontrado.' }
@@ -116,7 +116,7 @@ export function buildCopilotTools(companyId: string, userId: string) {
         unitId: z.string(),
         status: z.enum(['AVAILABLE', 'IN_PREP', 'RESERVED', 'SOLD']),
       }),
-      execute: async (args: any) => {
+      execute: async (args) => {
         const { unitId, status } = args
         const existing = await prisma.unit.findFirst({ where: { id: unitId, companyId }, select: { title: true } })
         if (!existing) return { success: false, message: 'Vehículo no encontrado.' }
@@ -148,7 +148,7 @@ export function buildCopilotTools(companyId: string, userId: string) {
         status: z.enum(['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT', 'DELIVERED', 'CANCELED']).optional(),
         limit: z.number().int().min(1).max(10).default(5),
       }),
-      execute: async (args: any) => {
+      execute: async (args) => {
         const deals = await prisma.deal.findMany({
           where: { companyId, ...(args.status ? { status: args.status } : {}) },
           orderBy: { createdAt: 'desc' },
