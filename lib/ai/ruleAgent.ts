@@ -11,6 +11,7 @@ import {
 } from '@/lib/ai/tools';
 import { ArgSpanishUtils } from './argSpanishUtils';
 import { ResponseTemplates } from './responseTemplates';
+import { NextRequest, Response } from 'next/server';
 
 export class RuleBasedAgent {
   private companyId: string;
