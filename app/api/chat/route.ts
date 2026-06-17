@@ -67,11 +67,26 @@ export async function POST(req: NextRequest) {
   // 4. Construir las herramientas con el contexto del usuario (tenant-safe)
   const tools = buildCopilotTools(companyId, userId)
 
+  // Convertir los mensajes del cliente al formato del modelo
+  let coreMessages = await convertToModelMessages(messages as any)
+
+  // FIX: NVIDIA NIM (LLaMA 3.1) rechaza los arrays multimodales en el role 'user'.
+  // Necesitamos aplanar el 'content' a un simple string si es un array de partes de texto.
+  coreMessages = coreMessages.map(msg => {
+    if (msg.role === 'user' && Array.isArray(msg.content)) {
+      return {
+        ...msg,
+        content: msg.content.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\\n')
+      }
+    }
+    return msg
+  })
+
   // 5. Stream de texto con function calling (AI SDK v6)
   const result = streamText({
     model,
     system: SYSTEM_PROMPT,
-    messages: await convertToModelMessages(messages as any),
+    messages: coreMessages as any,
     tools: tools as any,
     temperature: 0.3,
     onError: ({ error }) => {
@@ -79,6 +94,6 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  // v6: toUIMessageStreamResponse reemplaza toDataStreamResponse
+  // Usamos el formato soportado por AI SDK v6
   return result.toUIMessageStreamResponse()
 }
