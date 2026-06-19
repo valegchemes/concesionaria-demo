@@ -19,11 +19,28 @@ export const GET = withTenantHandler(withErrorHandling(
 
     const notes = await prisma.promissoryNote.findMany({
       where: { unitId: id, companyId: user.companyId },
-      include: {
+      select: {
+        id: true,
+        amount: true,
+        currency: true,
+        issueDate: true,
+        dueDate: true,
+        notes: true,
+        createdAt: true,
         lead: { select: { id: true, name: true } },
         installments: {
+          select: {
+            id: true,
+            installmentNumber: true,
+            amount: true,
+            dueDate: true,
+            status: true,
+            payments: {
+              select: { id: true, amount: true, date: true, method: true },
+              orderBy: { date: 'desc' },
+            },
+          },
           orderBy: { installmentNumber: 'asc' },
-          include: { payments: { orderBy: { date: 'desc' } } },
         },
       },
       orderBy: { createdAt: 'desc' },

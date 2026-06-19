@@ -1,0 +1,52 @@
+
+> consencionaria-app@0.2.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.20.160.1:3000
+- Environments: .env.local, .env
+✓ Ready in 781ms
+[@sentry/nextjs] DEPRECATION WARNING: disableLogger is deprecated and will be removed in a future version. Use webpack.treeshake.removeDebugLogging instead. (Not supported with Turbopack.)
+[@sentry/nextjs] DEPRECATION WARNING: automaticVercelMonitors is deprecated and will be removed in a future version. Use webpack.automaticVercelMonitors instead. (Not supported with Turbopack.)
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+- Experiments (use with caution):
+  · clientTraceMetadata
+  · serverActions
+
+[Middleware] Ejecutándose para: /
+✅ Environment validation passed
+ GET / 200 in 1100ms (next.js: 248ms, proxy.ts: 82ms, application-code: 770ms)
+[Middleware] Ejecutándose para: /app
+[Proxy] Redirigiendo a login - sesión no válida {
+  path: '/app',
+  method: 'GET',
+  ip: '::1',
+  userAgent: 'curl/8.19.0',
+  timestamp: '2026-06-19T17:46:13.475Z',
+  userId: undefined,
+  companyId: undefined
+}
+[Middleware] Ejecutándose para: /
+ HEAD / 200 in 106ms (next.js: 5ms, proxy.ts: 5ms, application-code: 96ms)
+○ Compiling middleware ...
+
+<--- Last few GCs --->
+
+[29688:000001C04651C000]  2968567 ms: Scavenge 16105.6 (16148.8) -> 16090.1 (16221.0) MB, pooled: 0 MB, 22.57 / 0.00 ms  (average mu = 0.253, current mu = 0.221) allocation failure; 
+[29688:000001C04651C000]  2974469 ms: Mark-Compact (reduce) 16091.2 (16221.3) -> 16026.2 (16048.9) MB, pooled: 0 MB, 5789.55 / 96.69 ms  (+ 68.4 ms in 14 steps since start of marking, biggest step 5.4 ms, walltime since start of marking 5903 ms) (average 
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 00007FF68652C36F node::OnFatalError+1343
+ 2: 00007FF687174D77 v8::Function::NewInstance+423
+ 3: 00007FF686F75467 v8::base::AddressSpaceReservation::AddressSpaceReservation+322071
+ 4: 00007FF686F79174 v8::base::AddressSpaceReservation::AddressSpaceReservation+337700
+ 5: 00007FF686F8810C v8::internal::StrongRootAllocatorBase::deallocate_impl+16604
+ 6: 00007FF686F8794B v8::internal::StrongRootAllocatorBase::deallocate_impl+14619
+ 7: 00007FF68840DAED v8::base::UnsignedDivisionByConstant<unsigned __int64>+2791421
+ 8: 00007FF686F72F30 v8::base::AddressSpaceReservation::AddressSpaceReservation+312544
+ 9: 00007FF686FF6C09 v8::Unlocker::~Unlocker+9273
+10: 00007FF686B6CA18 v8::String::Utf8Value::~Utf8Value+142680
+11: 000001C07EC3733A 
+[?25h

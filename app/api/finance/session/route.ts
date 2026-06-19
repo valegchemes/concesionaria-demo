@@ -16,9 +16,27 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
     // Buscar sesión abierta
     let session = await prisma.cashSession.findFirst({
       where: { companyId, status: 'OPEN' },
-      include: {
-        transactions: true,
-        user: { select: { name: true } }
+      select: {
+        id: true,
+        status: true,
+        openedAt: true,
+        closedAt: true,
+        openingBalance: true,
+        closingBalance: true,
+        actualBalance: true,
+        notes: true,
+        userId: true,
+        transactions: {
+          select: {
+            id: true,
+            createdAt: true,
+            concept: true,
+            type: true,
+            amount: true,
+            currency: true,
+          },
+        },
+        user: { select: { name: true } },
       }
     })
 
@@ -28,9 +46,27 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
       session = await prisma.cashSession.findFirst({
         where: { companyId, status: 'CLOSED' },
         orderBy: { closedAt: 'desc' },
-        include: {
-          transactions: true,
-          user: { select: { name: true } }
+        select: {
+          id: true,
+          status: true,
+          openedAt: true,
+          closedAt: true,
+          openingBalance: true,
+          closingBalance: true,
+          actualBalance: true,
+          notes: true,
+          userId: true,
+          transactions: {
+            select: {
+              id: true,
+              createdAt: true,
+              concept: true,
+              type: true,
+              amount: true,
+              currency: true,
+            },
+          },
+          user: { select: { name: true } },
         }
       })
       isHistory = true
@@ -49,9 +85,14 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
         deal: { companyId },
         createdAt: { gte: openedAt, lte: closedAt }
       },
-      include: {
+      select: {
+        id: true,
+        createdAt: true,
+        amount: true,
+        currency: true,
+        method: true,
         deal: {
-          include: {
+          select: {
             unit: { select: { title: true } },
             lead: { select: { name: true } }
           }
@@ -67,11 +108,17 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
         },
         createdAt: { gte: openedAt, lte: closedAt }
       },
-      include: {
+      select: {
+        id: true,
+        createdAt: true,
+        amount: true,
+        method: true,
         installment: {
-          include: {
+          select: {
+            installmentNumber: true,
             promissoryNote: {
-              include: {
+              select: {
+                currency: true,
                 unit: { select: { title: true } },
                 lead: { select: { name: true } }
               }
@@ -87,7 +134,16 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
         companyId,
         isActive: true,
         createdAt: { gte: openedAt, lte: closedAt }
-      }
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        category: true,
+        description: true,
+        amountArs: true,
+        amountUsd: true,
+      },
+      take: 500
     })
 
     // 4. Obtener gastos de unidades (UnitCostItem)
@@ -96,9 +152,15 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
         unit: { companyId },
         date: { gte: openedAt, lte: closedAt }
       },
-      include: {
+      select: {
+        id: true,
+        date: true,
+        concept: true,
+        amountArs: true,
+        amountUsd: true,
         unit: { select: { title: true } }
-      }
+      },
+      take: 500
     })
 
     // Integrar movimientos unificados

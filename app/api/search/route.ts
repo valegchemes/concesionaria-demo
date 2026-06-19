@@ -90,6 +90,7 @@ export const GET = withTenantHandler(withErrorHandling(async (request: NextReque
         ],
       },
       take: 5,
+      select: { id: true },
       include: {
         lead: { select: { name: true } },
         unit: { select: { title: true } },

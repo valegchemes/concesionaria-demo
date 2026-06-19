@@ -18,7 +18,9 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '50', 10)))
+    const skip = (page - 1) * limit
     const type = searchParams.get('type')
 
     const where: Prisma.DigitalDocumentWhereInput = { companyId: session.user.companyId }
@@ -29,17 +31,27 @@ export async function GET(req: NextRequest) {
       where.type = type as ValidDocType
     }
 
-    const docs = await prisma.digitalDocument.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      include: {
-        lead: { select: { id: true, name: true, phone: true } },
-        unit: { select: { id: true, title: true } },
-      },
-    })
+    const [total, docs] = await Promise.all([
+      prisma.digitalDocument.count({ where }),
+      prisma.digitalDocument.findMany({
+        where,
+        select: {
+          id: true,
+          type: true,
+          referenceNumber: true,
+          amount: true,
+          status: true,
+          createdAt: true,
+          lead: { select: { id: true, name: true, phone: true } },
+          unit: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+    ])
 
-    return NextResponse.json({ data: docs })
+    return NextResponse.json({ data: docs, total, page, limit })
   } catch (error) {
     log.error({ error: error instanceof Error ? error.message : String(error) }, 'Error fetching documents')
     return NextResponse.json({ error: 'Error interno' }, { status: 500 })

@@ -45,31 +45,42 @@ export class DealService {
       'Creating deal'
     )
 
-    // Validate lead exists
-    const lead = await prisma.lead.findFirst({
-      where: { id: command.leadId, companyId: command.companyId, isActive: true },
-    })
+    // Validate lead, unit, seller exist and check for duplicate deals — en paralelo
+    const [lead, unit, seller, existingDeal] = await Promise.all([
+      prisma.lead.findFirst({
+        where: { id: command.leadId, companyId: command.companyId, isActive: true },
+      }),
+      prisma.unit.findFirst({
+        where: { id: command.unitId, companyId: command.companyId, isActive: true },
+      }),
+      prisma.user.findFirst({
+        where: { id: command.sellerId, companyId: command.companyId },
+      }),
+      prisma.deal.findFirst({
+        where: {
+          unitId: command.unitId,
+          companyId: command.companyId,
+          status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] },
+        },
+      }),
+    ])
 
     if (!lead) {
       throw new NotFoundError('Lead', command.leadId)
     }
 
-    // Validate unit exists
-    const unit = await prisma.unit.findFirst({
-      where: { id: command.unitId, companyId: command.companyId, isActive: true },
-    })
-
     if (!unit) {
       throw new NotFoundError('Unit', command.unitId)
     }
 
-    // Validate seller exists
-    const seller = await prisma.user.findFirst({
-      where: { id: command.sellerId, companyId: command.companyId },
-    })
-
     if (!seller) {
       throw new NotFoundError('User', command.sellerId)
+    }
+
+    if (existingDeal) {
+      throw new ConflictError(
+        'Unit already has an active deal. Please close or complete the existing deal first.'
+      )
     }
 
     if (!hasPermission(requestingUser.permissions, 'deals', 'manage_all') && command.sellerId !== requestingUser.id) {
@@ -79,21 +90,6 @@ export class DealService {
     // Validate amount
     if (command.finalPrice <= 0) {
       throw new ValidationError('Final price must be greater than 0')
-    }
-
-    // Block parallel active deals for the same unit
-    const existingDeal = await prisma.deal.findFirst({
-      where: {
-        unitId: command.unitId,
-        companyId: command.companyId,
-        status: { in: ['NEGOTIATION', 'RESERVED', 'APPROVED', 'IN_PAYMENT'] },
-      },
-    })
-
-    if (existingDeal) {
-      throw new ConflictError(
-        'Unit already has an active deal. Please close or complete the existing deal first.'
-      )
     }
 
     // Create deal and trade-in inside a transaction
@@ -110,11 +106,26 @@ export class DealService {
           notes: command.notes?.trim(),
           companyId: command.companyId,
         },
-        include: {
+        select: {
+          id: true,
+          status: true,
+          finalPrice: true,
+          finalPriceCurrency: true,
+          exchangeRate: true,
+          commissionValue: true,
+          commissionType: true,
+          depositAmount: true,
+          depositDate: true,
+          depositMethod: true,
+          notes: true,
+          createdAt: true,
+          leadId: true,
+          unitId: true,
+          sellerId: true,
           lead: { select: { id: true, name: true, phone: true } },
           unit: { select: { id: true, title: true, type: true } },
-          payments: true,
-          closingCosts: true,
+          payments: { select: { id: true, amount: true, method: true, notes: true, receivedAt: true, createdAt: true } },
+          closingCosts: { select: { id: true, concept: true, amountArs: true, amountUsd: true } },
           seller: { select: { id: true, name: true, email: true } },
         },
       })
@@ -208,20 +219,42 @@ export class DealService {
 
     const deal = await prisma.deal.findFirst({
       where: { id, companyId },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        finalPrice: true,
+        finalPriceCurrency: true,
+        exchangeRate: true,
+        commissionType: true,
+        commissionValue: true,
+        depositAmount: true,
+        depositDate: true,
+        depositMethod: true,
+        notes: true,
+        closedAt: true,
+        createdAt: true,
+        companyId: true,
+        leadId: true,
+        unitId: true,
+        sellerId: true,
         lead: { 
-          include: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
             tasks: {
               where: { isCompleted: false },
               orderBy: { dueDate: 'asc' },
-              take: 5
+              take: 5,
+              select: { id: true, title: true, dueDate: true, isCompleted: true },
             }
           }
         },
         unit: { select: { id: true, title: true, type: true } },
         payments: { select: { id: true, amount: true, method: true, notes: true, receivedAt: true, createdAt: true }, orderBy: { receivedAt: 'desc' } },
         closingCosts: { select: { id: true, concept: true, amountArs: true, amountUsd: true }, orderBy: { id: 'asc' } },
-        tradeIn: true,
+        tradeIn: { select: { id: true, description: true, expectedValue: true, offeredValue: true, finalValue: true, convertedToUnitId: true, isConverted: true, convertedAt: true, dealId: true } },
         seller: { select: { id: true, name: true, email: true, whatsappNumber: true, commissionRate: true } },
       },
     }) as unknown as DealWithRelations
@@ -419,11 +452,26 @@ export class DealService {
         ...(commissionValue !== undefined && { commissionValue }),
         updatedAt: new Date(),
       },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        finalPrice: true,
+        finalPriceCurrency: true,
+        exchangeRate: true,
+        commissionValue: true,
+        commissionType: true,
+        depositAmount: true,
+        depositDate: true,
+        depositMethod: true,
+        notes: true,
+        createdAt: true,
+        leadId: true,
+        unitId: true,
+        sellerId: true,
         lead: { select: { id: true, name: true, phone: true } },
         unit: { select: { id: true, title: true, type: true } },
-        payments: true,
-        closingCosts: true,
+        payments: { select: { id: true, amount: true, method: true, notes: true, receivedAt: true, createdAt: true } },
+        closingCosts: { select: { id: true, concept: true, amountArs: true, amountUsd: true } },
         seller: { select: { id: true, name: true, email: true } },
       },
     }) as unknown as DealWithRelations

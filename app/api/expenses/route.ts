@@ -6,6 +6,8 @@ import { kv } from '@/lib/kv-client'
 import { prisma } from '@/lib/shared/prisma'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
+import { parsePagination } from '@/lib/shared/pagination'
+import { paginatedResponse } from '@/lib/shared/api-response'
 
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),
@@ -19,6 +21,16 @@ const ExpenseSchema = z.object({
   }),
 })
 
+// Columnas que necesita el frontend para listar gastos
+const EXPENSE_SELECT = {
+  id: true,
+  category: true,
+  description: true,
+  amountArs: true,
+  amountUsd: true,
+  date: true,
+} as const
+
 export const GET = withTenantHandler(async (request: NextRequest) => {
   try {
     const user = await getCurrentUserFromHeaders(request)
@@ -30,6 +42,10 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
 
     const { searchParams } = new URL(request.url)
     const month = searchParams.get('month') // e.g. "2024-05"
+    const pagination = parsePagination({
+      page: searchParams.get('page') ?? undefined,
+      limit: searchParams.get('limit') ?? undefined,
+    })
 
     let dateFilter = {}
     if (month) {
@@ -41,12 +57,20 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
       dateFilter = { date: { gte: start, lte: end } }
     }
 
-    const expenses = await prisma.companyExpense.findMany({
-      where: { companyId, isActive: true, ...dateFilter },
-      orderBy: { date: 'desc' }
-    })
+    const where = { companyId, isActive: true, ...dateFilter }
 
-    return NextResponse.json({ success: true, data: expenses })
+    const [total, expenses] = await Promise.all([
+      prisma.companyExpense.count({ where }),
+      prisma.companyExpense.findMany({
+        where,
+        select: EXPENSE_SELECT,
+        orderBy: { date: 'desc' },
+        skip: pagination.skip,
+        take: pagination.take,
+      }),
+    ])
+
+    return paginatedResponse(expenses, total, pagination.page, pagination.limit)
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json({ success: false, error: message }, { status: 500 })

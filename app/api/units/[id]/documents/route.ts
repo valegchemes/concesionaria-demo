@@ -48,7 +48,13 @@ export const GET = withTenantHandler(withErrorHandling(
 
     const docs = await prisma.digitalDocument.findMany({
       where: { unitId, companyId: user.companyId },
-      include: {
+      select: {
+        id: true,
+        type: true,
+        referenceNumber: true,
+        amount: true,
+        status: true,
+        createdAt: true,
         lead: { select: { id: true, name: true, phone: true } },
         unit: { select: { id: true, title: true } },
       },

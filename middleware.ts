@@ -179,6 +179,7 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
   const { pathname } = request.nextUrl
   const startTime = Date.now()
 
+
   // En producción forzar HTTPS
   if (process.env.NODE_ENV === 'production') {
     const protocol = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol

@@ -30,7 +30,13 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
         deal: { companyId },
         isConverted: false
       },
-      include: {
+      select: {
+        id: true,
+        description: true,
+        expectedValue: true,
+        offeredValue: true,
+        finalValue: true,
+        dealId: true,
         deal: {
           select: {
             id: true,
@@ -40,7 +46,8 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
           }
         }
       },
-      orderBy: { id: 'desc' }
+      orderBy: { id: 'desc' },
+      take: 100
     })
 
     const mapped = tradeIns.map(t => ({

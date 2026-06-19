@@ -19,22 +19,39 @@ export const GET = withTenantHandler(withErrorHandling(async (request: NextReque
     ? AllowedInstallmentStatus.safeParse(statusParam).data ?? undefined
     : undefined
 
+  const where = {
+    companyId: user.companyId,
+    isActive: true,
+    ...(validatedStatus ? {
+      installments: {
+        some: { status: validatedStatus }
+      }
+    } : {})
+  }
+
   const notes = await prisma.promissoryNote.findMany({
-    where: {
-      companyId: user.companyId,
-      isActive: true,
-      ...(validatedStatus ? {
-        installments: {
-          some: { status: validatedStatus }
-        }
-      } : {})
-    },
-    include: {
+    where,
+    select: {
+      id: true,
+      amount: true,
+      currency: true,
+      issueDate: true,
+      dueDate: true,
+      notes: true,
       lead: { select: { id: true, name: true, phone: true } },
       unit: { select: { id: true, title: true } },
       installments: {
-        include: {
-          payments: true
+        select: {
+          id: true,
+          installmentNumber: true,
+          amount: true,
+          dueDate: true,
+          status: true,
+          notes: true,
+          payments: {
+            select: { id: true, amount: true, date: true, method: true, notes: true },
+            orderBy: { date: 'desc' },
+          },
         },
         orderBy: {
           installmentNumber: 'asc'

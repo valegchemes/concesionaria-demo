@@ -329,6 +329,7 @@ model Deal {
   @@index([sellerId])
   @@index([companyId, status, sellerId])
   @@index([companyId, createdAt(sort: Desc)])
+  @@index([companyId, updatedAt(sort: Desc)])
   @@index([leadId])
   @@index([unitId])
   @@map("Deal")
@@ -549,6 +550,7 @@ model CompanyExpense {
 
   @@index([companyId, date])
   @@index([companyId, isActive])
+  @@index([companyId, category])
   @@map("CompanyExpense")
 }
 
@@ -569,6 +571,8 @@ model DigitalDocument {
   unit            Unit           @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
+  @@index([companyId, type])
+  @@index([companyId, status])
   @@index([unitId])
   @@index([leadId])
   @@map("DigitalDocument")

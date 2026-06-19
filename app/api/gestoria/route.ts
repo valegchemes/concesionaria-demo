@@ -43,7 +43,8 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
           }
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: 200
     })
 
     const GESTORIA_KEYS = [

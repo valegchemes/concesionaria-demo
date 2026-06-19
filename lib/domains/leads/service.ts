@@ -35,6 +35,7 @@ export class LeadService {
     // Validate that company exists
     const company = await prisma.company.findUnique({
       where: { id: command.companyId },
+      select: { id: true },
     })
 
     if (!company) {
@@ -94,7 +95,23 @@ export class LeadService {
         createdById: command.createdById,
         status: (command.status || 'NEW') as LeadStatus,
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        source: true,
+        status: true,
+        notes: true,
+        quickInfo: true,
+        lostReason: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        companyId: true,
+        assignedToId: true,
+        createdById: true,
+        interestedUnitId: true,
         activities: { include: { createdBy: { select: { name: true } } } },
         assignedTo: { select: { id: true, name: true, email: true } },
         createdBy: { select: { id: true, name: true } },
@@ -121,7 +138,23 @@ export class LeadService {
 
     const lead = await prisma.lead.findFirst({
       where: { id, companyId, isActive: true },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        source: true,
+        status: true,
+        notes: true,
+        quickInfo: true,
+        lostReason: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        companyId: true,
+        assignedToId: true,
+        createdById: true,
+        interestedUnitId: true,
         activities: { 
           orderBy: { createdAt: 'desc' }, 
           take: 10,
@@ -318,7 +351,23 @@ export class LeadService {
         }),
         updatedAt: new Date(),
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        email: true,
+        source: true,
+        status: true,
+        notes: true,
+        quickInfo: true,
+        lostReason: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        companyId: true,
+        assignedToId: true,
+        createdById: true,
+        interestedUnitId: true,
         activities: { include: { createdBy: { select: { name: true } } } },
         assignedTo: { select: { id: true, name: true, email: true } },
         createdBy: { select: { id: true, name: true } },

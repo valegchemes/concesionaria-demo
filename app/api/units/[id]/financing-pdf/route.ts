@@ -5,7 +5,6 @@ import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { unitService } from '@/lib/domains/units/service'
 import { prisma } from '@/lib/shared/prisma'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
-import PDFDocument from 'pdfkit'
 
 function generatePdfBuffer(doc: PDFKit.PDFDocument): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -78,7 +77,8 @@ export const GET = withTenantHandler(withErrorHandling(
     const totalRepayment = monthlyInstallment * months
     const totalInterest = Math.max(0, totalRepayment - totalToFinance)
 
-    // Generate PDF using pdfkit
+    // Generate PDF using pdfkit (import dinámico para evitar incluirlo en el bundle de todas las funciones)
+    const { default: PDFDocument } = await import('pdfkit')
     const doc = new PDFDocument({ margin: 40, size: 'A4' })
 
     // Header Background

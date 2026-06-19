@@ -93,9 +93,36 @@ export class UnitService {
           }
         }),
       },
-      include: {
-        photos: true,
-        attributes: true,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        type: true,
+        status: true,
+        location: true,
+        tags: true,
+        priceArs: true,
+        priceUsd: true,
+        vin: true,
+        domain: true,
+        engineNumber: true,
+        frameNumber: true,
+        hin: true,
+        registrationNumber: true,
+        acquisitionCostArs: true,
+        acquisitionCostUsd: true,
+        acquisitionType: true,
+        acquisitionDate: true,
+        isFromTradeIn: true,
+        year: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        companyId: true,
+        createdById: true,
+        tradeInId: true,
+        photos: { select: { id: true, url: true, order: true, caption: true, createdAt: true, unitId: true } },
+        attributes: { select: { id: true, key: true, value: true, unitId: true } },
       },
     })
 
@@ -112,10 +139,37 @@ export class UnitService {
 
     const unit = await prisma.unit.findFirst({
       where: { id, companyId, isActive: true },
-      include: {
-        photos: { orderBy: { order: 'asc' } },
-        attributes: true,
-        costItems: { orderBy: { date: 'desc' } },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        type: true,
+        status: true,
+        location: true,
+        tags: true,
+        priceArs: true,
+        priceUsd: true,
+        vin: true,
+        domain: true,
+        engineNumber: true,
+        frameNumber: true,
+        hin: true,
+        registrationNumber: true,
+        acquisitionCostArs: true,
+        acquisitionCostUsd: true,
+        acquisitionType: true,
+        acquisitionDate: true,
+        isFromTradeIn: true,
+        year: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        companyId: true,
+        createdById: true,
+        tradeInId: true,
+        photos: { select: { id: true, url: true, order: true, caption: true, createdAt: true, unitId: true }, orderBy: { order: 'asc' } },
+        attributes: { select: { id: true, key: true, value: true, unitId: true } },
+        costItems: { select: { id: true, concept: true, amountArs: true, amountUsd: true, date: true, unitId: true }, orderBy: { date: 'desc' } },
         interestedLeads: {
           where: { isActive: true },
           select: {
@@ -293,7 +347,7 @@ export class UnitService {
       }
     }
 
-    // Prepare unit update
+    // Prepare unit update (usamos select mínimo + luego getById devuelve el detalle completo)
     const unitUpdatePromise = prisma.unit.update({
       where: { id },
       data: {
@@ -312,10 +366,7 @@ export class UnitService {
         ...(command.status && { status: command.status as UnitStatus }),
         updatedAt: new Date(),
       },
-      include: {
-        photos: true,
-        attributes: true,
-      }
+      select: { id: true },
     });
 
     // Execute all database operations in a transaction
@@ -339,7 +390,7 @@ export class UnitService {
       }
     }
 
-    // Fetch and return the updated unit (to avoid potential stale data from transaction)
+    // Fetch and return the updated unit via getById (with select & relations)
     const updated = await this.getById(id, companyId);
 
     log.info({ unitId: id, newStatus: command.status }, 'Unit updated')
