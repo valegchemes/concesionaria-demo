@@ -202,15 +202,17 @@ export const GET = withTenantHandler(async (
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `inline; filename="test.pdf"`,
+        // Usar el número de referencia del documento (o su id) como nombre
+        // de archivo en vez del placeholder "test.pdf" que quedó del debug.
+        'Content-Disposition': `inline; filename="${doc.referenceNumber ?? id}.pdf"`,
         'Content-Length': pdfBuffer.length.toString(),
       },
     })
   } catch (err) {
+    // No filtrar el mensaje interno al cliente; loguearlo server-side.
     log.error({ error: err instanceof Error ? err.message : String(err) }, 'PDF generation error')
     return NextResponse.json({
-      error: 'ERROR_PDF_DIAGNOSTIC',
-      details: err instanceof Error ? err.message : String(err)
+      error: 'ERROR_PDF_GENERATION',
     }, { status: 500 })
   }
 })

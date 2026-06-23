@@ -52,7 +52,7 @@ describe('verifyCredentials', () => {
     const user = await buildUser()
     mockFindFirst.mockResolvedValue(user)
 
-    const result = await verifyCredentials('test@empresa.com', 'Password123!')
+    const result = await verifyCredentials('test@empresa.com', 'Password123!', 'empresa')
 
     expect(result).not.toBeNull()
     expect(result?.id).toBe('user-1')
@@ -65,7 +65,7 @@ describe('verifyCredentials', () => {
     mockFindFirst.mockResolvedValue(null)
 
     const start = Date.now()
-    const result = await verifyCredentials('noexiste@empresa.com', 'cualquier')
+    const result = await verifyCredentials('noexiste@empresa.com', 'cualquier', 'empresa')
     const elapsed = Date.now() - start
 
     expect(result).toBeNull()
@@ -78,7 +78,7 @@ describe('verifyCredentials', () => {
     const user = await buildUser()
     mockFindFirst.mockResolvedValue(user)
 
-    const result = await verifyCredentials('test@empresa.com', 'WrongPassword!')
+    const result = await verifyCredentials('test@empresa.com', 'WrongPassword!', 'empresa')
 
     expect(result).toBeNull()
   })
@@ -87,7 +87,7 @@ describe('verifyCredentials', () => {
     const user = await buildUser({ isActive: false })
     mockFindFirst.mockResolvedValue(user)
 
-    const result = await verifyCredentials('test@empresa.com', 'Password123!')
+    const result = await verifyCredentials('test@empresa.com', 'Password123!', 'empresa')
 
     expect(result).toBeNull()
   })
@@ -96,12 +96,12 @@ describe('verifyCredentials', () => {
     const user = await buildUser({ company: { id: 'company-1', isActive: false, slug: 'empresa' } })
     mockFindFirst.mockResolvedValue(user)
 
-    const result = await verifyCredentials('test@empresa.com', 'Password123!')
+    const result = await verifyCredentials('test@empresa.com', 'Password123!', 'empresa')
 
     expect(result).toBeNull()
   })
 
-  it('filtra por companySlug cuando se provee', async () => {
+  it('filtra por companySlug siempre (aislamiento entre tenants)', async () => {
     const user = await buildUser()
     mockFindFirst.mockResolvedValue(user)
 

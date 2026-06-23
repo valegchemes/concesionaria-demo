@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
   const startTime = Date.now()
   
   try {
-    // 1. Validar autenticación
+    // 1. Validar autenticación (fail-closed: si CRON_SECRET falta, rechazar)
     const authHeader = req.headers.get('authorization')
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      log.warn({ authHeader }, 'Unauthorized cron attempt')
+    if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+      log.warn({ authHeader, hasSecret: Boolean(CRON_SECRET) }, 'Unauthorized cron attempt')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

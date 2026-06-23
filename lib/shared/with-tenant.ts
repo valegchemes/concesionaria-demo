@@ -2,10 +2,13 @@
  * API Route Helper: withTenantHandler
  *
  * Wraps a Next.js API Route handler to automatically establish the tenant
- * context from the middleware-injected headers before any Prisma query runs.
+ * context before any Prisma query runs.
  *
- * This is the "glue" between middleware.ts (which injects x-company-id into headers)
- * and the Prisma tenant extension (which reads the companyId from async context).
+ * SECURITY: El `companyId` se resuelve SIEMPRE desde la sesión de NextAuth
+ * (fuente autoritativa, firmada en el JWT). El header `x-company-id` NO se usa
+ * como fuente de tenant porque los headers HTTP son entrada de cliente mutable
+ * (un usuario del tenant A podría spoofear `x-company-id` del tenant B).
+ * El header solo se respeta en desarrollo local (sin proxy) para conveniencia.
  *
  * USAGE:
  *   export const GET = withTenantHandler(async (request) => {
@@ -69,18 +72,28 @@ export function withTenantHandler(handler: RouteHandler): RouteHandler {
       }
     }
 
-    let companyId = request.headers.get('x-company-id')
+    // SECURITY: resolver companyId SIEMPRE desde la sesión (JWT firmado).
+    // En producción NUNCA confiamos en el header x-company-id del cliente.
+    // Solo en desarrollo local (sin proxy corriendo) lo aceptamos como atajo.
+    const isProduction = process.env.NODE_ENV === 'production'
+    const headerCompanyId = request.headers.get('x-company-id')
+    const trustHeader = !isProduction && headerCompanyId
 
-    // Fallback de sesión: útil en desarrollo local donde el middleware no siempre corre.
-    // En producción, el middleware.ts ya garantiza que x-company-id siempre existe.
-    if (!companyId) {
+    let companyId: string | null = null
+
+    if (trustHeader) {
+      companyId = headerCompanyId
+    } else {
       try {
         const { getServerSession } = await import('next-auth')
         const { authOptions } = await import('@/app/api/auth/[...nextauth]/auth-options')
         const session = await getServerSession(authOptions)
         companyId = (session?.user as { companyId?: string } | undefined)?.companyId ?? null
-      } catch {
-        // Ignorar — si falla la sesión, retornar error de auth
+      } catch (err) {
+        log.error(
+          { err: err instanceof Error ? err.message : String(err), path: request.nextUrl.pathname },
+          '[TenantHandler] Error resolviendo sesión'
+        )
       }
     }
 

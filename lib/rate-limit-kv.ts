@@ -107,7 +107,7 @@ export async function checkRateLimit(
 // ============================================================================
 // Rate limit estricto (auth, pagos) — con fallback in-memory cuando KV falla
 // 5 requests por 10 segundos. Cuando KV falla, usa contador in-memory
-// para seguir aplicando algún nivel de protección.
+// para seguir aplicando algún nivel de protección (defense-in-depth).
 // ============================================================================
 export async function checkStrictRateLimit(
   identifier: string,
@@ -121,11 +121,12 @@ export async function checkStrictRateLimit(
   const windowStart = Math.floor(now / 10) * 10
   const reset = windowStart + 10
   const STRICT_MAX = 5  // 5 requests por 10 segundos
+  const STRICT_WINDOW = 10
 
   try {
     const current = await withKVTimeout(kv.incr(key))
     if (current === 1) {
-      withKVTimeout(kv.expire(key, 10)).catch(() => {})
+      withKVTimeout(kv.expire(key, STRICT_WINDOW)).catch(() => {})
     }
     return {
       success: current <= STRICT_MAX,
@@ -134,14 +135,18 @@ export async function checkStrictRateLimit(
       reset: reset * 1000,
     }
   } catch (error) {
-    // FAIL-CLOSED para endpoints críticos (auth, pagos, webhooks)
-    // Si KV está caído, BLOQUEAR la request y alertar
-    log.error({ error: error instanceof Error ? error.message : String(error), key }, 'KV DOWN - BLOQUEANDO REQUEST CRÍTICO (fail-closed)')
+    // Fallback in-memory (defense-in-depth): antes este catch era fail-closed
+    // puro (bloqueaba TODO el tráfico cuando KV caía), dejando la app sin
+    // login/pagos durante una incidencia de KV. Ahora aplicamos el contador
+    // in-memory que ya existía pero nunca se invocaba: seguimos protegiendo
+    // contra brute-force por instancia sin bloquear tráfico legítimo.
+    log.warn({ error: error instanceof Error ? error.message : String(error), key }, 'KV DOWN - usando fallback in-memory para rate limit estricto')
+    const mem = checkInMemory(key, STRICT_MAX, STRICT_WINDOW)
     return {
-      success: false,
+      success: mem.allowed,
       limit: STRICT_MAX,
-      remaining: 0,
-      reset: Date.now() + 10000,
+      remaining: Math.max(0, STRICT_MAX - mem.current),
+      reset: Date.now() + STRICT_WINDOW * 1000,
     }
   }
 }
@@ -173,12 +178,13 @@ export async function checkLoginRateLimit(
       reset: reset * 1000,
     }
   } catch (error) {
-    // Fail-closed para auth
-    log.error({ error: error instanceof Error ? error.message : String(error), key }, 'KV DOWN - BLOQUEANDO LOGIN (fail-closed)')
+    // Fallback in-memory (defense-in-depth): mismo razonamiento que el strict.
+    log.warn({ error: error instanceof Error ? error.message : String(error), key }, 'KV DOWN - usando fallback in-memory para login rate limit')
+    const mem = checkInMemory(key, LOGIN_MAX, LOGIN_WINDOW)
     return {
-      success: false,
+      success: mem.allowed,
       limit: LOGIN_MAX,
-      remaining: 0,
+      remaining: Math.max(0, LOGIN_MAX - mem.current),
       reset: Date.now() + LOGIN_WINDOW * 1000,
     }
   }

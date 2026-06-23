@@ -1,24 +1,36 @@
 /**
  * API para limpiar cookies de NextAuth (utility endpoint)
- * GET /api/diag/clear-auth — Force clear all next-auth.* cookies
- * 
+ * POST /api/diag/clear-auth — Force clear all next-auth.* cookies
+ *
  * Usado para troubleshooting cuando el navegador tiene cookies rotas/stale
  * que no se limpian normalmente.
+ *
+ * SEGURIDAD: Solo POST (no GET, para evitar CSRF cross-site). Requiere
+ * Bearer token comparado en tiempo constante y `Sec-Fetch-Site` safe.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createLogger } from '@/lib/shared/logger'
+import { timingSafeStringEqual } from '@/lib/shared/timing-safe-equal'
 
 const log = createLogger('API:ClearAuth')
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(request: NextRequest) {
-  // 1. Protección con Bearer token — requiere DIAG_SECRET_TOKEN
+export async function POST(request: NextRequest) {
+  // 1. Verificar Sec-Fetch-Site (anti CSRF cross-site). Permitir same-origin,
+  //    none (curl/Postman) y same-site. Bloquear cross-site.
+  const fetchSite = request.headers.get('sec-fetch-site')
+  if (fetchSite && fetchSite === 'cross-site') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  // 2. Protección con Bearer token — requiere DIAG_SECRET_TOKEN.
+  //    Comparación constant-time para evitar timing attacks.
   const authHeader = request.headers.get('authorization')
   const diagToken = process.env.DIAG_SECRET_TOKEN
 
-  if (!diagToken || authHeader !== `Bearer ${diagToken}`) {
+  if (!diagToken || !authHeader || !timingSafeStringEqual(authHeader, `Bearer ${diagToken}`)) {
     log.warn({ authHeader: authHeader?.slice(0, 20) }, 'Intento no autorizado a clear-auth')
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -55,4 +67,9 @@ export async function GET(request: NextRequest) {
   response.headers.set('X-Cleared-Cookies', cookiesToClear.join(', '))
 
   return response
+}
+
+// GET deshabilitado explícitamente (anti CSRF): forzar POST.
+export async function GET() {
+  return NextResponse.json({ error: 'Method Not Allowed. Use POST.' }, { status: 405, headers: { Allow: 'POST' } })
 }

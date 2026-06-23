@@ -214,10 +214,12 @@ export const GET = async (
       },
     })
   } catch (err) {
+    // Endpoint PÚBLICO: nunca filtrar detalles internos (mensajes de Prisma,
+    // rutas de archivos, errores de librería) a un caller no autenticado.
+    // Se loguea el detalle server-side y se devuelve un mensaje genérico.
     log.error({ error: err instanceof Error ? err.message : String(err) }, 'Public PDF generation error')
     return NextResponse.json({
       error: 'ERROR_PDF_GENERATION',
-      details: err instanceof Error ? err.message : String(err)
     }, { status: 500 })
   }
 }

@@ -53,7 +53,7 @@ Esto es **normal** — no hay sesión porque no has iniciado sesión.
 
 Si tiene cookies rotas de sesiones anteriores:
 ```
-GET /api/diag/clear-auth
+POST /api/diag/clear-auth -H "Authorization: Bearer $DIAG_SECRET_TOKEN"
 ```
 
 Esto devuelve:
@@ -195,7 +195,7 @@ Debería mostrar algo como:
 
 1. Limpiar cookies manualmente:
    ```
-   GET /api/diag/clear-auth
+   POST /api/diag/clear-auth -H "Authorization: Bearer $DIAG_SECRET_TOKEN"
    ```
 
 2. Refrescar la página
@@ -227,7 +227,7 @@ Debería mostrar algo como:
 
 3. Si nada funciona, limpiar y reintentar:
    ```
-   GET /api/diag/clear-auth
+   POST /api/diag/clear-auth -H "Authorization: Bearer $DIAG_SECRET_TOKEN"
    → Ir a /login
    → Hacer login nuevamente
    → Visitar /api/diag/auth para verificar
@@ -239,7 +239,7 @@ Debería mostrar algo como:
 
 - [ ] `GET /api/diag` muestra `HAS_NEXTAUTH_SECRET: true`
 - [ ] `GET /api/diag` muestra `HAS_NEXTAUTH_URL: true`
-- [ ] Limpiar cookies: `GET /api/diag/clear-auth`
+- [ ] Limpiar cookies: `POST /api/diag/clear-auth` (con Bearer token)
 - [ ] Ir a `/login` y hacer login
 - [ ] `GET /api/diag/auth` muestra `session.status: "SUCCESS"`
 - [ ] `GET /api/diag/auth` muestra `token.status: "SUCCESS"`

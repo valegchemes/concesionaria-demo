@@ -1,8 +1,20 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { errorResponse } from '@/lib/shared/api-response'
+
+// Validación Zod del payload de transacción de caja. Antes se validaba a mano
+// con Number() y coercion silenciosa de moneda inválida a 'ARS' (podía
+// contabilizar USD como ARS sin avisar). Ahora rechazamos con 400.
+const CashTransactionSchema = z.object({
+  amount: z.number().finite().positive().max(100_000_000_000),
+  currency: z.enum(['ARS', 'USD']),
+  type: z.enum(['INFLOW', 'OUTFLOW']),
+  concept: z.string().trim().min(1).max(300),
+})
 
 export const POST = withTenantHandler(async (request: NextRequest) => {
   try {
@@ -23,39 +35,31 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
     }
 
     const body = await request.json()
-    const { amount, currency, type, concept } = body
-
-    if (!amount || Number(amount) <= 0) {
-      return NextResponse.json({ success: false, error: 'El monto debe ser un número positivo.' }, { status: 400 })
+    const parsed = CashTransactionSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: 'Datos inválidos', details: parsed.error.issues },
+        { status: 400 }
+      )
     }
-
-    if (!concept || concept.trim() === '') {
-      return NextResponse.json({ success: false, error: 'El concepto del movimiento es requerido.' }, { status: 400 })
-    }
-
-    const VALID_CURRENCIES = ['ARS', 'USD']
-
-    if (type !== 'INFLOW' && type !== 'OUTFLOW') {
-      return NextResponse.json({ success: false, error: 'El tipo de movimiento debe ser INFLOW (Ingreso) o OUTFLOW (Egreso).' }, { status: 400 })
-    }
-
-    const validatedCurrency = VALID_CURRENCIES.includes(currency) ? currency : 'ARS'
+    const { amount, currency, type, concept } = parsed.data
 
     const transaction = await prisma.cashTransaction.create({
       data: {
         companyId,
         sessionId: activeSession.id,
-        amount: Number(amount),
-        currency: validatedCurrency,
+        amount,
+        currency,
         type,
-        concept: concept.trim(),
+        concept,
         referenceType: 'MANUAL'
       }
     })
 
     return NextResponse.json({ success: true, data: transaction })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    // No filtrar el mensaje interno al cliente; el helper errorResponse ya lo
+    // trata correctamente (solo expone detalles en development).
+    return errorResponse(error, { path: '/api/finance/transactions', method: 'POST' })
   }
 })

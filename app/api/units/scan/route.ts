@@ -154,8 +154,10 @@ Si no lográs divisar algún campo de forma nítida, ponelo como string vacío "
     const parsedData = JSON.parse(responseText.trim())
 
     return NextResponse.json({ success: true, data: parsedData })
-  } catch (error: any) {
-    log.error({ err: String(error) }, 'Error scanning card')
-    return NextResponse.json({ error: error.message || 'Error al escanear la cédula.' }, { status: 500 })
+  } catch (error: unknown) {
+    // No filtrar el mensaje interno (puede contener la URL de Gemini con la
+    // API key, o detalles de Prisma). Loguear server-side, responder genérico.
+    log.error({ err: error instanceof Error ? error.message : String(error) }, 'Error scanning card')
+    return NextResponse.json({ error: 'Error al escanear la cédula.' }, { status: 500 })
   }
 }

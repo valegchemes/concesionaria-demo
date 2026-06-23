@@ -141,9 +141,14 @@ export function validateEnvironment(): { success: boolean; errors: string[]; val
 // STARTUP VALIDATION
 // ============================================================================
 
+/**
+ * Valida el entorno y, si falla, sale del proceso con código 1.
+ * Usar SOLO cuando se ejecuta como script CLI (tsx) o en un servidor custom.
+ * NO usar dentro de lambdas/serverless runtime (usar `validateEnvironmentNonFatal`).
+ */
 export function validateEnvironmentAtStartup(): void {
   const result = validateEnvironment()
-  
+
   if (!result.success) {
     console.error('\n❌ ═══════════════════════════════════════════')
     console.error('❌  ENVIRONMENT VALIDATION FAILED')
@@ -155,17 +160,17 @@ export function validateEnvironmentAtStartup(): void {
     console.error('For production, ensure all production-only variables are set.\n')
     process.exit(1)
   }
-  
+
   console.log('✅ Environment validation passed')
-  
+
   // Warn about weak secrets in development
   if (process.env.NODE_ENV !== 'production') {
     const weakSecrets = [
       'NEXTAUTH_SECRET',
-      'CRON_SECRET', 
+      'CRON_SECRET',
       'DIAG_SECRET_TOKEN'
     ]
-    
+
     for (const secret of weakSecrets) {
       const value = process.env[secret]
       if (value && (value.length < 32 || ['your-secret', 'change-me', 'example', 'test', 'demo', 'password', '12345', 'secret'].some(w => value.toLowerCase().includes(w)))) {
@@ -173,4 +178,25 @@ export function validateEnvironmentAtStartup(): void {
       }
     }
   }
+}
+
+/**
+ * Valida el entorno SIN salir del proceso. Apta para runtime serverless
+ * (Vercel): si hay errores, los loguea como `console.error` pero NO mata la
+ * lambda (eso dejaría la app caída y ocultaría el problema tras un 500).
+ *
+ * Devuelve `true` si el entorno es válido.
+ */
+export function validateEnvironmentNonFatal(): boolean {
+  const result = validateEnvironment()
+
+  if (!result.success) {
+    console.error('\n❌ ENVIRONMENT VALIDATION FAILED (non-fatal, runtime)')
+    console.error('Missing/invalid environment variables:')
+    for (const err of result.errors) console.error(`  ❌ ${err}`)
+    console.error('')
+    return false
+  }
+
+  return true
 }

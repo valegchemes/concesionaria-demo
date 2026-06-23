@@ -1,12 +1,13 @@
 /**
- * Proxy (antes Middleware) — Enterprise Global Auth Proxy
+ * Proxy — Enterprise Global Auth Proxy
  * - Protección de rutas API y App
  * - Validación de JWT con NextAuth
  * - Multi-tenancy: inyecta x-company-id, x-user-id, x-user-role
  * - Headers de seguridad y no-cache
  *
- * MIGRATION NOTE: Renombrado de middleware.ts a proxy.ts (Next.js 16 breaking change).
- * La función principal se llama 'proxy' en lugar de 'middleware'.
+ * Next.js 16: el archivo de middleware fue renombrado a `proxy.ts` y la
+ * función principal se llama `proxy`. El nombre `middleware.ts` quedó
+ * deprecado en v16.0.0.
  * @see https://nextjs.org/docs/messages/middleware-to-proxy
  */
 
@@ -30,6 +31,7 @@ const PUBLIC_ROUTES = [
   '/register',
   '/api/auth',
   '/api/webhooks',
+  '/api/v1/payments/webhook',
   '/api/health',
   '/_next',
   '/favicon.ico',
@@ -127,6 +129,27 @@ async function getTenantFromToken(request: NextRequest): Promise<{ userId: strin
 }
 
 /**
+ * Devuelve un nuevo Headers con los claims del tenant sobrescritos.
+ * Es crucial partir de un objeto limpio y borrar primero, para evitar que un
+ * cliente inyecte `x-company-id`/`x-user-id`/`x-user-role` spoofeados que
+ * sobrevivan al `set` (no sobrevivirían, pero esto es defense-in-depth).
+ */
+function applyTenantHeaders(
+  request: NextRequest,
+  tenant: { userId: string; companyId: string; role: string }
+): Headers {
+  const headers = new Headers(request.headers)
+  // Borrar cualquier valor spoofeable entrante antes de re-setear
+  headers.delete('x-user-id')
+  headers.delete('x-company-id')
+  headers.delete('x-user-role')
+  headers.set('x-user-id', tenant.userId)
+  headers.set('x-company-id', tenant.companyId)
+  headers.set('x-user-role', tenant.role)
+  return headers
+}
+
+/**
  * Añade headers de seguridad, CSP con nonces y deshabilita cache
  */
 function addSecurityHeaders(response: NextResponse): NextResponse {
@@ -220,10 +243,7 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
       )
     }
 
-    const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-id', tenant.userId)
-    requestHeaders.set('x-company-id', tenant.companyId)
-    requestHeaders.set('x-user-role', tenant.role)
+    const requestHeaders = applyTenantHeaders(request, tenant)
 
     const response = NextResponse.next({ request: { headers: requestHeaders } })
     log.info({ ...metadata, duration: Date.now() - startTime }, 'API request autorizado')
@@ -240,10 +260,7 @@ export default async function proxy(request: NextRequest): Promise<NextResponse>
       return addSecurityHeaders(NextResponse.redirect(loginUrl))
     }
 
-    const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-id', tenant.userId)
-    requestHeaders.set('x-company-id', tenant.companyId)
-    requestHeaders.set('x-user-role', tenant.role)
+    const requestHeaders = applyTenantHeaders(request, tenant)
 
     return addSecurityHeaders(
       NextResponse.next({ request: { headers: requestHeaders } })

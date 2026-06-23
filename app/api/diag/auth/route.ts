@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
 import { getToken } from 'next-auth/jwt'
+import { timingSafeStringEqual } from '@/lib/shared/timing-safe-equal'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
   }
 
-  if (!secret || secret !== expectedSecret) {
+  // Comparación constant-time para evitar filtrar el secret por timing.
+  if (!secret || !timingSafeStringEqual(secret, expectedSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
       SECRET_LENGTH: number
     }
     cookies: {
-      all: Array<{ name: string; length: number; value: string }>
+      all: Array<{ name: string; length: number }>
       nextAuthCookies: Array<{ name: string; length: number }>
     }
     session: {
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
       all: Array.from(request.cookies).map(([name, cookieValue]) => ({
         name,
         length: cookieValue.value?.length ?? 0,
-        value: (cookieValue.value?.length ?? 0) > 50 ? (cookieValue.value?.substring(0, 50) ?? '') + '...' : cookieValue.value ?? '',
+        // No exponer el contenido de las cookies (pueden contener JWT/PII).
       })),
       nextAuthCookies: Array.from(request.cookies)
         .filter(([name]) => name.startsWith('next-auth') || name.startsWith('__Secure-next-auth'))
@@ -95,9 +97,12 @@ export async function GET(request: NextRequest) {
     
     if (session) {
       results.session.status = 'SUCCESS'
+      // Enmascarar email para no exponer PII completa en el endpoint de diag.
+      const email = session.user.email ?? ''
+      const maskedEmail = email.includes('@') ? `${email.slice(0, 2)}***${email.slice(email.lastIndexOf('@'))}` : ''
       results.session.data = {
         userId: session.user.id,
-        email: session.user.email,
+        email: maskedEmail,
         companyId: session.user.companyId,
         role: session.user.role,
         duration: Date.now() - start,
@@ -126,9 +131,12 @@ export async function GET(request: NextRequest) {
 
     if (token) {
       results.token.status = 'SUCCESS'
+      // Enmascarar email del token también.
+      const email = (token.email as string | undefined | null) ?? ''
+      const maskedEmail = email.includes('@') ? `${email.slice(0, 2)}***${email.slice(email.lastIndexOf('@'))}` : ''
       results.token.data = {
         id: token.id,
-        email: token.email,
+        email: maskedEmail,
         companyId: token.companyId,
         role: token.role,
         iat: token.iat,

@@ -1,8 +1,10 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
+import { errorResponse } from '@/lib/shared/api-response'
 
 export const GET = withTenantHandler(async (request: NextRequest) => {
   try {
@@ -292,6 +294,23 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
   }
 })
 
+// Validación Zod de la acción de sesión de caja (discriminada por `action`).
+// Antes se validaba con Number() sobre entrada cruda, lo que producía NaN y
+// aceptaba acciones inválidas cayendo en un 400 genérico sin detalles.
+const CashSessionActionSchema = z.discriminatedUnion('action', [
+  z.object({
+    action: z.literal('OPEN'),
+    openingBalance: z.number().finite().nonnegative().max(100_000_000_000).default(0),
+    notes: z.string().trim().max(1000).optional(),
+  }),
+  z.object({
+    action: z.literal('CLOSE'),
+    closingBalance: z.number().finite().nonnegative().max(100_000_000_000).default(0),
+    actualBalance: z.number().finite().nonnegative().max(100_000_000_000).default(0),
+    notes: z.string().trim().max(1000).optional(),
+  }),
+])
+
 export const POST = withTenantHandler(async (request: NextRequest) => {
   try {
     const user = await getCurrentUser()
@@ -302,9 +321,16 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
     }
 
     const body = await request.json()
-    const { action, openingBalance, notes, actualBalance, closingBalance } = body
+    const parsed = CashSessionActionSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: 'Acción inválida', details: parsed.error.issues },
+        { status: 400 }
+      )
+    }
+    const data = parsed.data
 
-    if (action === 'OPEN') {
+    if (data.action === 'OPEN') {
       // Verificar si ya hay una abierta
       const active = await prisma.cashSession.findFirst({
         where: { companyId, status: 'OPEN' }
@@ -317,8 +343,8 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
         data: {
           companyId,
           userId: user.id,
-          openingBalance: Number(openingBalance || 0),
-          notes: notes || '',
+          openingBalance: data.openingBalance,
+          notes: data.notes ?? '',
           status: 'OPEN'
         }
       })
@@ -326,32 +352,27 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
       return NextResponse.json({ success: true, data: session })
     }
 
-    if (action === 'CLOSE') {
-      // Cerrar la sesión abierta
-      const active = await prisma.cashSession.findFirst({
-        where: { companyId, status: 'OPEN' }
-      })
-      if (!active) {
-        return NextResponse.json({ success: false, error: 'No hay ninguna sesión de caja activa para cerrar.' }, { status: 400 })
-      }
-
-      const session = await prisma.cashSession.update({
-        where: { id: active.id },
-        data: {
-          closedAt: new Date(),
-          closingBalance: Number(closingBalance || 0),
-          actualBalance: Number(actualBalance || 0),
-          status: 'CLOSED',
-          notes: notes || active.notes
-        }
-      })
-
-      return NextResponse.json({ success: true, data: session })
+    // data.action === 'CLOSE'
+    const active = await prisma.cashSession.findFirst({
+      where: { companyId, status: 'OPEN' }
+    })
+    if (!active) {
+      return NextResponse.json({ success: false, error: 'No hay ninguna sesión de caja activa para cerrar.' }, { status: 400 })
     }
 
-    return NextResponse.json({ success: false, error: 'Acción no válida' }, { status: 400 })
+    const session = await prisma.cashSession.update({
+      where: { id: active.id },
+      data: {
+        closedAt: new Date(),
+        closingBalance: data.closingBalance,
+        actualBalance: data.actualBalance,
+        status: 'CLOSED',
+        notes: data.notes ?? active.notes
+      }
+    })
+
+    return NextResponse.json({ success: true, data: session })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return errorResponse(error, { path: '/api/finance/session', method: 'POST' })
   }
 })

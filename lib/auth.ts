@@ -8,31 +8,23 @@ import { prisma } from './prisma'
  */
 const DUMMY_HASH = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LFBNBLPfQ1vbK7Sm2'
 
-export async function verifyCredentials(email: string, password: string, companySlug?: string) {
-  let user
-
-  if (companySlug) {
-    user = await prisma.user.findFirst({
-      where: {
-        email,
-        company: {
-          slug: companySlug,
-        },
+export async function verifyCredentials(email: string, password: string, companySlug: string) {
+  // SECURITY: `companySlug` es OBLIGATORIO para garantizar el aislamiento entre
+  // tenants en el login. Antes era opcional: si se omitía, se hacía
+  // `findFirst({ where: { email } })` sin scoping de tenant, lo que permitía
+  // autenticarse contra el primer email coincidente entre TODAS las empresas
+  // (confusión de tenant). El formulario de login siempre lo envía.
+  const user = await prisma.user.findFirst({
+    where: {
+      email,
+      company: {
+        slug: companySlug,
       },
-      include: {
-        company: true,
-      },
-    })
-  } else {
-    user = await prisma.user.findFirst({
-      where: {
-        email,
-      },
-      include: {
-        company: true,
-      },
-    })
-  }
+    },
+    include: {
+      company: true,
+    },
+  })
 
   // SIEMPRE ejecutar bcrypt para normalizar el tiempo de respuesta.
   // Si el usuario no existe, comparamos contra el dummy hash (siempre falla).

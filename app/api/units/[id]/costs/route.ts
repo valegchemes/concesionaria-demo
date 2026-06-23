@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest } from 'next/server'
+import { z } from 'zod'
 import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { unitService } from '@/lib/domains/units/service'
@@ -7,6 +8,15 @@ import { ForbiddenError } from '@/lib/shared/errors'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 
 const canManageUnits = (role: string) => role === 'ADMIN' || role === 'MANAGER'
+
+// Validación Zod del payload de costo. Antes se hacia Number(body.x) sobre
+// entrada cruda, lo que producía NaN/Infinity para strings no numéricos y
+// aceptaba conceptos sin sanitizar ni límite de longitud.
+const CreateCostItemSchema = z.object({
+  concept: z.string().trim().min(1).max(200),
+  amountArs: z.number().finite().nonnegative().max(2_000_000_000).nullable().optional(),
+  amountUsd: z.number().finite().nonnegative().max(2_000_000).nullable().optional(),
+})
 
 /**
  * GET /api/units/[id]/costs - List all cost items for a unit
@@ -31,10 +41,11 @@ export const POST = withTenantHandler(withErrorHandling(
     }
     const { id } = await params
     const body = await req.json()
+    const data = CreateCostItemSchema.parse(body)
     const item = await unitService.addCostItem(id, user.companyId, {
-      concept: body.concept,
-      amountArs: body.amountArs ? Number(body.amountArs) : null,
-      amountUsd: body.amountUsd ? Number(body.amountUsd) : null,
+      concept: data.concept,
+      amountArs: data.amountArs ?? null,
+      amountUsd: data.amountUsd ?? null,
     })
     return successResponse(item)
   }

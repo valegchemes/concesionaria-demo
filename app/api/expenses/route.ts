@@ -7,7 +7,7 @@ import { prisma } from '@/lib/shared/prisma'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { invalidateAnalyticsCache } from '@/lib/domains/analytics/server-utils'
 import { parsePagination } from '@/lib/shared/pagination'
-import { paginatedResponse } from '@/lib/shared/api-response'
+import { paginatedResponse, errorResponse } from '@/lib/shared/api-response'
 
 const ExpenseSchema = z.object({
   category: z.string().min(1, 'Categoría es requerida'),
@@ -72,8 +72,7 @@ export const GET = withTenantHandler(async (request: NextRequest) => {
 
     return paginatedResponse(expenses, total, pagination.page, pagination.limit)
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ success: false, error: message }, { status: 500 })
+    return errorResponse(error, { path: '/api/expenses', method: 'GET' })
   }
 })
 
@@ -112,7 +111,6 @@ export const POST = withTenantHandler(async (request: NextRequest) => {
 
     return NextResponse.json({ success: true, data: expense })
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ success: false, error: message }, { status: 400 })
+    return errorResponse(error, { path: '/api/expenses', method: 'POST' })
   }
 })

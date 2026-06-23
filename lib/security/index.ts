@@ -48,7 +48,7 @@ export {
 } from './wrapper'
 
 // Environment validation
-export { validateEnvironment, validateEnvironmentAtStartup } from './validate-env'
+export { validateEnvironment, validateEnvironmentAtStartup, validateEnvironmentNonFatal } from './validate-env'
 
 // Types
 export type { SecurityConfig } from './middleware'

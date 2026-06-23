@@ -3,6 +3,7 @@ import { withErrorHandling, successResponse } from '@/lib/shared/api-response'
 import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { prisma } from '@/lib/shared/prisma'
 import { z } from 'zod'
+import crypto from 'crypto'
 import { withTenantHandler } from '@/lib/shared/with-tenant'
 import { getPlanLimits } from '@/lib/shared/plan-limits'
 
@@ -97,7 +98,9 @@ export const POST = withTenantHandler(withErrorHandling(async (req: NextRequest,
       updatedAt: new Date(),
       installments: {
         create: Array.from({ length: data.installmentsCount }, (_, i) => ({
-          id: `${Date.now()}-${i}`,
+          // crypto.randomUUID() evita colisiones entre requests concurrentes
+          // (Date.now() colisiona si dos requests caen en el mismo ms).
+          id: crypto.randomUUID(),
           installmentNumber: i + 1,
           amount: installmentAmount,
           dueDate: addMonths(issueDate, i + 1),

@@ -57,13 +57,7 @@ export function createSecureRoute<T = unknown>(
         if (rateLimitResult) return rateLimitResult
       }
 
-      // 2. CSRF Protection
-      if (!config.skipCsrf && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
-        const csrfResult = validateCsrfMiddleware(request as NextRequest)
-        if (csrfResult) return csrfResult
-      }
-
-      // 3. Authentication check
+      // 2. Authentication check
       let authUser: any = null
       if (config.requireAuth || config.requirePermission || config.requireRole) {
         const { requireAuth, getCurrentUser, requirePermission, requireRole } = await import('@/lib/shared/auth-helpers')
@@ -73,8 +67,10 @@ export function createSecureRoute<T = unknown>(
             await requirePermission(config.requirePermission.resource, config.requirePermission.action)
           }
           if (config.requireRole) {
+            // Normalizar a array y pasar el valor normalizado (antes se pasaba
+            // el valor crudo, ignorando el array ya construido).
             const requiredRoles = Array.isArray(config.requireRole) ? config.requireRole : [config.requireRole]
-            await requireRole(config.requireRole)
+            await requireRole(requiredRoles)
           }
           authUser = await getCurrentUser()
         } catch {
@@ -86,7 +82,8 @@ export function createSecureRoute<T = unknown>(
         }
       }
 
-      // 4. CSRF Protection for mutations
+      // 3. CSRF Protection for mutations (después del auth, para tener contexto
+      //    de logging). Antes estaba duplicado pre y post auth; se mantiene uno solo.
       if (!config.skipCsrf && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
         const csrfResult = validateCsrfMiddleware(request as any)
         if (csrfResult) return csrfResult
@@ -104,9 +101,11 @@ export function createSecureRoute<T = unknown>(
       }
 
       if (config.querySchema) {
-        const url = new URL(request.url)
+        // Antes se ignoraba `config.querySchema` y siempre se parseaba
+        // pagination+search, dejando sin validar a cualquier ruta con schema
+        // custom (UUIDs, enums, etc.). Ahora respetamos el schema provisto.
         const params = Object.fromEntries(new URL(request.url).searchParams.entries())
-        const result = CommonSchemas.pagination.merge(CommonSchemas.search).safeParse(Object.fromEntries(new URL(request.url).searchParams.entries()))
+        const result = config.querySchema.safeParse(params)
         if (!result.success) {
           logValidationFailure(request, 'query', result.error.flatten().fieldErrors)
           return NextResponse.json(

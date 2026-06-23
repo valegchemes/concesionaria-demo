@@ -3,15 +3,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { kv } from '@/lib/kv-client'
 import { head } from '@vercel/blob'
+import { timingSafeStringEqual } from '@/lib/shared/timing-safe-equal'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
-  // Protección con Bearer token — configura DIAG_SECRET_TOKEN en tus variables de entorno
+  // Protección con Bearer token — configura DIAG_SECRET_TOKEN en tus variables de entorno.
+  // Comparación constant-time para evitar timing attacks sobre el secret.
   const authHeader = request.headers.get('authorization')
   const diagToken = process.env.DIAG_SECRET_TOKEN
 
-  if (!diagToken || authHeader !== `Bearer ${diagToken}`) {
+  if (!diagToken || !authHeader || !timingSafeStringEqual(authHeader, `Bearer ${diagToken}`)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

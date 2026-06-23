@@ -7,6 +7,7 @@ import { env } from '@/lib/env'
 import { prisma } from '@/lib/shared/prisma'
 import { createAuditLog } from '@/lib/shared/audit-log'
 import { requireRateLimit, RATE_LIMITS } from '@/lib/shared/rate-limit-memory'
+import { timingSafeStringEqual } from '@/lib/shared/timing-safe-equal'
 import * as crypto from 'crypto'
 
 const log = createLogger('MPWebhook')
@@ -30,7 +31,9 @@ function verifyMPSignature(
   const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`
   const expected = crypto.createHmac('sha256', secret).update(manifest).digest('hex')
 
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
+  // timingSafeStringEqual evita el throw de timingSafeEqual cuando las
+  // longitudes difieren (que rompería la garantía timing-safe y daría 500).
+  return timingSafeStringEqual(expected, v1)
 }
 
 export async function POST(req: NextRequest) {
@@ -74,7 +77,12 @@ export async function POST(req: NextRequest) {
     // considerarse "trabado" (crash del servidor, timeout, etc.)
     const STALE_PROCESSING_THRESHOLD_MS = 60 * 60 * 1000 // 1 hora
 
-    // 5. Idempotencia: verificar si ya fue procesado
+    // 5. Idempotencia ATÓMICA (claim con updateMany condicional).
+    // Antes había un TOCTOU: findUnique → upsert permitía que dos reintentos
+    // concurrentes pasaran ambos el guard y procesaran dos veces. Ahora hacemos
+    // un claim atómico: solo el primero que logra la transición a 'processing'
+    // obtiene count=1; los demás reciben count=0 y se tratan como duplicados.
+
     const existingEvent = await prisma.webhookEvent.findUnique({
       where: { eventId },
       select: { status: true, processedAt: true, receivedAt: true },
@@ -85,37 +93,57 @@ export async function POST(req: NextRequest) {
       return new NextResponse('OK (already processed)', { status: 200 })
     }
 
-    if (existingEvent?.status === 'processing') {
-      // Verificar si el evento está "trabado": lleva más de 1h en processing.
-      // Esto ocurre cuando el servidor crasheó después de guardar en DB pero
-      // antes de completar el procesamiento. En ese caso, permitimos el reintento.
-      const isStale = existingEvent.receivedAt
-        ? Date.now() - existingEvent.receivedAt.getTime() > STALE_PROCESSING_THRESHOLD_MS
+    const staleThresholdDate = new Date(Date.now() - STALE_PROCESSING_THRESHOLD_MS)
+    const isStaleProcessing =
+      existingEvent?.status === 'processing' &&
+      existingEvent.receivedAt
+        ? existingEvent.receivedAt.getTime() < staleThresholdDate.getTime()
         : false
 
-      if (!isStale) {
-        log.info({ eventId }, 'MP event already being processed')
-        return new NextResponse('Processing', { status: 202 })
+    // Claim atómico: transición a 'processing' solo si el estado actual NO es
+    // 'processing' (caso create) o si ya estaba pero está stale (recuperación).
+    // Para un evento nuevo usamos upsert con un guard; para existente usamos
+    // updateMany condicional que retorna count=0 si otro lo tomó antes.
+    let claimed = false
+    if (!existingEvent) {
+      // Intentar crear; si otro lo creó concurrentemente, la PK única falla y
+      // caemos en el flujo de "ya en procesamiento".
+      try {
+        await prisma.webhookEvent.create({
+          data: {
+            eventId,
+            source: 'mercadopago',
+            type: topic,
+            status: 'processing',
+            payload: { dataId, topic, body },
+            receivedAt: new Date(),
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          },
+        })
+        claimed = true
+      } catch {
+        // Otro worker lo creó entre nuestro findUnique y este create.
+        claimed = false
       }
-
-      log.warn({ eventId, receivedAt: existingEvent.receivedAt }, 'MP event stuck in processing — retrying')
+    } else {
+      // Existente: reclamar atómicamente solo si está libre o stale.
+      const result = await prisma.webhookEvent.updateMany({
+        where: {
+          eventId,
+          OR: [
+            { status: { not: 'processing' } },
+            ...(isStaleProcessing ? [{ status: 'processing', receivedAt: { lt: staleThresholdDate } }] : []),
+          ],
+        },
+        data: { status: 'processing', receivedAt: new Date() },
+      })
+      claimed = result.count > 0
     }
 
-    // 6. Registrar como "processing" con receivedAt para trazabilidad de idempotencia
-    await prisma.webhookEvent.upsert({
-      where: { eventId },
-      create: {
-        eventId,
-        source: 'mercadopago',
-        type: topic,
-        status: 'processing',
-        payload: { dataId, topic, body },
-        receivedAt: new Date(),   // Inmutable: cuándo llegó este intento
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-      // En reintento de evento trabado: resetear receivedAt para el nuevo intento
-      update: { status: 'processing', receivedAt: new Date() },
-    })
+    if (!claimed) {
+      log.info({ eventId }, 'MP event already being processed by another worker')
+      return new NextResponse('Processing', { status: 202 })
+    }
 
     try {
       // 7. Consultar el pago en la API de MP
@@ -196,6 +224,7 @@ export async function POST(req: NextRequest) {
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err)
     log.error({ err: errorMsg }, 'Error processing MP webhook')
-    return new NextResponse(`Webhook Error: ${errorMsg}`, { status: 500 })
+    // No filtrar detalles internos al caller (MP); solo un mensaje genérico.
+    return new NextResponse('Webhook Error', { status: 500 })
   }
 }

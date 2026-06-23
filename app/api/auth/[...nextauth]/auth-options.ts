@@ -29,7 +29,9 @@ type AuthToken = JWT & {
 const LoginInputSchema = z.object({
   email: EmailSchema,
   password: z.string().min(1, 'Password is required'),
-  companySlug: SlugSchema.optional(),
+  // SECURITY: companySlug obligatorio para garantizar aislamiento entre tenants
+  // en el login (ver verifyCredentials en lib/auth.ts).
+  companySlug: SlugSchema,
 })
 
 export const authOptions: NextAuthOptions = {

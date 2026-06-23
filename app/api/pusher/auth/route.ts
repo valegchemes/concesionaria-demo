@@ -13,8 +13,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import Pusher from 'pusher'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/auth-options'
+import { getCurrentUser } from '@/lib/shared/auth-helpers'
 import { createLogger } from '@/lib/shared/logger'
 
 const log = createLogger('PusherAuth')
@@ -38,9 +37,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Realtime not configured' }, { status: 503 })
   }
 
-  // 1. Validar sesión activa
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.companyId) {
+  // 1. Validar sesión activa y re-verificar en DB que el usuario y la empresa
+  //    siguen activos. Antes se usaba getServerSession directo (solo JWT),
+  //    lo que permitía a un usuario recién desactivado por el cron mantener
+  //    acceso realtime hasta que expirara su token (24h).
+  let user
+  try {
+    user = await getCurrentUser()
+  } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -55,12 +59,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // 3. Validar que el canal solicitado corresponde a la empresa del usuario (multi-tenant security)
-  const expectedChannel = `private-company-${session.user.companyId}`
+  const expectedChannel = `private-company-${user.companyId}`
   if (channelName !== expectedChannel) {
     log.warn(
       {
-        userId: session.user.id,
-        companyId: session.user.companyId,
+        userId: user.id,
+        companyId: user.companyId,
         requestedChannel: channelName,
         expectedChannel,
       },
@@ -72,16 +76,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 4. Generar la firma de autenticación de Pusher
   try {
     const authResponse = pusher.authorizeChannel(socketId, channelName, {
-      user_id: session.user.id,
+      user_id: user.id,
       user_info: {
-        name: session.user.name ?? 'Unknown',
-        role: session.user.role ?? 'SELLER',
-        companyId: session.user.companyId,
+        name: user.name,
+        role: user.role,
+        companyId: user.companyId,
       },
     })
 
     log.debug(
-      { userId: session.user.id, channelName },
+      { userId: user.id, channelName },
       'Pusher channel authorized'
     )
 
