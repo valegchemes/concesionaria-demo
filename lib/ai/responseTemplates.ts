@@ -172,6 +172,26 @@ export class ResponseTemplates {
     return `🤔 No entendí su solicitud. Puedo ayudarlo con:\n\n🔹 Inventario:\n${BULLET} "¿Qué autos tenemos disponibles?"\n${BULLET} "Buscar Toyota Corolla 2020"\n${BULLET} "Autos de hasta 15 palos"\n${BULLET} "Costos del vehículo Hilux"\n\n🔹 Clientes:\n${BULLET} "Mostrame clientes nuevos"\n${BULLET} "Buscar cliente llamado Juan"\n${BULLET} "Crear cliente María López tel 1122334455"\n\n🔹 Ventas y finanzas:\n${BULLET} "¿Cuántas ventas tuvimos este mes?"\n${BULLET} "¿Cuál fue la ganancia neta?"\n${BULLET} "Gastos del mes"\n${BULLET} "Ranking de vendedores"\n\n🔹 Gestión:\n${BULLET} "Últimas auditorías del sistema"\n${BULLET} "Tareas pendientes"\n${BULLET} "Cuotas por vencer"\n${BULLET} "Documentos generados"\n\n🔹 Sistema:\n${BULLET} "Mostrame los usuarios"\n${BULLET} "Estado de caja"\n${BULLET} "Finanzas de la operación #ID"\n\n¿Qué desea consultar? 😊`;
   }
 
+  /** Saludo inicial cuando el usuario dice hola/buenas/etc. */
+  static getGreetingResponse(): string {
+    return `¡Hola! 👋 Soy tu Copiloto de AutoManager CRM.\n\nPuedo ayudarte a consultar y gestionar tu concesionaria en lenguaje natural:\n\n${BULLET} 📊 Estadísticas del negocio\n${BULLET} 🚗 Inventario de vehículos\n${BULLET} 👥 Clientes y prospectos\n${BULLET} 💰 Ventas, ganancias y gastos\n${BULLET} 📋 Tareas, cuotas y documentos\n\n¿Qué necesitás consultar hoy?`;
+  }
+
+  /** Respuesta a agradecimientos (gracias, perfecto, etc.) */
+  static getThanksResponse(): string {
+    return `¡De nada! 😊 Si necesitás algo más, estoy acá para ayudarte.`;
+  }
+
+  /** Respuesta a "qué podés hacer" / "ayuda" / lista de capacidades */
+  static getCapabilitiesResponse(): string {
+    return `🤖 Estas son las cosas que puedo hacer por vos:\n\n📊 **Resumen y estadísticas**\n${BULLET} "¿Cómo vamos este mes?" / "Resumen del negocio"\n${BULLET} "¿Cuál fue la ganancia neta?"\n${BULLET} "Ranking de vendedores"\n\n🚗 **Inventario**\n${BULLET} "¿Qué autos tenemos disponibles?"\n${BULLET} "Buscar Toyota Corolla hasta 15 palos"\n${BULLET} "Costos y margen del vehículo Hilux"\n\n👥 **Clientes (leads)**\n${BULLET} "Mostrame clientes nuevos sin contactar"\n${BULLET} "Buscar cliente llamado Juan"\n${BULLET} "Crear cliente María López, tel 1122334455, por Instagram"\n${BULLET} "Cambiar estado del lead Juan a contactado"\n\n💰 **Ventas y finanzas**\n${BULLET} "¿Cuántas ventas tuvimos este mes?"\n${BULLET} "Gastos del mes"\n${BULLET} "Finanzas de la operación #1234"\n\n📋 **Gestión operativa**\n${BULLET} "Tareas pendientes"\n${BULLET} "Cuotas por vencer"\n${BULLET} "Documentos generados"\n${BULLET} "Estado de caja"\n${BULLET} "Últimas auditorías"\n\nEscribí tu consulta y me encargo. 🚀`;
+  }
+
+  /** Respuesta cuando el usuario se despide */
+  static getFarewellResponse(): string {
+    return `¡Hasta luego! 👋 Que tengas un buen día de ventas. Volvé cuando quieras.`;
+  }
+
   /** Manejo de errores técnicos */
   static handleError(action: string): string {
     console.error(`[RuleAgent] Error técnico en acción ${action}`);

@@ -18,10 +18,15 @@ export default function AppError({
       <div className="text-red-500 text-5xl">⚠</div>
       <h2 className="text-2xl font-bold text-gray-800">Ocurrió un error</h2>
       <p className="text-gray-600 text-center max-w-md">
-        {error?.message || 'Error desconocido en la aplicación'}
+        Se produjo un error inesperado al cargar esta página.
       </p>
+      {/* Mostrar solo el digest (hash seguro) al usuario para soporte.
+          error.message puede contener SQL/stack/detalles internos que no
+          deben exponerse (info disclosure). */}
       {error?.digest && (
-        <p className="text-xs text-gray-400 font-mono">ID: {error.digest}</p>
+        <p className="text-xs text-gray-400 font-mono">
+          Si el problema persiste, reportá este ID: {error.digest}
+        </p>
       )}
       <button
         onClick={reset}

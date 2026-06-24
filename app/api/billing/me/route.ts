@@ -28,6 +28,10 @@ export const GET = withTenantHandler(async (_req: NextRequest) => {
 
     return NextResponse.json({
       ...limits,
+      // companyId se incluye para que el hook usePlanLimits pueda keyear su
+      // caché por tenant y evitar reusar límites de otra empresa en la misma
+      // sesión SPA (fuga cross-tenant).
+      companyId: user.companyId,
       currentUsers,
       currentUnits,
     })

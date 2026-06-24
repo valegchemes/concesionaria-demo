@@ -119,8 +119,14 @@ export function sanitizeHtml(input: string): string {
 export function sanitizeForLog(input: string): string {
   if (typeof input !== 'string') return String(input)
   return input
-    .replace(/[\r\n\t]/g, ' ')
-    .replace(/[^\x20-\x7E]/g, '')
+    // Normalizar separadores a espacio (anti log-injection: evita forjar nuevas
+    // líneas de log con CRLF).
+    .replace(/[\r\n\t\v\f]/g, ' ')
+    // Quitar caracteres de control C0/C1 (excepto los ya reemplazados arriba),
+    // PERO conservar Unicode imprimible (acentos, ñ, emojis) que antes se borraba
+    // con `[^\x20-\x7E]` — esto mutilaba nombres/direcciones en una app en español.
+    // \p{C} cubre categorías "Other" (control, surrogate, etc.).
+    .replace(/\p{C}/gu, '')
     .slice(0, 500)
 }
 

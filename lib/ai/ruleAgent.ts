@@ -15,6 +15,13 @@ export class RuleBasedAgent {
 
   async processMessage(userMessage: string): Promise<string> {
     const normalized = ArgSpanishUtils.normalize(userMessage);
+
+    // Capa 0: conversacionales (saludo, gracias, ayuda, despedida).
+    // Se detectan antes que cualquier intent de BD porque son frases cortas
+    // que fácilmente podrían matchear keywords fuzzy por error.
+    const conversational = this.detectConversational(userMessage, normalized);
+    if (conversational) return conversational;
+
     const intent = this.detectIntent(normalized, userMessage);
     if (!intent.action) {
       const fuzzyIntent = this.detectIntentByKeywordScore(normalized, userMessage);
@@ -22,6 +29,41 @@ export class RuleBasedAgent {
       return ResponseTemplates.getClarificationResponse();
     }
     return await this.executeAndFormat(intent.action, intent.params, userMessage);
+  }
+
+  /**
+   * Capa 0: detecta mensajes conversacionales comunes (saludos, agradecimientos,
+   * pedidos de ayuda, despedidas). Retorna la respuesta inmediata o null si no
+   * corresponde. Esto reduce los falsos "No entendí" en interacciones cotidianas.
+   */
+  private detectConversational(original: string, normalized: string): string | null {
+    const t = normalized.trim();
+
+    // Saludos: "hola", "buenas", "qué tal", "buen día", "buenas tardes", etc.
+    // Solo al inicio o como frase corta (evita matchear "hola, busco un toyota").
+    if (/^(?:hola|buenas|buenos\s+dias|buenas\s+tardes|buenas\s+noches|que\s+tal|holi|hey)\b/i.test(original.trim()) && original.trim().length < 30) {
+      return ResponseTemplates.getGreetingResponse();
+    }
+
+    // Agradecimientos (frase corta, no "gracias a este cliente compró...")
+    if ((/^gracias\b/i.test(t) || /\b(?:muchas\s+gracias|mil\s+gracias)\b/i.test(t)) && t.length < 40) {
+      return ResponseTemplates.getThanksResponse();
+    }
+    if (/^(?:perfecto|genial|excelente|buenisimo|barbaro|dale)\b/i.test(t) && t.length < 25) {
+      return ResponseTemplates.getThanksResponse();
+    }
+
+    // Despedidas
+    if (/\b(?:chau|chao|adios|nos\s+vemos|hasta\s+luego|hasta\s+manana|me\s+voy)\b/i.test(t) && t.length < 40) {
+      return ResponseTemplates.getFarewellResponse();
+    }
+
+    // Pedidos de ayuda / qué podés hacer / quién sos
+    if (/\b(?:que\s+podes\s+hacer|que\s+sabes\s+hacer|ayuda|como\s+funcionas|menu|opciones|comandos|quien\s+sos|ayudame|para\s+que\s+servis)\b/i.test(t)) {
+      return ResponseTemplates.getCapabilitiesResponse();
+    }
+
+    return null;
   }
 
   private async executeAndFormat(
@@ -292,6 +334,22 @@ export class RuleBasedAgent {
         action: 'getLeadActivities',
         paramsExtractor: this.extractLeadSearchParams
       },
+
+      // ─── FINANZAS DE OPERACIÓN (DEAL) ───
+      // Antes la tool getDealFinances existía pero no tenía intención asociada,
+      // así que era inalcanzable desde el chat. Acepta ID (#1234 / op-1234)
+      // o nombre del cliente ("finanzas de la operación de Juan").
+      {
+        patterns: [
+          /^(?:finanzas?|detalle\s+financiero|desglose\s+financiero)\s+(?:de[l]?\s+)?(?:la\s+)?(?:operación|operacion|venta|deal)/i,
+          /^(?:cuánto\s+se\s+pagó|saldo\s+(?:de|pendiente\s+de))\s+(?:la\s+)?(?:operación|operacion|venta)/i,
+          /(?:finanzas?|detalle\s+financiero)\s+(?:de[l]?\s+)?(?:la\s+)?operación/i,
+          /(?:finanzas?|detalle)\s+(?:de\s+)?(?:la\s+)?(?:operación|operacion)\s+#?[\w-]+/i,
+          /operación\s+#?\w+\s+(?:finanzas?|detalle|saldo|pagos?)/i,
+        ],
+        action: 'getDealFinances',
+        paramsExtractor: this.extractDealFinancesParams
+      },
     ];
 
     const searchText = original;
@@ -335,6 +393,7 @@ export class RuleBasedAgent {
       getUnitFinances: ['costo vehiculo', 'finanza vehiculo', 'margen auto'],
       getUsers: ['usuario', 'vendedor', 'empleado'],
       getTopSellers: ['ranking', 'top', 'mejor vendedor'],
+      getDealFinances: ['finanza operacion', 'finanza deal', 'saldo pendiente', 'detalle financiero'],
     };
 
     const actions: Array<{
@@ -467,6 +526,12 @@ export class RuleBasedAgent {
         weight: 0,
         paramsExtractor: () => ({})
       },
+      {
+        name: 'getDealFinances',
+        keywords: ['finanza', 'finanzas', 'detalle financiero', 'saldo', 'pendiente', 'pago', 'pagos', 'anticipo', 'operacion', 'deal'],
+        weight: 0,
+        paramsExtractor: (t: string, orig: string) => this.extractDealFinancesParams(t, orig)
+      },
     ];
 
     for (const action of actions) {
@@ -535,6 +600,25 @@ export class RuleBasedAgent {
     }
     const emailMatch = text.match(/(?:email|e-mail|correo)\s*:?\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i);
     if (emailMatch) params.query = emailMatch[1];
+    return params;
+  }
+
+  /** Extrae el identificador de una operación para getDealFinances.
+   *  Acepta: ID explícito (#1234, op-1234, op_1234) o el nombre del cliente
+   *  ("finanzas de la operación de Juan"). En el caso del nombre, se resuelve
+   *  a ID en executeAction via búsqueda de deals. */
+  private extractDealFinancesParams(text: string, original: string): any {
+    const params: any = {};
+    // ID explícito: "operación #1234", "deal op-1234", "operacion op_abc123"
+    const idMatch = original.match(/(?:operaci[oó]n|operacion|venta|deal)\s*#?\s*([a-z0-9_-]{3,40})/i);
+    if (idMatch && /^#?[a-z0-9_-]{3,}$/i.test(idMatch[1])) {
+      params.dealId = idMatch[1].replace(/^#/, '');
+    }
+    // Nombre del cliente: "operación de Juan", "venta a María López"
+    if (!params.dealId) {
+      const nameMatch = original.match(/(?:operaci[oó]n|operacion|venta|deal)\s+(?:de|a|del)\s+([A-ZÁÉÍÓÚÑa-záéíóúñ]+\s*[A-ZÁÉÍÓÚÑa-záéíóúñ]*)/);
+      if (nameMatch) params.customerName = nameMatch[1].trim();
+    }
     return params;
   }
 
@@ -654,6 +738,26 @@ export class RuleBasedAgent {
           return { found: false, activities: [], message: `Lead "${params.query}" no encontrado.` };
         }
         return { found: false, activities: [], message: 'Especifique el nombre del lead para ver sus actividades.' };
+      }
+      case 'getDealFinances': {
+        // Si vino un ID directo, usarlo.
+        if (params.dealId) {
+          return await tools.getDealFinances.execute!({ dealId: params.dealId }, {} as any);
+        }
+        // Si vino nombre del cliente, buscar su deal más reciente.
+        if (params.customerName) {
+          const dealsResult = await tools.getDeals.execute!({ limit: 20 }, {} as any) as any;
+          if (dealsResult.found > 0) {
+            const match = dealsResult.deals.find((d: any) =>
+              String(d.cliente ?? '').toLowerCase().includes(params.customerName.toLowerCase())
+            );
+            if (match) {
+              return await tools.getDealFinances.execute!({ dealId: match.id }, {} as any);
+            }
+          }
+          return { found: false, message: `No se encontró ninguna operación para "${params.customerName}".` };
+        }
+        return { found: false, message: 'Especificá el número de operación (ej: "finanzas de la operación #1234") o el nombre del cliente.' };
       }
       default:
         return await (tools[action] as any).execute!(params, {} as any);

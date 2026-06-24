@@ -1,21 +1,20 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { AlertCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export function SubscriptionGuard({ 
+export function SubscriptionGuard({
   status,
-  children 
-}: { 
+  children
+}: {
   status: string | null
-  children: React.ReactNode 
+  children: React.ReactNode
 }) {
   const router = useRouter()
   const pathname = usePathname()
   const [isBlocked, setIsBlocked] = useState(false)
-  const mountedRef = useRef(true)
 
   useEffect(() => {
     const inactiveStatuses = ['PAST_DUE', 'CANCELED', 'UNPAID', 'PAUSED', 'INCOMPLETE']
@@ -23,14 +22,16 @@ export function SubscriptionGuard({
     const isInactive = !status || inactiveStatuses.includes(status)
     const isBillingPage = pathname?.startsWith('/app/settings/billing')
 
-    if (mountedRef.current) {
-      if (isInactive && !isBillingPage) {
-        setIsBlocked(true)
-      } else {
-        setIsBlocked(false)
-      }
+    // Nota: el patrón de mountedRef que había aquí era incorrecto: el cleanup lo
+    // ponía en false en el primer cambio de status/pathname y nunca volvía a
+    // true, por lo que las actualizaciones de estado posteriores quedaban
+    // bloqueadas (el guard se "congelaba"). En React 18+ los cleanups de
+    // useEffect ya previenen updates tras unmount, así que no hace falta.
+    if (isInactive && !isBillingPage) {
+      setIsBlocked(true)
+    } else {
+      setIsBlocked(false)
     }
-    return () => { mountedRef.current = false }
   }, [status, pathname])
 
   if (isBlocked) {

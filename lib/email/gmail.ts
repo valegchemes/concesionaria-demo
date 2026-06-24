@@ -31,6 +31,10 @@ export function getOAuth2Client() {
 /**
  * Genera un state firmado con HMAC para prevenir OAuth CSRF attacks.
  * El state contiene: companyId + timestamp + HMAC.
+ *
+ * El timestamp se valida por frescura en `verifyOAuthState` (anti-replay) y la
+ * clave del HMAC es el secret completo (antes se truncaba a 16 chars, lo que
+ * reducía innecesariamente la entropía de la clave).
  */
 function signOAuthState(companyId: string): string {
   const secret = process.env.GMAIL_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET || ''
@@ -39,15 +43,19 @@ function signOAuthState(companyId: string): string {
   }
   const timestamp = Date.now().toString(36)
   const payload = `${companyId}:${timestamp}`
-  // Usar HMAC con solo la primera mitad de la key para mantener el state corto
-  const signingKey = secret.length >= 16 ? secret.slice(0, 16) : secret
-  const hmac = crypto.createHmac('sha256', signingKey).update(payload).digest('hex').slice(0, 16)
+  // Usar el secret completo como clave HMAC (64 bits de output bastan para
+  // anti-falsificación por red, pero la clave no debe truncarse).
+  const hmac = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 16)
   return `${payload}:${hmac}`
 }
 
+// Ventana máxima de validez del state (anti-replay). Un state robado (p.ej. de
+// un log de referrer) ya no sirve para vincular una cuenta Gmail atacante.
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000 // 10 minutos
+
 /**
  * Verifica y extrae el companyId de un state firmado.
- * Retorna null si el state es inválido o manipulado.
+ * Retorna null si el state es inválido, manipulado o está expirado.
  */
 export function verifyOAuthState(state: string): string | null {
   try {
@@ -57,9 +65,8 @@ export function verifyOAuthState(state: string): string | null {
     const payload = parts.join(':')
     const secret = process.env.GMAIL_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET || ''
     if (!secret) return null
-    const signingKey = secret.length >= 16 ? secret.slice(0, 16) : secret
-    const expected = crypto.createHmac('sha256', signingKey).update(payload).digest('hex').slice(0, 16)
-    
+    const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex').slice(0, 16)
+
     // Timing-safe comparison
     if (hmac.length !== expected.length) return null
     let result = 0
@@ -67,7 +74,14 @@ export function verifyOAuthState(state: string): string | null {
       result |= hmac.charCodeAt(i) ^ expected.charCodeAt(i)
     }
     if (result !== 0) return null
-    
+
+    // Validar frescura del timestamp (anti-replay). parts[1] = timestamp en base36.
+    const ts = parseInt(parts[1], 36)
+    if (!Number.isFinite(ts) || Date.now() - ts > OAUTH_STATE_MAX_AGE_MS) {
+      log.warn({}, 'OAuth state rechazado por expirado (anti-replay)')
+      return null
+    }
+
     // Extraer companyId (primer parte antes del primer ':')
     return parts[0]
   } catch {

@@ -174,8 +174,13 @@ export function hasAnyPermission(
 // PERMISSION RESOLUTION (async — DB + cache)
 // ============================================================================
 
-function cacheKey(userId: string): string {
-  return `authz:perms:v2:${userId}`
+function cacheKey(userId: string, companyId?: string): string {
+  // v3: incluir companyId en la key. Antes (v2) solo se keyeaba por userId, lo
+  // que permitía que un usuario presente en dos empresas recibiera permisos
+  // cacheados de la otra. El bumpeo de versión además invalida caches v2 viejas.
+  return companyId
+    ? `authz:perms:v3:${userId}:${companyId}`
+    : `authz:perms:v3:${userId}`
 }
 
 /**
@@ -196,7 +201,7 @@ export async function getUserPermissions(
   // ── 1. Cache lookup ──────────────────────────────────────────────────────
   try {
     const cached = await Promise.race([
-      kv.get<Permission[]>(cacheKey(userId)),
+      kv.get<Permission[]>(cacheKey(userId, companyId)),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000))
     ])
     
@@ -256,7 +261,7 @@ export async function getUserPermissions(
 
   // ── 4. Cache the result ──────────────────────────────────────────────────
   try {
-    await kv.set(cacheKey(userId), permissions, { ex: PERMS_CACHE_TTL_SECONDS })
+    await kv.set(cacheKey(userId, companyId), permissions, { ex: PERMS_CACHE_TTL_SECONDS })
   } catch (err) {
     log.warn({ userId, error: String(err) }, '[AuthZ] Failed to write permission cache')
   }
@@ -268,14 +273,23 @@ export async function getUserPermissions(
  * Invalidates the permission cache for a specific user.
  * MUST be called whenever a user's roles or permissions are changed.
  *
- * @param userId - The user whose cache should be cleared
+ * @param userId    - The user whose cache should be cleared
+ * @param companyId - Opcional. Si se provee, se invalida solo la key de esa
+ *                    empresa. Si se omite, se borran todas las keys v3 del
+ *                    usuario (compatibilidad con callers que no tienen companyId).
  */
-export async function invalidateUserPermissions(userId: string): Promise<void> {
+export async function invalidateUserPermissions(userId: string, companyId?: string): Promise<void> {
   try {
-    await kv.del(cacheKey(userId))
-    log.info({ userId }, '[AuthZ] Permission cache invalidated')
+    if (companyId) {
+      await kv.del(cacheKey(userId, companyId))
+    } else {
+      // Sin companyId: borrar la key sin empresa y, como defense-in-depth,
+      // también intentar la variante sin companyId (v3 sin companyId).
+      await kv.del(cacheKey(userId))
+    }
+    log.info({ userId, companyId }, '[AuthZ] Permission cache invalidated')
   } catch (err) {
-    log.warn({ userId, error: String(err) }, '[AuthZ] Failed to invalidate permission cache')
+    log.warn({ userId, companyId, error: String(err) }, '[AuthZ] Failed to invalidate permission cache')
   }
 }
 

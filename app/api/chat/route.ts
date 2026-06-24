@@ -31,16 +31,29 @@ const SSE_HEADERS = {
 const MAX_MESSAGES = 50;
 const MAX_CONTENT_LENGTH = 8000;
 
+// El cliente `useChat` de @ai-sdk/react (AI SDK v6) envía los mensajes en
+// formato UIMessage con `parts: [{ type:'text', text }]`, pero también
+// aceptamos el formato legacy con `content: string`. El schema debe admitir
+// AMBOS; antes exigía `content` obligatorio, lo que rechazaba los mensajes
+// del panel y disparaba el error "no se pudo conectar" (bug introducido al
+// añadir validación Zod sin contemplar el formato del SDK).
+const TextPartSchema = z.object({
+  type: z.literal('text'),
+  text: z.string().max(MAX_CONTENT_LENGTH),
+});
+
+const ChatMessageSchema = z.object({
+  role: z.string().max(32),
+  // `content` (legacy string) y/o `parts` (UIMessage array). Al menos uno.
+  content: z.string().max(MAX_CONTENT_LENGTH).optional(),
+  parts: z.array(TextPartSchema).max(50).optional(),
+}).refine(
+  (m) => typeof m.content === 'string' || Array.isArray(m.parts),
+  { message: 'Cada mensaje debe tener `content` o `parts`' }
+);
+
 const ChatRequestSchema = z.object({
-  messages: z
-    .array(
-      z.object({
-        role: z.string().max(32),
-        content: z.string().max(MAX_CONTENT_LENGTH),
-      })
-    )
-    .min(1)
-    .max(MAX_MESSAGES),
+  messages: z.array(ChatMessageSchema).min(1).max(MAX_MESSAGES),
 });
 
 // Rate limit específico para chat (por usuario autenticado): 30 req/min.
@@ -69,7 +82,8 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. Parsear y validar el body con Zod (antes se aceptaba sin validar).
-  let messages: { role: string; content: string }[];
+  // El tipo admite `content` (legacy) y/o `parts` (UIMessage SDK v6).
+  let messages: { role: string; content?: string; parts?: { type: 'text'; text: string }[] }[];
   try {
     const body = await req.json();
     const parsed = ChatRequestSchema.safeParse(body);

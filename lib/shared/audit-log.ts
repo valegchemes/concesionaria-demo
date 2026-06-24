@@ -2,8 +2,29 @@ import { prismaBypass } from '@/lib/prisma'
 import { createLogger } from '@/lib/shared/logger'
 import { type Prisma } from '@prisma/client'
 
-// Campos que nunca deben persistirse en el audit log
-const SENSITIVE_FIELDS = ['password', 'hashedPassword', 'token', 'secret', 'apiKey']
+// Campos que nunca deben persistirse en el audit log.
+//
+// Se combinan dos estrategias:
+// - EXACT_SENSITIVE_FIELDS: nombres cortos que NO deben matchearse por
+//   substring (ej. "pin" aparecería en "pinza", "spine"). Se comparan exactos.
+// - SENSITIVE_SUBSTRINGS: términos que sí se buscan como substring del nombre
+//   del campo (en lowercase), para captar variantes como hashedPassword,
+//   refreshToken, mpAccessToken, stripeSecretKey, etc.
+const EXACT_SENSITIVE_FIELDS = new Set([
+  'password', 'pin', 'cvv', 'cvc', 'cbu', 'cvu', 'pan', 'secret',
+  'token', 'authorization', 'credential', 'credentials',
+])
+const SENSITIVE_SUBSTRINGS = [
+  'password', 'secret', 'token', 'apikey', 'api_key',
+  'accesstoken', 'refreshtoken', 'privatekey', 'credential',
+  'authorization', 'cvv', 'cbu', 'cvu',
+]
+
+function isSensitiveKey(key: string): boolean {
+  const lower = key.toLowerCase()
+  if (EXACT_SENSITIVE_FIELDS.has(lower)) return true
+  return SENSITIVE_SUBSTRINGS.some(s => lower.includes(s))
+}
 
 /**
  * Elimina campos sensibles de un objeto antes de guardarlo en el audit log.
@@ -23,7 +44,7 @@ function sanitizeForAudit(obj: unknown): unknown {
 
   const sanitized = { ...(obj as Record<string, unknown>) }
   for (const [key, value] of Object.entries(sanitized)) {
-    if (SENSITIVE_FIELDS.includes(key)) {
+    if (isSensitiveKey(key)) {
       sanitized[key] = '[REDACTED]'
     } else if (typeof value === 'object' && value !== null) {
       sanitized[key] = sanitizeForAudit(value)

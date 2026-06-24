@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { verifyCredentials } from '@/lib/auth'
 import { EmailSchema, SlugSchema } from '@/lib/shared/validation'
 import { env } from '@/lib/env'
+import { prisma } from '@/lib/shared/prisma'
 
 type AuthUser = {
   id: string
@@ -24,6 +25,9 @@ type AuthToken = JWT & {
   companyId?: string
   companyName?: string
   companySlug?: string
+  // Timestamp (ms) de la última vez que los claims se refrescaron desde la DB.
+  // Permite refrescar rol/company/estado periódicamente sin consultar en cada request.
+  refreshedAt?: number
 }
 
 const LoginInputSchema = z.object({
@@ -33,6 +37,64 @@ const LoginInputSchema = z.object({
   // en el login (ver verifyCredentials en lib/auth.ts).
   companySlug: SlugSchema,
 })
+
+// Intervalo de refresco de claims desde la DB (ms). El callback `jwt` se invoca
+// varias veces por request de sesión; con este throttle evitamos consultar la
+// DB en cada uno y aun así propagar cambios de rol / isActive / empresa en
+// minutos en lugar de esperar a que expire el JWT (24h).
+const CLAIM_REFRESH_INTERVAL_MS = 5 * 60 * 1000 // 5 minutos
+
+/**
+ * Refresca role / companyId / estado de activación del usuario y su empresa
+ * desde la DB. Si el usuario o la empresa fueron desactivados, limpia el token
+ * para forzar re-autenticación (revocación efectiva sin sessions en DB).
+ * Es defensivo: si la DB falla, conserva el token existente para no bloquear.
+ */
+async function refreshClaimsIfNeeded(token: AuthToken): Promise<AuthToken> {
+  const userId = token.id
+  if (!userId) return token
+
+  const now = Date.now()
+  if (token.refreshedAt && now - token.refreshedAt < CLAIM_REFRESH_INTERVAL_MS) {
+    return token
+  }
+
+  try {
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        role: true,
+        isActive: true,
+        companyId: true,
+        company: {
+          select: { name: true, slug: true, isActive: true },
+        },
+      },
+    })
+
+    // Usuario o empresa desactivados → invalidar token (forzar logout).
+    // Construimos un token sin los claims de identidad: los callbacks de sesión
+    // y requireAuth() tratan la ausencia de id/companyId como "no autenticado".
+    if (!dbUser || !dbUser.isActive || !dbUser.company?.isActive) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, role, companyId, companyName, companySlug, ...rest } = token
+      return rest as AuthToken
+    }
+
+    return {
+      ...token,
+      role: dbUser.role,
+      companyId: dbUser.companyId,
+      companyName: dbUser.company.name,
+      companySlug: dbUser.company.slug,
+      refreshedAt: now,
+    }
+  } catch {
+    // Si la DB falla, conservar el token para no bloquear al usuario.
+    // requireAuth() (auth-helpers.ts) ya re-valida isActive en cada request sensible.
+    return token
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -80,14 +142,21 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        // Sign-in inicial: setear claims desde el resultado de authorize().
         token.id = user.id
         token.role = user.role
         token.companyId = user.companyId
         token.companyName = user.companyName
         token.companySlug = user.companySlug
+        token.refreshedAt = Date.now()
         // Do NOT store avatarUrl/logoUrl in the JWT — they can be large base64
         // strings that overflow the cookie size limit (HTTP 431).
         // They are fetched fresh from the DB in the layout server component.
+      } else {
+        // Rotación del token (cualquier acceso con sesión existente).
+        // Refrescar claims desde la DB con throttle para que los cambios de
+        // rol / desactivación se propaguen en minutos (revocación efectiva).
+        token = await refreshClaimsIfNeeded(token as AuthToken)
       }
       return token
     },

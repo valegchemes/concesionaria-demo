@@ -38,7 +38,11 @@ export function GlobalSearch() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mountedRef = useRef(true)
 
-  // Debounced search
+  // Debounced search con AbortController.
+  // Antes, al teclear rápido, un fetch anterior podía resolver DESPUÉS que uno
+  // más nuevo y sobrescribir los resultados con datos obsoletos (race condition).
+  // Ahora cada efecto crea su propio controller y aborta el anterior al
+  // limpiar/desmontar, ignorando respuestas obsoletas.
   useEffect(() => {
     if (query.trim().length < 2) {
       if (mountedRef.current) {
@@ -48,10 +52,14 @@ export function GlobalSearch() {
       return
     }
 
+    const controller = new AbortController()
     setIsLoading(true)
+
     const debounceId = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        })
         if (res.ok) {
           const data = await res.json()
           if (mountedRef.current) {
@@ -61,14 +69,24 @@ export function GlobalSearch() {
           if (mountedRef.current) setResults([])
         }
       } catch (error) {
+        // AbortError es esperado cuando una nueva tecla cancela esta request.
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
+        }
         console.error('Search error:', error)
         if (mountedRef.current) setResults([])
       } finally {
-        if (mountedRef.current) setIsLoading(false)
+        // Solo actualizar loading si este request no fue cancelado.
+        if (!controller.signal.aborted && mountedRef.current) {
+          setIsLoading(false)
+        }
       }
     }, 300)
 
-    return () => clearTimeout(debounceId)
+    return () => {
+      clearTimeout(debounceId)
+      controller.abort()
+    }
   }, [query])
 
   // Handle click outside to close dropdown
